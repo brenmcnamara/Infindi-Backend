@@ -1,7 +1,12 @@
 /* @flow */
 
-import { type Firebase$User } from "./firebase";
-import { type Fuzzy, type Location, type ModelStub, type YearMonthDay } from "./core";
+import { type Firebase$User } from './firebase';
+import {
+  type Fuzzy,
+  type Location,
+  type ModelStub,
+  type YearMonthDay,
+} from './core';
 
 /**
  * Login credentials used to login a user.
@@ -27,11 +32,11 @@ export type LoginPayload = {|
  * This has a 1:1 relationship between a firebase User and shares the same
  * id.
  */
-export type UserInfo = ModelStub<"UserInfo"> & {|
+export type UserInfo = ModelStub<'UserInfo'> & {|
   +currentResidence: Fuzzy<Location>,
   +DOB: YearMonthDay,
   +firstName: string,
-  +gender: ?Fuzzy<"MALE" | "FEMALE">,
+  +gender: ?Fuzzy<'MALE' | 'FEMALE'>,
   +lastName: string,
   +roleInline: UserRole,
 |};
@@ -53,7 +58,7 @@ export type UserInfo = ModelStub<"UserInfo"> & {|
  * For an api reference on how to define new rules, start here:
  * https://firebase.google.com/docs/database/security/securing-data
  */
-export type UserRole = ModelStub<"UserRole"> & {|
+export type UserRole = ModelStub<'UserRole'> & {|
   +alias: string,
   +canAddAccount: bool,
 |};
@@ -74,12 +79,12 @@ export type UserRole = ModelStub<"UserRole"> & {|
  * we can detect security anonolies like: logging in from a new device,
  * logging in simultaneously in multiple places, etc...
  */
-export type UserSession = ModelStub<"UserSession"> & {||};
+export type UserSession = ModelStub<'UserSession'> & {||};
 
 /**
  * TODO: Add some documentation here.
  */
-export type UserDebugLogs = ModelStub<"UserDebugLogs"> & {||};
+export type UserDebugLogs = ModelStub<'UserDebugLogs'> & {||};
 
 /**
  * A users financial goal, serialized into a descriptive object. A financial
@@ -89,6 +94,6 @@ export type UserDebugLogs = ModelStub<"UserDebugLogs"> & {||};
  */
 export type FinancialGoal = FinancialGoal$SaveForRetirement;
 
-export type FinancialGoal$SaveForRetirement = ModelStub<"FinancialGoal"> & {|
-  +goalType: "SAVE_FOR_RETIREMENT",
+export type FinancialGoal$SaveForRetirement = ModelStub<'FinancialGoal'> & {|
+  +goalType: 'SAVE_FOR_RETIREMENT',
 |};

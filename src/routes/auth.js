@@ -125,9 +125,15 @@ async function genFirebaseLogin(credentials: LoginCredentials) {
 const ERROR_CODE_400 = ['auth/invalid-email'];
 
 const ERROR_CODE_401 = [
+  // https://rnfirebase.io/docs/v3.1.*/auth/reference/auth#signInWithEmailAndPassword
   'auth/wrong-password',
   'auth/user-not-found',
   'auth/user-disabled',
+  'auth/disabled',
+
+  // https://firebase.google.com/docs/auth/admin/errors
+  'auth/invalid-credential',
+  'auth/insufficient-permission',
 ];
 
 function getStatusForErrorCode(code: string): number {
