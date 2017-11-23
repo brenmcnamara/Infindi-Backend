@@ -1,12 +1,10 @@
 /* @flow */
 
+import auth from "./auth";
 import express from "express";
 
 const router = express.Router();
 
-/* GET home page. */
-router.get("/", (req, res) => {
-  res.render("index", { title: "Express" });
-});
+router.use("/auth", auth);
 
 export default router;

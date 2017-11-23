@@ -1,6 +1,9 @@
 [ignore]
 dist/
 
+; random node modules
+.*/protobufjs/.*
+
 [include]
 
 [libs]

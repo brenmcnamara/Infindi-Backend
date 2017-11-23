@@ -1,7 +1,6 @@
 /* @flow */
 
 import bodyParser from "body-parser";
-import cookieParser from "cookie-parser";
 import express from "express";
 import morgan from "morgan";
 import path from "path";
@@ -18,8 +17,6 @@ app.set("view engine", "ejs");
 //app.use(serveFavicon(path.join(__dirname, 'public', 'favicon.ico')));
 app.use(morgan("dev"));
 app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(cookieParser());
 
 app.use("/", routes);
 
