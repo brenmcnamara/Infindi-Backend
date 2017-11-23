@@ -79,7 +79,9 @@ function performLogin(): RouteHandler {
       res.json({ data: loginPayload });
     } catch (error) {
       // TODO: Differentiate between status codes for different types of errors.
-      res.status(500).json({
+      const errorCode = error.code || 'infindi/server-error';
+      const status: number = getStatusForErrorCode(errorCode);
+      res.status(status).json({
         errorCode: error.code || 'infindi/server-error',
         errorMessage: error.toString(),
       });
@@ -115,4 +117,24 @@ async function genFirebaseLogin(credentials: LoginCredentials) {
   // https://firebase.google.com/docs/auth/admin/errors
   const accessToken = await AdminAuth.createCustomToken(uid);
   return { accessToken, firebaseUser, userInfo };
+}
+
+// TODO: Add more error codes here and indicate where they may be coming
+// from.
+
+const ERROR_CODE_400 = ['auth/invalid-email'];
+
+const ERROR_CODE_401 = [
+  'auth/wrong-password',
+  'auth/user-not-found',
+  'auth/user-disabled',
+];
+
+function getStatusForErrorCode(code: string): number {
+  if (ERROR_CODE_400.includes(code)) {
+    return 400;
+  } else if (ERROR_CODE_401.includes(code)) {
+    return 401;
+  }
+  return 500;
 }
