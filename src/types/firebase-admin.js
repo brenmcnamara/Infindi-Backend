@@ -1,5 +1,7 @@
 /* @flow */
 
+import { type SecondsSinceEpoch } from './core';
+
 export type FirebaseAdmin$ErrorCode =
   | 'auth/claims-too-large'
   | 'auth/invalid-argument'
@@ -23,3 +25,14 @@ export type FirebaseAdmin$ErrorCode =
   | 'auth/phone-number-already-exists'
   | 'auth/insufficient-permission'
   | 'auth/internal-error';
+
+// https://firebase.google.com/docs/reference/admin/node/admin.auth.DecodedIdToken
+export type DecodedIDToken = {|
+  +aud: string,
+  +auth_time: SecondsSinceEpoch,
+  +exp: SecondsSinceEpoch,
+  +firebase: Object,
+  +iat: SecondsSinceEpoch,
+  +sub: string,
+  +uid: string,
+|};

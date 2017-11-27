@@ -11,22 +11,23 @@
  * Module dependencies.
  */
 
-// This app acts both as firebase admin and client.
-const Firebase = require("firebase");
-const FirebaseAdmin = require("firebase-admin");
+const FirebaseAdmin = require('firebase-admin');
 
-const app = require("../build/app").default;
-const debug = require("debug")("infindi-backend:server");
-const dotenv = require("dotenv");
-const fs = require("fs");
-const http = require("http");
-const path = require("path");
+const app = require('../build/app').default;
+const debug = require('debug')('infindi-backend:server');
+const dotenv = require('dotenv');
+const fs = require('fs');
+const http = require('http');
+const path = require('path');
 
-console.log("Configuring up environment variables...");
+console.log('Configuring environment variables...');
 dotenv.config();
 
-console.log("Configuring Firebase Admin...");
-const serviceCertFilename = path.join(__dirname, "../firebase-service-cert.json");
+console.log('Configuring Firebase Admin...');
+const serviceCertFilename = path.join(
+  __dirname,
+  '../firebase-service-cert.json'
+);
 const serviceCertSerialized = fs.readFileSync(serviceCertFilename).toString();
 const serviceCert = JSON.parse(serviceCertSerialized);
 
@@ -35,20 +36,10 @@ FirebaseAdmin.initializeApp({
   databaseURL: process.env.FIREBASE_DB_URL,
 });
 
-console.log("Configuring Firebase Client...");
-Firebase.initializeApp({
-  apiKey: process.env.FIREBASE_WEB_API_KEY,
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-  databaseURL: process.env.FIREBASE_DB_URL,
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-});
-
-Firebase.auth().setPersistence(Firebase.auth.Auth.Persistence.NONE);
-
 const port = normalizePort(process.env.PORT);
 
 console.log(`Setting up HTTP Server on port ${port}...`);
-app.set("port", port);
+app.set('port', port);
 
 /**
  * Create HTTP server.
@@ -61,11 +52,11 @@ const server = http.createServer(app);
  */
 
 server.listen({
-  host: "localhost",
+  host: 'localhost',
   port,
 });
-server.on("clientError", onError);
-server.on("listening", onListening);
+server.on('clientError', onError);
+server.on('listening', onListening);
 
 /**
  * Normalize a port into a number, string, or false.
@@ -92,20 +83,20 @@ function normalizePort(val) {
  */
 
 function onError(error) {
-  if (error.syscall !== "listen") {
+  if (error.syscall !== 'listen') {
     throw error;
   }
 
-  var bind = typeof port === "string" ? "Pipe " + port : "Port " + port;
+  var bind = typeof port === 'string' ? 'Pipe ' + port : 'Port ' + port;
 
   // handle specific listen errors with friendly messages
   switch (error.code) {
-    case "EACCES":
-      console.error(bind + " requires elevated privileges");
+    case 'EACCES':
+      console.error(bind + ' requires elevated privileges');
       process.exit(1);
       break;
-    case "EADDRINUSE":
-      console.error(bind + " is already in use");
+    case 'EADDRINUSE':
+      console.error(bind + ' is already in use');
       process.exit(1);
       break;
     default:
@@ -119,6 +110,6 @@ function onError(error) {
 // TODO: This is not getting called. Why?
 function onListening() {
   const addr = server.address();
-  const bind = typeof addr === "string" ? "pipe " + addr : "port " + addr.port;
-  debug("Listening on " + bind);
+  const bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
+  debug('Listening on ' + bind);
 }

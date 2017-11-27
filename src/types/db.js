@@ -22,6 +22,7 @@ export type LoginCredentials = {|
 export type LoginPayload = {|
   +accessToken: string,
   +firebaseUser: Firebase$User,
+  +idToken: string,
   +userInfo: UserInfo,
 |};
 
