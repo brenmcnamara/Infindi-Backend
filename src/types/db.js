@@ -20,7 +20,6 @@ export type LoginCredentials = {|
  * Login payload that is returned given a success login.
  */
 export type LoginPayload = {|
-  +accessToken: string,
   +firebaseUser: Firebase$User,
   +idToken: string,
   +userInfo: UserInfo,
@@ -38,6 +37,7 @@ export type UserInfo = ModelStub<'UserInfo'> & {|
   +DOB: YearMonthDay,
   +firstName: string,
   +gender: ?Fuzzy<'MALE' | 'FEMALE'>,
+  +isTestUser: bool,
   +lastName: string,
   +roleInline: UserRole,
 |};
