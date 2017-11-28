@@ -1,7 +1,13 @@
 /* @flow */
 
+import { type ErrorResponse as PlaidErrorResponse } from './types/plaid';
+
+export type Error = { errorCode: string, errorMessage: string };
+
 // Infindi
 export type ErrorCode =
+  // Get argument-error when using invalid itemID with firebase.
+  | 'auth/argument-error'
   | 'auth/disabled'
   | 'auth/insufficient-permission'
   | 'auth/invalid-credential'
@@ -10,17 +16,21 @@ export type ErrorCode =
   | 'auth/wrong-password'
   | 'infindi/bad-request'
   | 'infindi/not-authenticated'
-  | 'infindi/server-error';
+  | 'infindi/server-error'
+  | 'plaid/invalidInput/invalidPublicToken'
+  | 'plaid/unknownError';
 
 const ERROR_CODE_400 = ['auth/invalid-email'];
 
 const ERROR_CODE_401 = [
-  'auth/wrong-password',
-  'auth/user-not-found',
-  'auth/user-disabled',
+  'auth/argument-error',
   'auth/disabled',
-  'auth/invalid-credential',
   'auth/insufficient-permission',
+  'auth/invalid-credential',
+  'auth/user-disabled',
+  'auth/user-not-found',
+  'auth/wrong-password',
+  'plaid/invalidPublicToken',
 ];
 
 export function getStatusForErrorCode(code: string): number {
@@ -30,4 +40,22 @@ export function getStatusForErrorCode(code: string): number {
     return 401;
   }
   return 500;
+}
+
+export function getErrorForPlaidError(plaidError: PlaidErrorResponse): Error {
+  // flatten the type / code hierarchy so we can handle everything in one
+  // branch.
+  const plaidErrorType = `${plaidError.error_type}/${plaidError.error_code}`;
+  switch (plaidErrorType) {
+    case 'INVALID_INPUT/INVALID_PUBLIC_TOKEN':
+      return {
+        errorCode: 'plaid/invalidInput/invalidPublicToken',
+        errorMessage: plaidError.error_message,
+      };
+    default:
+      return {
+        errorCode: 'plaid/unknownError',
+        errorMessage: plaidError.error_message,
+      };
+  }
 }

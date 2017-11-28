@@ -98,3 +98,19 @@ export type FinancialGoal = FinancialGoal$SaveForRetirement;
 export type FinancialGoal$SaveForRetirement = ModelStub<'FinancialGoal'> & {|
   +goalType: 'SAVE_FOR_RETIREMENT',
 |};
+
+/**
+ * A users credentials for plaid. These credentials allow a user to access
+ * their plaid items given the relevant sandbox. Each credential is for a
+ * specific plaid "item". Look here for plaid documentation on items:
+ * https://plaid.com/docs/api/#retrieve-item
+ *
+ * NOTE: These credentials may expire relatively frequently and need to be
+ * updated.
+ */
+export type PlaidCredentials = ModelStub<'PlaidCredentials'> & {|
+  +accessToken: string,
+  +environment: 'sandbox' | 'development' | 'production',
+  +itemID: string,
+  +metadata: Object,
+|};

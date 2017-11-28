@@ -26,6 +26,7 @@
       // user selected and the account ID, if the Account Select view
       // is enabled.
       console.log('onSuccess:', public_token, metadata);
+      /*
       $.ajax({
         url: '/plaid/get_access_token',
         type: 'post',
@@ -40,6 +41,7 @@
           console.log('successfully fetched access token', data);
         },
       });
+      */
     },
     onExit: function(err, metadata) {
       // The user exited the Link flow.
