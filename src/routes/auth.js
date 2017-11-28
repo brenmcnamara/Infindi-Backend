@@ -8,6 +8,8 @@ const router = express.Router();
 
 export default router;
 
+export function initialize(): void {}
+
 // -----------------------------------------------------------------------------
 //
 // GET /auth/litmus
