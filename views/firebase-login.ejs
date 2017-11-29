@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>Firebase Login</title>
+</head>
+
+<body>
+  <div style="padding: 40px">
+    <div style="margin-bottom: 16px">
+      <span style="padding-right: 8px">Email:</span>
+      <input id="email" type="text" />
+    </div>
+
+    <div style="margin-bottom: 16px">
+      <span style="padding-right: 8px">Password:</span>
+      <input id="password" type="password" />
+    </div>
+
+    <button onclick="submitCredentials()">Submit</button>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/4.6.2/firebase.js"></script>
+  <script>
+  // Initialize Firebase
+// TODO: Replace with your project's customized code snippet
+var config = {
+  apiKey: '<%= API_KEY %>',
+  authDomain: '<%= AUTH_DOMAIN %>',
+  databaseURL: '<%= DB_URL %>',
+  storageBucket: '<%= STORAGE_BUCKET %>',
+};
+firebase.initializeApp(config);
+
+function submitCredentials() {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  firebase
+    .auth()
+    .signInWithEmailAndPassword(email, password)
+    .then(function(user) {
+      return user.getIdToken();
+    })
+    .then(function(idToken) {
+      console.log(idToken);
+    })
+    .catch(function(error) {
+      alert('Error signing in: ' + error.toString());
+    });
+}
+</script>
+
+</body>
+</html>
