@@ -41,7 +41,7 @@ FirebaseAdmin.initializeApp({
 
 const port = normalizePort(process.env.PORT);
 
-console.log('initializing app');
+console.log('Initializing App...');
 initializeApp();
 
 console.log(`Setting up HTTP Server on port ${port}...`);

@@ -5,6 +5,7 @@ import {
   type Fuzzy,
   type Location,
   type ModelStub,
+  type Pointer,
   type YearMonthDay,
 } from './core';
 
@@ -113,4 +114,34 @@ export type PlaidCredentials = ModelStub<'PlaidCredentials'> & {|
   +environment: 'sandbox' | 'development' | 'production',
   +itemID: string,
   +metadata: Object,
+|};
+
+/**
+ * PlaidItemDownloadRequest contains all the metadata in charge of tracking
+ * plaid downloads for items. Each download request tracks the download of a
+ * plaid credentials object. There can be at most 1 plaid download running at
+ * a time per plaid credential, though there can be many interrupted or failed
+ * downloads existing.
+ */
+export type PlaidDownloadStatus =
+  | {|
+      +type: 'NOT_INITIALIZED',
+    |}
+  | {|
+      +type: 'IN_PROGRESS',
+    |}
+  | {|
+      +type: 'COMPLETE',
+    |}
+  | {|
+      +type: 'INTERRUPTED',
+    |}
+  | {|
+      +type: 'FAILURE',
+      +errorCode: string,
+    |};
+
+export type PlaidDownloadRequest = ModelStub<'PlaidDownloadRequest'> & {|
+  +credentialsRef: Pointer<'PlaidCredentials'>,
+  +status: PlaidDownloadStatus,
 |};

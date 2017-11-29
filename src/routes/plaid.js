@@ -4,9 +4,14 @@ import * as FirebaseAdmin from 'firebase-admin';
 import Plaid from 'plaid';
 
 import express from 'express';
+import uuid from 'uuid/v4';
 
 import { checkAuth, type RouteHandler } from '../middleware';
 import { getStatusForErrorCode } from '../error-codes';
+
+import { type PlaidCredentials, type PlaidDownloadRequest } from '../types/db';
+
+type JSONMap<K: string, V> = { [string: K]: V };
 
 const router = express.Router();
 
@@ -79,7 +84,7 @@ function performCredentials(): RouteHandler {
             accessToken,
             createdAt: nowInSeconds,
             environment: process.env.PLAID_ENV,
-            id: uid,
+            id: itemID,
             itemID,
             metadata,
             modelType: 'PlaidCredentials',
@@ -101,3 +106,161 @@ router.post('/credentials', checkPlaidClientInitialized());
 router.post('/credentials', checkAuth());
 router.post('/credentials', validateCredentials());
 router.post('/credentials', performCredentials());
+
+// -----------------------------------------------------------------------------
+//
+// POST plaid/download
+//
+// -----------------------------------------------------------------------------
+
+function validateDownload(): RouteHandler {
+  return (req, res, next) => {
+    const { body } = req;
+    if (typeof body.itemID !== 'string') {
+      const errorCode = 'infindi/bad-request';
+      const errorMessage = 'request requires param: "itemID"';
+      const status = getStatusForErrorCode(errorCode);
+      res.status(status).json({ errorCode, errorMessage });
+      return;
+    }
+    next();
+  };
+}
+
+function performDownload(): RouteHandler {
+  return async (req, res) => {
+    const Database = FirebaseAdmin.database();
+
+    const { decodedIDToken } = req;
+    const { uid } = decodedIDToken;
+    const { itemID } = req.body;
+
+    // Step 1: Fetch the credentials we are trying to write to. Make sure they
+    // exist. SHould now start a download request for credentials that do not
+    // exist.
+    let plaidCredentials: ?PlaidCredentials = null;
+    try {
+      plaidCredentials = await Database.ref(
+        `PlaidCredentials/${uid}/${itemID}`,
+      ).once('value');
+    } catch (error) {
+      const errorCode = error.code || 'infindi/server-error';
+      const errorMessage = error.toString();
+      const status = getStatusForErrorCode(errorCode);
+      res.status(status).json({ errorCode, errorMessage });
+      return;
+    }
+
+    if (!plaidCredentials) {
+      const errorCode = 'infindi/bad-request';
+      const errorMessage = `Could not find credentials with id: ${itemID}`;
+      const status = getStatusForErrorCode(errorCode);
+      res.status(status).json({ errorCode, errorMessage });
+      return;
+    }
+
+    // Start a transaction when making a download request. We do not want
+    // multiple download requests to start for the same item. This can happen
+    // if different firebase clients are writing simultaneously to Firebase.
+    type RequestMap = JSONMap<string, PlaidDownloadRequest>;
+    const requestID = uuid();
+    let transactionError = null;
+    function transaction(map: RequestMap): RequestMap {
+      // Step 2: Check if there are any credentials that have already been
+      // started for this item.
+      const requests: Array<PlaidDownloadRequest> = getValues(map);
+      for (const request of requests) {
+        if (isRequestOpen(request)) {
+          // We already have a running request for the given item. Cannot
+          // create a second download request.
+          const errorCode = 'infindi/bad-request';
+          // eslint-disable-next-line max-len
+          const errorMessage = `Trying to start a plaid download request when request already exists for credentials ${
+            itemID
+          }`;
+          transactionError = { errorCode, errorMessage };
+          return map;
+        }
+      }
+
+      // Step 3: Could not find any open requests for this item. Time to
+      // create one.
+      const nowInSeconds = Math.floor(Date.now() / 1000);
+      const downloadRequest = {
+        createdAt: nowInSeconds,
+        credentialsRef: {
+          pointerType: 'PlaidCredentials',
+          refID: itemID,
+          type: 'POINTER',
+        },
+        id: requestID,
+        modelType: 'PlaidDownloadRequest',
+        status: { type: 'NOT_INITIALIZED' },
+        type: 'MODEL',
+        updatedAt: nowInSeconds,
+      };
+
+      return { ...map, [requestID]: downloadRequest };
+    }
+
+    try {
+      await Database.ref(`PlaidDownloadRequests/${uid}/${itemID}`).transaction(
+        transaction,
+      );
+    } catch (error) {
+      // Could be a Firebase error or an infindi error.
+      const errorCode = error.code || 'infindi/server-error';
+      const errorMessage = error.toString();
+      const status = getStatusForErrorCode(errorCode);
+      res.status(status).json({ errorCode, errorMessage });
+      return;
+    }
+
+    // We found an error while performing the transaction. This is different
+    // than an error when trying to commit the transaction to Firebase.
+    if (transactionError) {
+      const status = getStatusForErrorCode(transactionError.errorCode);
+      res.status(status).json(transactionError);
+      return;
+    }
+
+    // TODO: Do I need to check the committed flag on the transaction result?
+    // Or can I assume that it was a success if it did not throw an error?
+    // https://firebase.google.com/docs/reference/js/firebase.database.Reference#transaction
+    res.json({
+      data: {
+        pointerType: 'PlaidDownloadRequest',
+        refID: requestID,
+        type: 'POINTER',
+      },
+    });
+  };
+}
+
+router.post('/download', checkPlaidClientInitialized());
+router.post('/download', checkAuth());
+router.post('/download', validateDownload());
+router.post('/download', performDownload());
+
+// -----------------------------------------------------------------------------
+//
+// UTILITIES
+//
+// -----------------------------------------------------------------------------
+
+function isRequestOpen(request: PlaidDownloadRequest): bool {
+  return (
+    request.status.type === 'NOT_INITIALIZED' ||
+    request.status.type === 'IN_PROGRESS'
+  );
+}
+
+function getValues<V>(obj: JSONMap<*, V>): Array<V> {
+  const values = [];
+  for (let prop in obj) {
+    if (obj.hasOwnProperty(prop)) {
+      values.push(obj[prop]);
+    }
+  }
+  return values;
+}
