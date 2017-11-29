@@ -16,6 +16,7 @@ export type ErrorCode =
   | 'auth/wrong-password'
   | 'infindi/bad-request'
   | 'infindi/not-authenticated'
+  | 'infindi/resource-not-found'
   | 'infindi/server-error'
   | 'plaid/invalidInput/invalidPublicToken'
   | 'plaid/unknownError';
@@ -33,11 +34,15 @@ const ERROR_CODE_401 = [
   'plaid/invalidPublicToken',
 ];
 
+const ERROR_CODE_404 = ['infindi/resource-not-found'];
+
 export function getStatusForErrorCode(code: string): number {
   if (ERROR_CODE_400.includes(code)) {
     return 400;
   } else if (ERROR_CODE_401.includes(code)) {
     return 401;
+  } else if (ERROR_CODE_404.includes(code)) {
+    return 404;
   }
   return 500;
 }

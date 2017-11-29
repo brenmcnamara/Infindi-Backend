@@ -109,23 +109,9 @@ router.post('/credentials', performCredentials());
 
 // -----------------------------------------------------------------------------
 //
-// POST plaid/download
+// POST plaid/download/:itemID
 //
 // -----------------------------------------------------------------------------
-
-function validateDownload(): RouteHandler {
-  return (req, res, next) => {
-    const { body } = req;
-    if (typeof body.itemID !== 'string') {
-      const errorCode = 'infindi/bad-request';
-      const errorMessage = 'request requires param: "itemID"';
-      const status = getStatusForErrorCode(errorCode);
-      res.status(status).json({ errorCode, errorMessage });
-      return;
-    }
-    next();
-  };
-}
 
 function performDownload(): RouteHandler {
   return async (req, res) => {
@@ -133,7 +119,7 @@ function performDownload(): RouteHandler {
 
     const { decodedIDToken } = req;
     const { uid } = decodedIDToken;
-    const { itemID } = req.body;
+    const { credentialsID } = req.params;
 
     // Step 1: Fetch the credentials we are trying to write to. Make sure they
     // exist. SHould now start a download request for credentials that do not
@@ -141,7 +127,7 @@ function performDownload(): RouteHandler {
     let plaidCredentials: ?PlaidCredentials = null;
     try {
       plaidCredentials = await Database.ref(
-        `PlaidCredentials/${uid}/${itemID}`,
+        `PlaidCredentials/${uid}/${credentialsID}`,
       ).once('value');
     } catch (error) {
       const errorCode = error.code || 'infindi/server-error';
@@ -152,8 +138,10 @@ function performDownload(): RouteHandler {
     }
 
     if (!plaidCredentials) {
-      const errorCode = 'infindi/bad-request';
-      const errorMessage = `Could not find credentials with id: ${itemID}`;
+      const errorCode = 'infindi/resource-not-found';
+      const errorMessage = `Could not find credentials with id: ${
+        credentialsID
+      }`;
       const status = getStatusForErrorCode(errorCode);
       res.status(status).json({ errorCode, errorMessage });
       return;
@@ -176,7 +164,7 @@ function performDownload(): RouteHandler {
           const errorCode = 'infindi/bad-request';
           // eslint-disable-next-line max-len
           const errorMessage = `Trying to start a plaid download request when request already exists for credentials ${
-            itemID
+            credentialsID
           }`;
           transactionError = { errorCode, errorMessage };
           return map;
@@ -190,7 +178,7 @@ function performDownload(): RouteHandler {
         createdAt: nowInSeconds,
         credentialsRef: {
           pointerType: 'PlaidCredentials',
-          refID: itemID,
+          refID: credentialsID,
           type: 'POINTER',
         },
         id: requestID,
@@ -204,9 +192,9 @@ function performDownload(): RouteHandler {
     }
 
     try {
-      await Database.ref(`PlaidDownloadRequests/${uid}/${itemID}`).transaction(
-        transaction,
-      );
+      await Database.ref(
+        `PlaidDownloadRequests/${uid}/${credentialsID}`,
+      ).transaction(transaction);
     } catch (error) {
       // Could be a Firebase error or an infindi error.
       const errorCode = error.code || 'infindi/server-error';
@@ -237,10 +225,9 @@ function performDownload(): RouteHandler {
   };
 }
 
-router.post('/download', checkPlaidClientInitialized());
-router.post('/download', checkAuth());
-router.post('/download', validateDownload());
-router.post('/download', performDownload());
+router.post('/download/:credentialsID', checkPlaidClientInitialized());
+router.post('/download/:credentialsID', checkAuth());
+router.post('/download/:credentialsID', performDownload());
 
 // -----------------------------------------------------------------------------
 //
