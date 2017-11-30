@@ -9,11 +9,15 @@ import uuid from 'uuid/v4';
 import { checkAuth, type RouteHandler } from '../middleware';
 import { getStatusForErrorCode, type InfindiError } from '../error-codes';
 
-import { type Firebase$TransactionResult } from '../types/firebase';
+import {
+  type Firebase$DataSnapshot,
+  type Firebase$TransactionResult,
+} from '../types/firebase';
 import { type ID } from '../types/core';
 import { type PlaidCredentials, type PlaidDownloadRequest } from '../types/db';
 
 type JSONMap<K: string, V> = { [string: K]: V };
+type DownloadRequestMap = JSONMap<ID, PlaidDownloadRequest>;
 
 const router = express.Router();
 
@@ -130,7 +134,6 @@ function performDownload(): RouteHandler {
     // exist.
     try {
       await genCredentials(uid, credentialsID);
-      // TODO: PROPER TYPING ON ERROR.
     } catch (error /* InfindiError */) {
       const status = getStatusForErrorCode(error.errorCode);
       res.status(status).json(error);
@@ -140,10 +143,9 @@ function performDownload(): RouteHandler {
     // Start a transaction when making a download request. We do not want
     // multiple download requests to start for the same item. This can happen
     // if different firebase clients are writing simultaneously to Firebase.
-    type RequestMap = JSONMap<string, PlaidDownloadRequest>;
     const requestID = uuid();
     let transactionError = null;
-    function transaction(map: ?RequestMap) {
+    function transaction(map: ?DownloadRequestMap) {
       // Step 2: Check if there are any credentials that have already been
       // started for this item.
       if (map) {
@@ -183,7 +185,7 @@ function performDownload(): RouteHandler {
       return { ...map, [requestID]: downloadRequest };
     }
 
-    let result: Firebase$TransactionResult;
+    let result: Firebase$TransactionResult<DownloadRequestMap>;
     try {
       result = await Database.ref(
         `PlaidDownloadRequests/${uid}/${credentialsID}`,
@@ -245,7 +247,6 @@ function performDownloadCancel(): RouteHandler {
     // Step 1: Make sure the credentials actually exist.
     try {
       await genCredentials(uid, credentialsID);
-      // TODO: PROPERTY TYPING FOR ERRORS.
     } catch (error /* InfindiError */) {
       const status = getStatusForErrorCode(error.errorCode);
       res.status(status).json(error);
@@ -288,9 +289,11 @@ function performDownloadCancel(): RouteHandler {
       }
 
       // Step 3: Cancel the request.
+      const nowInSeconds = Math.floor(Date.now() / 1000);
       const canceledRequest = {
         ...openRequests[0],
         status: { type: 'CANCELED' },
+        updatedAt: nowInSeconds,
       };
 
       canceledRequestID = canceledRequest.id;
@@ -300,7 +303,7 @@ function performDownloadCancel(): RouteHandler {
       };
     }
 
-    let result: Firebase$TransactionResult;
+    let result: Firebase$TransactionResult<DownloadRequestMap>;
 
     try {
       result = await Database.ref(
@@ -353,6 +356,73 @@ function performDownloadCancel(): RouteHandler {
 router.post('/download/:credentialsID/cancel', checkPlaidClientInitialized());
 router.post('/download/:credentialsID/cancel', checkAuth());
 router.post('/download/:credentialsID/cancel', performDownloadCancel());
+
+// -----------------------------------------------------------------------------
+//
+// GET /plaid/download/:credentialsID
+//
+// -----------------------------------------------------------------------------
+
+function performDownloadStatus(): RouteHandler {
+  return async (req, res) => {
+    const Database = FirebaseAdmin.database();
+
+    const { uid } = req.decodedIDToken;
+    const { credentialsID } = req.params;
+
+    // Step 1: Confirm that there are credentials that exist for the particular
+    // id.
+    try {
+      await genCredentials(uid, credentialsID);
+    } catch (error /* InfindiError */) {
+      const status = getStatusForErrorCode(error.errorCode);
+      res.status(status).json(error);
+      return;
+    }
+
+    // Step 2: Get the download requests that exist for the credentials.
+    let snapshot: Firebase$DataSnapshot<DownloadRequestMap>;
+    try {
+      snapshot = await Database.ref(
+        `PlaidDownloadRequests/${uid}/${credentialsID}`,
+      ).once('value');
+    } catch (error) {
+      const errorCode = error.code || 'infindi/server-error';
+      const errorMessage = error.toString();
+      const status = getStatusForErrorCode(errorCode);
+      res.status(status).json({ errorCode, errorMessage });
+      return;
+    }
+
+    const map = snapshot.val();
+    const requests: Array<PlaidDownloadRequest> = map ? getValues(map) : [];
+
+    if (!map || requests.length === 0) {
+      const errorCode = 'infindi/resource-not-found';
+      const errorMessage = `No download requests exist for credentials ${
+        credentialsID
+      }`;
+      const status = getStatusForErrorCode(errorCode);
+      res.status(status).json({ errorCode, errorMessage });
+      return;
+    }
+
+    // Step 3: Get the download request that was most recently updated. This
+    // represents the download request with the most recent activity.
+    let mostRecentRequest = requests[0];
+    for (let i = 1; i < requests.length; ++i) {
+      if (requests[i].updatedAt > mostRecentRequest.updatedAt) {
+        mostRecentRequest = requests[i];
+      }
+    }
+
+    res.json({ data: mostRecentRequest });
+  };
+}
+
+router.get('/download/:credentialsID', checkPlaidClientInitialized());
+router.get('/download/:credentialsID', checkAuth());
+router.get('/download/:credentialsID', performDownloadStatus());
 
 // -----------------------------------------------------------------------------
 //

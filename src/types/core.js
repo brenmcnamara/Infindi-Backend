@@ -13,11 +13,11 @@ export type Pointer<T: string> = {|
 |};
 
 export type ModelStub<T: string> = {|
-  +createdAtSecs: SecondsSinceEpoch,
+  +createdAt: SecondsSinceEpoch,
   +id: string,
   +modelType: T,
   +type: 'MODEL',
-  +updatedAtSecs: SecondsSinceEpoch,
+  +updatedAt: SecondsSinceEpoch,
 |};
 
 export type Fuzzy<T> = {

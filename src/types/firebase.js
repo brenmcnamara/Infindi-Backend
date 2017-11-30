@@ -122,13 +122,13 @@ export type Firebase$User = {|
 // -----------------------------------------------------------------------------
 
 // https://rnfirebase.io/docs/v3.1.*/database/reference/DataSnapshot
-export type Firebase$DataSnapshot = {|
-  +child: (ref: Firebase$Reference) => Firebase$DataSnapshot,
+export type Firebase$DataSnapshot<T> = {|
+  +child: (ref: Firebase$Reference) => Firebase$DataSnapshot<*>,
 
   +exists: () => bool,
 
   +forEach: (
-    callback: (childSnapshot: Firebase$DataSnapshot) => mixed,
+    callback: (childSnapshot: Firebase$DataSnapshot<*>) => mixed,
   ) => bool,
 
   +getPriority: () => string | number | null,
@@ -145,13 +145,13 @@ export type Firebase$DataSnapshot = {|
 
   +toJSON: () => Object,
 
-  +val: () => any,
+  +val: () => ?T,
 |};
 
 // TODO: https://rnfirebase.io/docs/v3.1.*/database/reference/Reference
 export type Firebase$Reference = Object;
 
-export type Firebase$TransactionResult = {|
+export type Firebase$TransactionResult<T> = {|
   +committed: bool,
-  +snapshot: ?Firebase$DataSnapshot,
+  +snapshot: ?Firebase$DataSnapshot<T>,
 |};
