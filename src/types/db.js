@@ -134,7 +134,7 @@ export type PlaidDownloadStatus =
       +type: 'COMPLETE',
     |}
   | {|
-      +type: 'INTERRUPTED',
+      +type: 'CANCELED',
     |}
   | {|
       +type: 'FAILURE',

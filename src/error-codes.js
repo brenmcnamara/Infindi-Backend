@@ -2,7 +2,7 @@
 
 import { type ErrorResponse as PlaidErrorResponse } from './types/plaid';
 
-export type Error = { errorCode: string, errorMessage: string };
+export type InfindiError = { errorCode: string, errorMessage: string };
 
 // Infindi
 export type ErrorCode =
@@ -21,7 +21,7 @@ export type ErrorCode =
   | 'plaid/invalidInput/invalidPublicToken'
   | 'plaid/unknownError';
 
-const ERROR_CODE_400 = ['auth/invalid-email'];
+const ERROR_CODE_400 = ['auth/invalid-email', 'infindi/bad-request'];
 
 const ERROR_CODE_401 = [
   'auth/argument-error',
@@ -47,7 +47,9 @@ export function getStatusForErrorCode(code: string): number {
   return 500;
 }
 
-export function getErrorForPlaidError(plaidError: PlaidErrorResponse): Error {
+export function getErrorForPlaidError(
+  plaidError: PlaidErrorResponse,
+): InfindiError {
   // flatten the type / code hierarchy so we can handle everything in one
   // branch.
   const plaidErrorType = `${plaidError.error_type}/${plaidError.error_code}`;

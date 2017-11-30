@@ -150,3 +150,8 @@ export type Firebase$DataSnapshot = {|
 
 // TODO: https://rnfirebase.io/docs/v3.1.*/database/reference/Reference
 export type Firebase$Reference = Object;
+
+export type Firebase$TransactionResult = {|
+  +committed: bool,
+  +snapshot: ?Firebase$DataSnapshot,
+|};
