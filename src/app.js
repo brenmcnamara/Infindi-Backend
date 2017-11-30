@@ -6,6 +6,8 @@ import morgan from 'morgan';
 import path from 'path';
 import routes, { initialize as initializeRoutes } from './routes';
 
+import { getStatusForErrorCode } from './error-codes';
+
 const app = express();
 
 export default app;
@@ -22,12 +24,12 @@ export function initialize(): void {
 
   app.use('/', routes);
 
-  // catch 404 and forward to error handler
-  app.use((req, res, next) => {
-    var err = new Error('Not Found');
-    // $FlowFixMe - This is fine.
-    err.status = 404;
-    next(err);
+  app.use((req, res) => {
+    const errorCode = 'infindi/resource-not-found';
+    const errorMessage = 'Resource not found';
+    const status = getStatusForErrorCode(errorCode);
+    res.status(status).json({ errorCode, errorMessage });
+    return;
   });
 
   // error handler
