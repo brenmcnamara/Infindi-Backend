@@ -15,9 +15,11 @@ export type ErrorCode =
   | 'auth/user-not-found'
   | 'auth/wrong-password'
   | 'infindi/bad-request'
+  | 'infindi/forbidden'
   | 'infindi/not-authenticated'
   | 'infindi/resource-not-found'
   | 'infindi/server-error'
+  | 'message-queue/initialization-error'
   | 'plaid/invalidInput/invalidPublicToken'
   | 'plaid/unknownError';
 

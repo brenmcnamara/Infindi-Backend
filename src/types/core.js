@@ -4,6 +4,10 @@ export type ID = string;
 
 export type YearMonthDay = string; // YYYY/MM/DD
 
+// Seconds as a relative time unit.
+export type Seconds = number;
+
+// Seconds as an absolute time unit since epoch.
 export type SecondsSinceEpoch = number;
 
 export type Pointer<T: string> = {|

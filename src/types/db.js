@@ -3,9 +3,12 @@
 import { type Firebase$User } from './firebase';
 import {
   type Fuzzy,
+  type ID,
   type Location,
   type ModelStub,
   type Pointer,
+  type Seconds,
+  type SecondsSinceEpoch,
   type YearMonthDay,
 } from './core';
 
@@ -114,6 +117,7 @@ export type PlaidCredentials = ModelStub<'PlaidCredentials'> & {|
   +environment: 'sandbox' | 'development' | 'production',
   +itemID: string,
   +metadata: Object,
+  +userRef: Pointer<'User'>,
 |};
 
 /**
@@ -128,20 +132,41 @@ export type PlaidDownloadStatus =
       +type: 'NOT_INITIALIZED',
     |}
   | {|
+      +claim: PlaidDownloadClaim,
       +type: 'IN_PROGRESS',
     |}
   | {|
       +type: 'COMPLETE',
     |}
   | {|
+      +lastClaim: PlaidDownloadClaim,
       +type: 'CANCELED',
     |}
   | {|
-      +type: 'FAILURE',
       +errorCode: string,
+      +type: 'FAILURE',
     |};
+
+/**
+ * When a worker wants to claim a download request to work on, it needs to
+ * submit a claim transaction to tell other workers not to try to work on this
+ * request.
+ *
+ * It could be the case that a worker is killed before it can complete a task.
+ * In order to prevent download requests from being left behind as a result of
+ * this, each claim needs to include a timeout before the worker is required
+ * to update the claim. The timeout and start time of the claim must be
+ * specified.
+ */
+export type PlaidDownloadClaim = {|
+  +createdAt: SecondsSinceEpoch,
+  +timeout: Seconds,
+  +updatedAt: SecondsSinceEpoch,
+  +workerID: ID,
+|};
 
 export type PlaidDownloadRequest = ModelStub<'PlaidDownloadRequest'> & {|
   +credentialsRef: Pointer<'PlaidCredentials'>,
   +status: PlaidDownloadStatus,
+  +userRef: Pointer<'User'>,
 |};

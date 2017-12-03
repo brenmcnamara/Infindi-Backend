@@ -7,10 +7,6 @@
  * syntax this works with the runnning version of node.
  */
 
-/**
- * Module dependencies.
- */
-
 const FirebaseAdmin = require('firebase-admin');
 
 const appModule = require('../build/app');
@@ -39,7 +35,7 @@ FirebaseAdmin.initializeApp({
   databaseURL: process.env.FIREBASE_DB_URL,
 });
 
-const port = normalizePort(process.env.PORT);
+const port = normalizePort(process.env.PORT_APP);
 
 console.log('Initializing App...');
 initializeApp();
