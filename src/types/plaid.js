@@ -123,7 +123,7 @@ export type Item = {|
   +webhook: string,
 |};
 
-export type Account = {|
+export type Account = {
   +account_id: string,
   +balances: {|
     +available: number,
@@ -135,7 +135,7 @@ export type Account = {|
   +official_name: string,
   +subtype: AccountSubtype,
   +type: AccountType,
-|};
+};
 
 export type AccountNumber = {|
   +account: string,

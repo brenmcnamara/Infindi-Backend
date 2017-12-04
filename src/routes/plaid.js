@@ -256,11 +256,23 @@ function performDownloadCancel(): RouteHandler {
 
     let hasNonNullValue: bool = false;
     let transactionError: ?InfindiError = null;
+    // NOTE: We will assume if it cancelable until shown otherwise. If the
+    // transaction does not run correctly and this variable never gets updated
+    // we will hit a different type of error.
+    let isCancelable: bool = true;
     function transaction(request: ?PlaidDownloadRequest) {
       hasNonNullValue = Boolean(request);
 
       if (!request) {
         return null;
+      }
+
+      isCancelable =
+        request.status.type === 'NOT_INITIALIZED' ||
+        request.status.type === 'IN_PROGRESS';
+
+      if (!isCancelable) {
+        return ABORT_TRANSACTION;
       }
 
       // Step 3: Cancel the request.
@@ -270,7 +282,6 @@ function performDownloadCancel(): RouteHandler {
         status: { type: 'CANCELED' },
         updatedAt: nowInSeconds,
       };
-
       return canceledRequest;
     }
 
@@ -291,7 +302,13 @@ function performDownloadCancel(): RouteHandler {
       return;
     }
 
-    if (transactionError) {
+    if (!isCancelable) {
+      const errorCode = 'infindi/bad-request';
+      const errorMessage = 'Cannot cancel download request';
+      const status = getStatusForErrorCode(errorCode);
+      res.status(status).json({ errorCode, errorMessage });
+      return;
+    } else if (transactionError) {
       const status = getStatusForErrorCode(transactionError.errorCode);
       res.status(status).json(transactionError);
       return;
@@ -300,6 +317,7 @@ function performDownloadCancel(): RouteHandler {
       const errorMessage = `No download request with id ${credentialsID}`;
       const status = getStatusForErrorCode(errorCode);
       res.status(status).json({ errorCode, errorMessage });
+      return;
     } else if (!result.committed) {
       const errorCode = 'infindi/server-error';
       const errorMessage = 'Firebase transaction was not committed';

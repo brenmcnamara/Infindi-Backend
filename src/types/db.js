@@ -1,7 +1,7 @@
 /* @flow */
 
-import { type Firebase$User } from './firebase';
 import {
+  type Dollars,
   type Fuzzy,
   type ID,
   type Location,
@@ -11,6 +11,8 @@ import {
   type SecondsSinceEpoch,
   type YearMonthDay,
 } from './core';
+import { type Firebase$User } from './firebase';
+import { type Account as Plaid$Account } from './plaid';
 
 /**
  * Login credentials used to login a user.
@@ -144,6 +146,7 @@ export type PlaidDownloadStatus =
     |}
   | {|
       +errorCode: string,
+      +errorMessage: string,
       +type: 'FAILURE',
     |};
 
@@ -170,3 +173,17 @@ export type PlaidDownloadRequest = ModelStub<'PlaidDownloadRequest'> & {|
   +status: PlaidDownloadStatus,
   +userRef: Pointer<'User'>,
 |};
+
+/**
+ * Represents the bank account of a user.
+ */
+export type Account = ModelStub<'Account'> & {
+  +alias: ?number,
+  +balance: Dollars,
+  +name: string,
+  +sourceOfTruth: {|
+    +type: 'PLAID',
+    +value: Plaid$Account,
+  |},
+  +userRef: Pointer<'User'>,
+};

@@ -16,20 +16,20 @@ export type Pointer<T: string> = {|
   +type: 'POINTER',
 |};
 
-export type ModelStub<T: string> = {|
+export type ModelStub<T: string> = {
   +createdAt: SecondsSinceEpoch,
   +id: string,
   +modelType: T,
   +type: 'MODEL',
   +updatedAt: SecondsSinceEpoch,
-|};
+};
 
 export type Fuzzy<T> = {
   confidence: number,
   value: T,
 };
 
-export type CurrencyDollars = number;
+export type Dollars = number;
 
 export type Location = {|
   +city: ?string,
