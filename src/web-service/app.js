@@ -6,7 +6,7 @@ import morgan from 'morgan';
 import path from 'path';
 import routes, { initialize as initializeRoutes } from './routes';
 
-import { getStatusForErrorCode } from './error-codes';
+import { getStatusForErrorCode } from 'common/error-codes';
 
 const app = express();
 
@@ -14,7 +14,7 @@ export default app;
 
 export function initialize(): void {
   // view engine setup
-  app.set('views', path.join(__dirname, '..', 'views'));
+  app.set('views', path.join(__dirname, '..', '..', 'views'));
   app.set('view engine', 'ejs');
 
   // uncomment after placing your favicon in /public

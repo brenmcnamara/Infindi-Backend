@@ -2,9 +2,9 @@
 
 import * as FirebaseAdmin from 'firebase-admin';
 
-import { getStatusForErrorCode } from './error-codes';
+import { getStatusForErrorCode } from 'common/error-codes';
 
-import { type DecodedIDToken } from './types/firebase-admin';
+import { type DecodedIDToken } from 'common/types/firebase-admin';
 
 export type RouteHandler = (req: any, res: any, next: Function) => any;
 

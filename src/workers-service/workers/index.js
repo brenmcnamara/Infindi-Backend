@@ -4,7 +4,7 @@ import bodyParser from 'body-parser';
 import express from 'express';
 import morgan from 'morgan';
 
-import { getStatusForErrorCode } from '../error-codes';
+import { getStatusForErrorCode } from 'common/error-codes';
 import {
   getWorkerID as getPlaidWorkerID,
   initialize as initializePlaid,

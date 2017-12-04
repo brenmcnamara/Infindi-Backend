@@ -6,14 +6,17 @@ import Plaid from 'plaid';
 import express from 'express';
 
 import { checkAuth, type RouteHandler } from '../middleware';
-import { getStatusForErrorCode, type InfindiError } from '../error-codes';
+import { getStatusForErrorCode, type InfindiError } from 'common/error-codes';
 
 import {
   type Firebase$DataSnapshot,
   type Firebase$TransactionResult,
-} from '../types/firebase';
-import { type ID } from '../types/core';
-import { type PlaidCredentials, type PlaidDownloadRequest } from '../types/db';
+} from 'common/types/firebase';
+import { type ID } from 'common/types/core';
+import {
+  type PlaidCredentials,
+  type PlaidDownloadRequest,
+} from 'common/types/db';
 
 type JSONMap<K: string, V> = { [string: K]: V };
 type DownloadRequestMap = JSONMap<ID, PlaidDownloadRequest>;

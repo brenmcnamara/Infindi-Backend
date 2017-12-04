@@ -4,7 +4,6 @@ import * as FirebaseAdmin from 'firebase-admin';
 import Plaid from 'plaid';
 
 import invariant from 'invariant';
-import chalk from 'chalk';
 import uuid from 'uuid/v4';
 
 import {
@@ -12,14 +11,14 @@ import {
   type PlaidCredentials,
   type PlaidDownloadRequest,
   type Transaction,
-} from '../types/db';
+} from 'common/types/db';
 import {
   type Account as Plaid$Account,
   type PlaidDate,
   type Transaction as Plaid$Transaction,
-} from '../types/plaid';
-import { type Firebase$DataSnapshot } from '../types/firebase';
-import { type ID, type Seconds } from '../types/core';
+} from 'common/types/plaid';
+import { type Firebase$DataSnapshot } from 'common/types/firebase';
+import { type ID, type Seconds } from 'common/types/core';
 
 type DownloadRequestSnapshot = Firebase$DataSnapshot<PlaidDownloadRequest>;
 

@@ -9,7 +9,7 @@
 
 const FirebaseAdmin = require('firebase-admin');
 
-const appModule = require('../build/app');
+const appModule = require('../build/web-service/app');
 const debug = require('debug')('infindi-backend:server');
 const dotenv = require('dotenv');
 const fs = require('fs');
