@@ -12,7 +12,10 @@ import {
   type YearMonthDay,
 } from './core';
 import { type Firebase$User } from './firebase';
-import { type Account as Plaid$Account } from './plaid';
+import {
+  type Account as Plaid$Account,
+  type Transaction as Plaid$Transaction,
+} from './plaid';
 
 /**
  * Login credentials used to login a user.
@@ -138,6 +141,7 @@ export type PlaidDownloadStatus =
       +type: 'IN_PROGRESS',
     |}
   | {|
+      +totalDownloadTime: Seconds,
       +type: 'COMPLETE',
     |}
   | {|
@@ -168,11 +172,11 @@ export type PlaidDownloadClaim = {|
   +workerID: ID,
 |};
 
-export type PlaidDownloadRequest = ModelStub<'PlaidDownloadRequest'> & {|
+export type PlaidDownloadRequest = ModelStub<'PlaidDownloadRequest'> & {
   +credentialsRef: Pointer<'PlaidCredentials'>,
   +status: PlaidDownloadStatus,
   +userRef: Pointer<'User'>,
-|};
+};
 
 /**
  * Represents the bank account of a user.
@@ -185,5 +189,21 @@ export type Account = ModelStub<'Account'> & {
     +type: 'PLAID',
     +value: Plaid$Account,
   |},
+  +userRef: Pointer<'User'>,
+};
+
+/**
+ * A bank transaction
+ */
+export type Transaction = ModelStub<'Transaction'> & {
+  +accountRef: Pointer<'Account'>,
+  +amount: Dollars,
+  +category: ?string,
+  +name: string,
+  +sourceOfTruth: {|
+    +type: 'PLAID',
+    +value: Plaid$Transaction,
+  |},
+  +transactionDate: SecondsSinceEpoch,
   +userRef: Pointer<'User'>,
 };

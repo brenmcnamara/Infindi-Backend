@@ -147,7 +147,8 @@ export type AccountNumber = {|
 export type Transaction = {|
   +account_id: string,
   +amount: number,
-  +category: Array<string>,
+  // NOTE: Undocumented that this can be null, but this has happenned.
+  +category: ?Array<string>,
   +category_id: string,
   +date: PlaidDate,
   +location: PlaidLocation,

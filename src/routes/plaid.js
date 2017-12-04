@@ -169,7 +169,7 @@ function performDownload(): RouteHandler {
       // Step 3: Could not find any open requests for this item. Time to
       // create one.
       const nowInSeconds = Math.floor(Date.now() / 1000);
-      const downloadRequest = {
+      const downloadRequest: PlaidDownloadRequest = {
         createdAt: request ? request.createdAt : nowInSeconds,
         credentialsRef: {
           pointerType: 'PlaidCredentials',
@@ -181,6 +181,11 @@ function performDownload(): RouteHandler {
         status: { type: 'NOT_INITIALIZED' },
         type: 'MODEL',
         updatedAt: nowInSeconds,
+        userRef: {
+          pointerType: 'User',
+          type: 'POINTER',
+          refID: uid,
+        },
       };
 
       return downloadRequest;

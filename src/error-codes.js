@@ -21,6 +21,7 @@ export type ErrorCode =
   | 'infindi/server-error'
   | 'message-queue/initialization-error'
   | 'plaid/invalidInput/invalidPublicToken'
+  | 'plaid/invalidRequest/invalidField'
   | 'plaid/unknownError';
 
 const ERROR_CODE_400 = ['auth/invalid-email', 'infindi/bad-request'];
@@ -52,6 +53,8 @@ export function getStatusForErrorCode(code: string): number {
 export function getErrorForPlaidError(
   plaidError: PlaidErrorResponse,
 ): InfindiError {
+  // TODO: Just do some string manipulation here to get this in the correct
+  // format, don't write a case for each state.
   // flatten the type / code hierarchy so we can handle everything in one
   // branch.
   const plaidErrorType = `${plaidError.error_type}/${plaidError.error_code}`;
@@ -59,6 +62,11 @@ export function getErrorForPlaidError(
     case 'INVALID_INPUT/INVALID_PUBLIC_TOKEN':
       return {
         errorCode: 'plaid/invalidInput/invalidPublicToken',
+        errorMessage: plaidError.error_message,
+      };
+    case 'INVALID_REQUEST/INVALID_FIELD':
+      return {
+        errorCode: 'plaid/invalidRequest/invalidField',
         errorMessage: plaidError.error_message,
       };
     default:
