@@ -111,6 +111,7 @@ async function onRemoveDownloadRequest(snapshot: DownloadRequestSnapshot) {
 //
 // -----------------------------------------------------------------------------
 
+// TODO: Add cancel checks intermittently throughout this request.
 async function genDownloadRequest(uid: ID, request: PlaidDownloadRequest) {
   const startTimeMillis = Date.now();
 
