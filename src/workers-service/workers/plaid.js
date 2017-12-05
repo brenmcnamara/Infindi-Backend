@@ -1,6 +1,7 @@
 /* @flow */
 
 import * as FirebaseAdmin from 'firebase-admin';
+import Debug from '../debug';
 import Plaid from 'plaid';
 
 import invariant from 'invariant';
@@ -79,6 +80,11 @@ async function onUpsertDownloadRequest(snapshot: DownloadRequestSnapshot) {
     return;
   }
 
+  if (Debug.silentFailDuringPlaidDownloadRequest()) {
+    // Exit after claiming request, but don't actually start the download.
+    return;
+  }
+
   // Start the download request.
   try {
     await genDownloadRequest(uid, request);
@@ -139,6 +145,12 @@ async function genDownloadRequest(uid: ID, request: PlaidDownloadRequest) {
   );
 
   await Promise.all(accountGenerators);
+
+  if (Debug.failDuringPlaidDownloadRequest()) {
+    const errorCode = 'infindi/test-failure';
+    const errorMessage = 'Testing failure while downloading request';
+    throw { errorCode, errorMessage };
+  }
 
   // Transactions grouped by their accounts.
   // $FlowFixMe - Why is this an error?

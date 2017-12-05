@@ -17,6 +17,7 @@ export type ErrorCode =
   | 'infindi/bad-request'
   | 'infindi/forbidden'
   | 'infindi/not-authenticated'
+  | 'infindi/not-yet-implemented'
   | 'infindi/resource-not-found'
   | 'infindi/server-error'
   | 'message-queue/initialization-error'

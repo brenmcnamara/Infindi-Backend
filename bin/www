@@ -35,7 +35,7 @@ FirebaseAdmin.initializeApp({
   databaseURL: process.env.FIREBASE_DB_URL,
 });
 
-const port = normalizePort(process.env.PORT_APP);
+const port = normalizePort(process.env.WEB_PORT);
 
 console.log('Initializing App...');
 initializeApp();

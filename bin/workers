@@ -14,9 +14,9 @@ const dotenv = require('dotenv');
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
-const workers = require('../build/workers-service/workers');
+const workers = require('../build/workers-service/app');
 
-const app = workers.app;
+const app = workers.default;
 
 console.log('Configuring environment variables...');
 dotenv.config();
@@ -34,7 +34,7 @@ FirebaseAdmin.initializeApp({
   databaseURL: process.env.FIREBASE_DB_URL,
 });
 
-const port = normalizePort(process.env.PORT_WORKERS);
+const port = normalizePort(process.env.WORKERS_PORT);
 
 console.log('Initializing Workers...');
 workers.initialize();
