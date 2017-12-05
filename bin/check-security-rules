@@ -1,0 +1,152 @@
+#!/usr/bin/env node
+
+/* eslint-disable no-console */
+
+/**
+ * NOTE: This file is not transformed via babel. Must use syntax this works with
+ * with the runnning version of node.
+ *
+ * NOTE: For now, this only test database reads for security, should eventually
+ * add tests for database writes. This also does not yet test access of admins.
+ */
+
+const Firebase = require('firebase');
+
+const chalk = require('chalk');
+const dotenv = require('dotenv');
+
+// -----------------------------------------------------------------------------
+//
+// INITIALIZATIONS
+//
+// -----------------------------------------------------------------------------
+
+console.log('Initializing security checks...');
+
+dotenv.config();
+
+const config = {
+  apiKey: process.env.FIREBASE_WEB_API_KEY,
+  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
+  databaseURL: process.env.FIREBASE_DB_URL,
+  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+};
+
+Firebase.initializeApp(config);
+
+Firebase.auth().setPersistence(Firebase.auth.Auth.Persistence.NONE);
+
+const signInTestUser = Firebase
+  .auth()
+  .signInWithEmailAndPassword(
+    process.env.FIREBASE_TEST_USER_EMAIL,
+    process.env.FIREBASE_TEST_USER_PASSWORD
+  ).catch(error => {
+    console.log(chalk.red('Failed to sign in test user:', error.code));
+  });
+
+const tests = [];
+
+const Database = Firebase.database();
+
+const genCurrentUser = () => Promise.resolve().then(
+  () => Firebase.auth().currentUser
+);
+
+// -----------------------------------------------------------------------------
+//
+// TESTS
+//
+// -----------------------------------------------------------------------------
+
+console.log('Running security checks...');
+
+testAsync('Normal user cannot access UserInfo of other users', () => {
+  return Database.ref('UserInfo')
+    .once('value')
+    .then(() => false)
+    .catch(error => error.code === 'PERMISSION_DENIED');
+});
+
+testAsync('Normal user can access their own UserInfo', () => {
+  return genCurrentUser()
+    .then(user => Database.ref(`UserInfo/${user.uid}`).once('value'))
+    .then(() => true)
+    .catch(failOnPermissionDenied());
+});
+
+testAsync('Normal user cannot access PlaidCredentials of other users', () => {
+  return Database.ref('PlaidCredentials')
+    .once('value')
+    .then(() => false)
+    .catch(error => error.code === 'PERMISSION_DENIED');
+});
+
+testAsync('Normal user can access their own PlaidCredentials', () => {
+  return genCurrentUser()
+    .then(
+      user => Database.ref('PlaidCredentials')
+        .orderByChild('userRef/refID')
+        .equalTo(user.uid)
+        .once('value')
+    )
+    .then((s) => console.log(s.val()) || true)
+    .catch(failOnPermissionDenied());
+});
+
+testAsync('Normal user cannot access PlaidDownloadRequests of other users', () => {
+  return Database.ref('PlaidDownloadRequests')
+    .once('value')
+    .then(() => false)
+    .catch(error => error.code === 'PERMISSION_DENIED');
+});
+
+// -----------------------------------------------------------------------------
+//
+// POST-TESTS
+//
+// -----------------------------------------------------------------------------
+
+Promise.all(tests).then(() => process.exit(0)).catch(() => process.exit(1));
+
+// -----------------------------------------------------------------------------
+//
+// UTILITIES
+//
+// -----------------------------------------------------------------------------
+
+function testAsync(descriptor, cb) {
+  const test = signInTestUser
+    .then(() => cb())
+    .then((didPass) => {
+      if (didPass) {
+        console.log(chalk.green('[o] ' + descriptor));
+      } else {
+        console.log(chalk.red('[x] ' + descriptor));
+      }
+    }).catch(error => {
+      console.log(chalk.red('[x] ' + descriptor));
+      console.log(chalk.red(error.stack));
+    });
+  tests.push(test);
+}
+
+function failOnPermissionDenied() {
+  // Don't want long stack traces when its a permission denied error.
+  return error => {
+    if (error.code === 'PERMISSION_DENIED') {
+      return false;
+    }
+    throw error;
+  };
+}
+
+function getValues(obj) {
+  const vals = [];
+  for (let prop in obj) {
+    if (obj.hasOwnProperty(prop)) {
+      vals.push(obj[prop]);
+    }
+  }
+  return vals;
+}
