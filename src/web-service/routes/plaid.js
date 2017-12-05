@@ -6,24 +6,16 @@ import Plaid from 'plaid';
 import express from 'express';
 
 import { checkAuth, type RouteHandler } from '../middleware';
-import { getStatusForErrorCode, type InfindiError } from 'common/error-codes';
+import { getStatusForErrorCode } from 'common/error-codes';
 
-import {
-  type Firebase$DataSnapshot,
-  type Firebase$TransactionResult,
-} from 'common/types/firebase';
+import { type Environment as Plaid$Environment } from 'common/types/plaid';
 import { type ID } from 'common/types/core';
 import {
   type PlaidCredentials,
   type PlaidDownloadRequest,
 } from 'common/types/db';
 
-type JSONMap<K: string, V> = { [string: K]: V };
-type DownloadRequestMap = JSONMap<ID, PlaidDownloadRequest>;
-
 const router = express.Router();
-
-const ABORT_TRANSACTION = undefined;
 
 export default router;
 
@@ -71,6 +63,7 @@ function validateCredentials(): RouteHandler {
   };
 }
 
+// TODO: Return credentials when this is done.
 function performCredentials(): RouteHandler {
   return (req, res) => {
     const publicToken = req.body.publicToken;
@@ -86,26 +79,30 @@ function performCredentials(): RouteHandler {
       const accessToken = response.access_token;
       const itemID = response.item_id;
       const uid = req.decodedIDToken.uid;
-      const nowInSeconds = Math.floor(Date.now() / 1000);
+      const now = new Date();
+      // $FlowFixMe - THis is correct
+      const environment: Plaid$Environment = process.env.PLAID_ENV;
+      const credentials: PlaidCredentials = {
+        accessToken,
+        createdAt: now,
+        environment,
+        id: itemID,
+        itemID,
+        metadata,
+        modelType: 'PlaidCredentials',
+        type: 'MODEL',
+        updatedAt: now,
+        userRef: {
+          pointerType: 'User',
+          type: 'POINTER',
+          refID: uid,
+        },
+      };
       try {
-        await FirebaseAdmin.database()
-          .ref(`PlaidCredentials/${itemID}`)
-          .set({
-            accessToken,
-            createdAt: nowInSeconds,
-            environment: process.env.PLAID_ENV,
-            id: itemID,
-            itemID,
-            metadata,
-            modelType: 'PlaidCredentials',
-            type: 'MODEL',
-            updatedAt: nowInSeconds,
-            userRef: {
-              pointerType: 'User',
-              type: 'POINTER',
-              refID: uid,
-            },
-          });
+        await FirebaseAdmin.firestore()
+          .collection('PlaidCredentials')
+          .doc(itemID)
+          .set(credentials);
       } catch (error) {
         const errorCode = error.code || 'infindi/server-error';
         const errorMessage = error.toString();
@@ -130,13 +127,15 @@ router.post('/credentials', performCredentials());
 
 function performDownload(): RouteHandler {
   return async (req, res) => {
-    const Database = FirebaseAdmin.database();
+    const Database = FirebaseAdmin.firestore();
 
     const { decodedIDToken } = req;
     const { uid } = decodedIDToken;
     const { credentialsID } = req.params;
 
-    // Step 1: Fetch the latest download request for the credentials.
+    // TODO: Move this into middleware.
+    // Step 1: Make sure the credentials exist and belong to the authenticated
+    // user.
     try {
       await genCredentials(uid, credentialsID);
     } catch (error /* InfindiError */) {
@@ -145,16 +144,18 @@ function performDownload(): RouteHandler {
       return;
     }
 
+    const downloadRequestRef = Database.collection('PlaidDownloadRequests').doc(
+      credentialsID,
+    );
+
     // Start a transaction when making a download request. We do not want
     // multiple download requests to start for the same item. This can happen
     // if different firebase clients are writing simultaneously to Firebase.
-    // A request id if we end up creating a new download request, and not just
-    // updating the current one.
-    let transactionError = null;
-    // TODO: This won't scale. We can't be performing atomic transactions on
-    // the entire PlaidDownloadRequests node, there can be thousands, if not
-    // millions of requests in here.
-    function transaction(request: ?PlaidDownloadRequest) {
+    async function transactionOperation(transaction: Object) {
+      const document = await transaction.get(downloadRequestRef);
+      const request: ?PlaidDownloadRequest = document.exists
+        ? document.data()
+        : null;
       // Step 2: Check if there are any download requests for the given
       // credentials that have already been started for this item.
       if (request && isRequestOpen(request)) {
@@ -165,15 +166,14 @@ function performDownload(): RouteHandler {
         const errorMessage = `Trying to start a plaid download request when a request already exists for credentials ${
           credentialsID
         }`;
-        transactionError = { errorCode, errorMessage };
-        return ABORT_TRANSACTION;
+        throw { errorCode, errorMessage };
       }
 
       // Step 3: Could not find any open requests for this item. Time to
       // create one.
-      const nowInSeconds = Math.floor(Date.now() / 1000);
+      const now = new Date();
       const downloadRequest: PlaidDownloadRequest = {
-        createdAt: request ? request.createdAt : nowInSeconds,
+        createdAt: request ? request.createdAt : now,
         credentialsRef: {
           pointerType: 'PlaidCredentials',
           refID: credentialsID,
@@ -183,22 +183,18 @@ function performDownload(): RouteHandler {
         modelType: 'PlaidDownloadRequest',
         status: { type: 'NOT_INITIALIZED' },
         type: 'MODEL',
-        updatedAt: nowInSeconds,
+        updatedAt: now,
         userRef: {
           pointerType: 'User',
           type: 'POINTER',
           refID: uid,
         },
       };
-
-      return downloadRequest;
+      transaction.set(downloadRequestRef, downloadRequest);
     }
 
-    let result: Firebase$TransactionResult<DownloadRequestMap>;
     try {
-      result = await Database.ref(
-        `PlaidDownloadRequests/${credentialsID}`,
-      ).transaction(transaction);
+      await Database.runTransaction(transactionOperation);
     } catch (error) {
       // TODO: Should prioritize transaction errors. So if we get an error
       // thrown here and we notice that we set a transaction error, should
@@ -207,20 +203,6 @@ function performDownload(): RouteHandler {
       // Could be a Firebase error or an infindi error.
       const errorCode = error.code || 'infindi/server-error';
       const errorMessage = error.toString();
-      const status = getStatusForErrorCode(errorCode);
-      res.status(status).json({ errorCode, errorMessage });
-      return;
-    }
-
-    // We found an error while performing the transaction. This is different
-    // than an error when trying to commit the transaction to Firebase.
-    if (transactionError) {
-      const status = getStatusForErrorCode(transactionError.errorCode);
-      res.status(status).json(transactionError);
-      return;
-    } else if (!result.committed) {
-      const errorCode = 'infindi/server-error';
-      const errorMessage = 'Firebase transaction was not committed';
       const status = getStatusForErrorCode(errorCode);
       res.status(status).json({ errorCode, errorMessage });
       return;
@@ -248,7 +230,7 @@ router.post('/download/:credentialsID', performDownload());
 
 function performDownloadCancel(): RouteHandler {
   return async (req, res) => {
-    const Database = FirebaseAdmin.database();
+    const Database = FirebaseAdmin.firestore();
 
     const { uid } = req.decodedIDToken;
     const { credentialsID } = req.params;
@@ -262,73 +244,49 @@ function performDownloadCancel(): RouteHandler {
       return;
     }
 
-    let hasNonNullValue: bool = false;
-    let transactionError: ?InfindiError = null;
-    // NOTE: We will assume if it cancelable until shown otherwise. If the
-    // transaction does not run correctly and this variable never gets updated
-    // we will hit a different type of error.
-    let isCancelable: bool = true;
-    function transaction(request: ?PlaidDownloadRequest) {
-      hasNonNullValue = Boolean(request);
+    const downloadRequestRef = Database.collection('PlaidDownloadRequests').doc(
+      credentialsID,
+    );
+    // TODO: Proper typing of transaction
+    async function transactionOperation(transaction: Object) {
+      const document = await transaction.get(downloadRequestRef);
 
-      if (!request) {
-        return null;
+      if (!document.exists) {
+        const errorCode = 'infindi/resource-not-found';
+        const errorMessage = `Could not find download request: ${
+          credentialsID
+        }`;
+        throw { errorCode, errorMessage };
       }
 
-      isCancelable =
-        request.status.type === 'NOT_INITIALIZED' ||
-        request.status.type === 'IN_PROGRESS';
+      const request = document.data();
 
-      if (!isCancelable) {
-        return ABORT_TRANSACTION;
+      if (
+        request.status.type !== 'NOT_INITIALIZED' &&
+        request.status.type !== 'IN_PROGRESS'
+      ) {
+        const errorCode = 'infindi/bad-request';
+        const errorMessage = `Download request ${
+          credentialsID
+        } cannot be canceled`;
+        throw { errorCode, errorMessage };
       }
 
       // Step 3: Cancel the request.
-      const nowInSeconds = Math.floor(Date.now() / 1000);
+      const now = new Date();
       const canceledRequest = {
         ...request,
         status: { type: 'CANCELED' },
-        updatedAt: nowInSeconds,
+        updatedAt: now,
       };
-      return canceledRequest;
+      transaction.update(downloadRequestRef, canceledRequest);
     }
-
-    let result: Firebase$TransactionResult<DownloadRequestMap>;
 
     try {
-      result = await Database.ref(
-        `PlaidDownloadRequests/${credentialsID}`,
-      ).transaction(transaction);
+      await Database.runTransaction(transactionOperation);
     } catch (error) {
-      // TODO: Should prioritize transaction errors. So if we get an error
-      // thrown here and we notice that we set a transaction error, should
-      // report the transaction error instead of this one.
-      const errorCode = error.code || 'infindi/server-error';
-      const errorMessage = error.toString();
-      const status = getStatusForErrorCode(errorCode);
-      res.status(status).json({ errorCode, errorMessage });
-      return;
-    }
-
-    if (!isCancelable) {
-      const errorCode = 'infindi/bad-request';
-      const errorMessage = 'Cannot cancel download request';
-      const status = getStatusForErrorCode(errorCode);
-      res.status(status).json({ errorCode, errorMessage });
-      return;
-    } else if (transactionError) {
-      const status = getStatusForErrorCode(transactionError.errorCode);
-      res.status(status).json(transactionError);
-      return;
-    } else if (!hasNonNullValue) {
-      const errorCode = 'infindi/bad-request';
-      const errorMessage = `No download request with id ${credentialsID}`;
-      const status = getStatusForErrorCode(errorCode);
-      res.status(status).json({ errorCode, errorMessage });
-      return;
-    } else if (!result.committed) {
-      const errorCode = 'infindi/server-error';
-      const errorMessage = 'Firebase transaction was not committed';
+      const errorCode = error.errorCode || 'infindi/server-error';
+      const errorMessage = error.errorMessage || error.toString();
       const status = getStatusForErrorCode(errorCode);
       res.status(status).json({ errorCode, errorMessage });
       return;
@@ -356,7 +314,7 @@ router.post('/download/:credentialsID/cancel', performDownloadCancel());
 
 function performDownloadStatus(): RouteHandler {
   return async (req, res) => {
-    const Database = FirebaseAdmin.database();
+    const Database = FirebaseAdmin.firestore();
 
     const { uid } = req.decodedIDToken;
     const { credentialsID } = req.params;
@@ -372,11 +330,12 @@ function performDownloadStatus(): RouteHandler {
     }
 
     // Step 2: Fetch the download request for the credentials.
-    let snapshot: Firebase$DataSnapshot<PlaidDownloadRequest>;
+    // TODO: Add typing to document.
+    let document;
     try {
-      snapshot = await Database.ref(
-        `PlaidDownloadRequests/${credentialsID}`,
-      ).once('value');
+      document = await Database.collection('PlaidDownloadRequests')
+        .doc(credentialsID)
+        .get();
     } catch (error) {
       const errorCode = error.code || 'infindi/server-error';
       const errorMessage = error.toString();
@@ -385,9 +344,7 @@ function performDownloadStatus(): RouteHandler {
       return;
     }
 
-    const request = snapshot.val();
-
-    if (!request) {
+    if (!document.exists) {
       const errorCode = 'infindi/resource-not-found';
       const errorMessage = `No download requests exist for credentials ${
         credentialsID
@@ -397,7 +354,7 @@ function performDownloadStatus(): RouteHandler {
       return;
     }
 
-    res.json({ data: request });
+    res.json({ data: document.data() });
   };
 }
 
@@ -416,25 +373,25 @@ async function genCredentials(
   userID: ID,
   credentialsID: ID,
 ): Promise<PlaidCredentials> {
-  const Database = FirebaseAdmin.database();
-  let snapshot: Firebase$DataSnapshot<PlaidCredentials>;
+  const Database = FirebaseAdmin.firestore();
+  let document;
   try {
-    snapshot = await Database.ref(`PlaidCredentials/${credentialsID}`).once(
-      'value',
-    );
+    document = await Database.collection('PlaidCredentials')
+      .doc(credentialsID)
+      .get();
   } catch (error) {
     const errorCode = error.code || 'infindi/server-error';
     const errorMessage = error.toString();
     throw { errorCode, errorMessage };
   }
 
-  const plaidCredentials = snapshot.val();
-
-  if (!plaidCredentials) {
+  if (!document.exists) {
     const errorCode = 'infindi/resource-not-found';
     const errorMessage = `Could not find credentials with id: ${credentialsID}`;
     throw { errorCode, errorMessage };
   }
+
+  const plaidCredentials = document.data();
 
   if (plaidCredentials.userRef.refID !== userID) {
     const errorCode = 'infindi/forbidden';

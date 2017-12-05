@@ -20,6 +20,7 @@ export function checkAuth(): RouteHandler {
       const errorMessage = error.toString();
       const status = getStatusForErrorCode(errorCode);
       res.status(status).json({ errorCode, errorMessage });
+      return;
     }
     req.decodedIDToken = decodedIDToken;
     next();

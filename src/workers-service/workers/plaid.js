@@ -18,12 +18,8 @@ import {
   type PlaidDate,
   type Transaction as Plaid$Transaction,
 } from 'common/types/plaid';
-import { type Firebase$DataSnapshot } from 'common/types/firebase';
 import { type ID, type Seconds } from 'common/types/core';
 
-type DownloadRequestSnapshot = Firebase$DataSnapshot<PlaidDownloadRequest>;
-
-const ABORT_TRANSACTION = undefined;
 const CLAIM_MAX_TIMEOUT: Seconds = 60;
 const YEAR_IN_MILLIS = 1000 * 60 * 60 * 24 * 365;
 
@@ -40,13 +36,11 @@ export function initialize(): void {
   );
   workerID = uuid();
 
-  const downloadRequestsRef = FirebaseAdmin.database().ref(
-    'PlaidDownloadRequests',
-  );
+  const downloadRequestsRef = FirebaseAdmin.firestore()
+    .collection('PlaidDownloadRequests')
+    .where('status.type', '==', 'NOT_INITIALIZED');
 
-  downloadRequestsRef.on('child_changed', onUpsertDownloadRequest);
-  downloadRequestsRef.on('child_added', onUpsertDownloadRequest);
-  downloadRequestsRef.on('child_removed', onRemoveDownloadRequest);
+  downloadRequestsRef.onSnapshot(onNewDownloadRequest);
 }
 
 export function getWorkerID(): string {
@@ -63,51 +57,52 @@ export function getWorkerID(): string {
 //
 // -----------------------------------------------------------------------------
 
-async function onUpsertDownloadRequest(snapshot: DownloadRequestSnapshot) {
-  const request = snapshot.val();
-  if (!request) {
-    return;
-  }
-  const uid = request.userRef.refID;
-  if (request.status.type === 'CANCELED' && activeRequests[request.id]) {
-    // TODO: Cancel the request and stop doing the work.
-  }
-  if (request.status.type !== 'NOT_INITIALIZED') {
-    return;
-  }
-  const isClaimed = await genAttemptRequestClaim(request);
-  if (!isClaimed) {
-    return;
+// TODO: Add typing to snapshot.
+async function onNewDownloadRequest(snapshot) {
+  // TODO: Flow typing.
+  const requestDocs = snapshot.docs;
+
+  async function handleRequest(document) {
+    const request = document.data();
+    invariant(
+      request.status.type === 'NOT_INITIALIZED',
+      'Internal error: Expecting request to not be initialized',
+    );
+    const uid = request.userRef.refID;
+
+    const isClaimed = await genAttemptRequestClaim(request);
+    if (!isClaimed) {
+      return;
+    }
+
+    if (Debug.silentFailDuringPlaidDownloadRequest()) {
+      // Exit after claiming request, but don't actually start the download.
+      return;
+    }
+
+    // Start the download request.
+    try {
+      await genDownloadRequest(uid, request);
+    } catch (error /* InfindiError */) {
+      const now = new Date();
+      const errorCode = error.errorCode || 'infindi/server-error';
+      const errorMessage = error.errorMessage || error.toString();
+      await FirebaseAdmin.firestore()
+        .collection('PlaidDownloadRequests')
+        .doc(request.id)
+        .set({
+          ...request,
+          status: {
+            errorCode,
+            errorMessage,
+            type: 'FAILURE',
+          },
+          updatedAt: now,
+        });
+    }
   }
 
-  if (Debug.silentFailDuringPlaidDownloadRequest()) {
-    // Exit after claiming request, but don't actually start the download.
-    return;
-  }
-
-  // Start the download request.
-  try {
-    await genDownloadRequest(uid, request);
-  } catch (error /* InfindiError */) {
-    const nowInSeconds = Math.floor(Date.now() / 1000);
-    const errorCode = error.errorCode || 'infindi/server-error';
-    const errorMessage = error.errorMessage || error.toString();
-    await FirebaseAdmin.database()
-      .ref(`PlaidDownloadRequests/${request.id}`)
-      .set({
-        ...request,
-        status: {
-          errorCode,
-          errorMessage,
-          type: 'FAILURE',
-        },
-        updatedAt: nowInSeconds,
-      });
-  }
-}
-
-async function onRemoveDownloadRequest(snapshot: DownloadRequestSnapshot) {
-  // TODO: What do I do here?
+  await Promise.all(requestDocs.map(handleRequest));
 }
 
 // -----------------------------------------------------------------------------
@@ -165,26 +160,25 @@ async function genDownloadRequest(uid: ID, request: PlaidDownloadRequest) {
     ),
   );
 
-  // TODO: For each user account, download the transactions for the last 2
-  // year.
   const endTimeMillis = Date.now();
 
   const totalDownloadTime: Seconds = Math.floor(
     (endTimeMillis - startTimeMillis) / 1000,
   );
 
-  const nowInSeconds = Math.floor(Date.now() / 1000);
+  const now = new Date();
   const newRequest: PlaidDownloadRequest = {
     ...request,
     status: {
       totalDownloadTime,
       type: 'COMPLETE',
     },
-    updatedAt: nowInSeconds,
+    updatedAt: now,
   };
   try {
-    await FirebaseAdmin.database()
-      .ref(`PlaidDownloadRequests/${request.id}`)
+    await FirebaseAdmin.firestore()
+      .collection('PlaidDownloadRequests')
+      .doc(request.id)
       .set(newRequest);
   } catch (error) {
     const errorCode = error.code || 'infindi/server-error';
@@ -196,73 +190,82 @@ async function genDownloadRequest(uid: ID, request: PlaidDownloadRequest) {
 async function genAttemptRequestClaim(request: PlaidDownloadRequest) {
   invariant(
     request.status.type === 'NOT_INITIALIZED',
-    'Attempting to claim request that is known to be claimed',
+    'Attempting to claim request that is not claimable',
   );
+  const downloadRequestRef = FirebaseAdmin.firestore()
+    .collection('PlaidDownloadRequests')
+    .doc(request.id);
 
-  function transaction(request: ?PlaidDownloadRequest) {
-    if (!request) {
-      return null;
+  // TODO: Add typing to transactions
+  async function transactionOperation(transaction: Object) {
+    const document = await transaction.get(downloadRequestRef);
+
+    if (!document.exists || document.data().status.type !== 'NOT_INITIALIZED') {
+      // Someone either claimed or deleted this document. We can't claim it
+      // anymore.
+      return false;
     }
 
-    if (request.status.type !== 'NOT_INITIALIZED') {
-      // Another worker beat us to the request.
-      return ABORT_TRANSACTION;
-    }
+    const request = document.data();
 
-    const nowInSeconds = Math.floor(Date.now() / 1000);
-    return {
+    const now = new Date();
+    const newRequest: PlaidDownloadRequest = {
       ...request,
       status: {
         claim: {
-          createdAt: nowInSeconds,
+          createdAt: now,
           timeout: CLAIM_MAX_TIMEOUT,
-          updatedAt: nowInSeconds,
+          updatedAt: now,
           workerID: getWorkerID(),
         },
         type: 'IN_PROGRESS',
       },
-      updatedAt: nowInSeconds,
+      updatedAt: now,
     };
+    transaction.update(downloadRequestRef, newRequest);
+    return true;
   }
 
-  let transactionResult;
+  let didClaim: bool;
   try {
-    transactionResult = await FirebaseAdmin.database()
-      .ref(`PlaidDownloadRequests/${request.id}`)
-      .transaction(transaction);
+    didClaim = await FirebaseAdmin.firestore().runTransaction(
+      transactionOperation,
+    );
   } catch (error) {
     const errorCode = error.code || 'infindi/server-error';
     const errorMessage = error.toString();
     throw { errorCode, errorMessage };
   }
-  return transactionResult.committed;
+  return didClaim;
 }
 
 async function genCredentials(credentialsID: ID): Promise<?PlaidCredentials> {
-  let snapshot: Firebase$DataSnapshot<PlaidCredentials>;
+  // TODO: Flow typing.
+  let document;
   try {
-    snapshot = await FirebaseAdmin.database()
-      .ref(`PlaidCredentials/${credentialsID}`)
-      .once('value');
+    document = await FirebaseAdmin.firestore()
+      .collection('PlaidCredentials')
+      .doc(credentialsID)
+      .get();
   } catch (error) {
     const errorCode = error.code || 'infindi/server-error';
     const errorMessage = error.toString();
     throw { errorCode, errorMessage };
   }
-  return snapshot.val();
+  return document.exists ? document.data() : null;
 }
 
 async function genCreateAccount(
   uid: ID,
   rawPlaidAccount: Plaid$Account,
 ): Promise<Account> {
-  const nowInSeconds = Math.floor(Date.now() / 1000);
+  const now = new Date();
   const id = rawPlaidAccount.account_id;
 
   const account: Account = {
     alias: null,
     balance: rawPlaidAccount.balances.current,
-    createdAt: nowInSeconds,
+    createdAt: now,
     id,
     modelType: 'Account',
     name: rawPlaidAccount.name,
@@ -271,7 +274,7 @@ async function genCreateAccount(
       value: rawPlaidAccount,
     },
     type: 'MODEL',
-    updatedAt: nowInSeconds,
+    updatedAt: now,
     userRef: {
       pointerType: 'User',
       type: 'POINTER',
@@ -280,8 +283,9 @@ async function genCreateAccount(
   };
 
   try {
-    await FirebaseAdmin.database()
-      .ref(`Accounts/${id}`)
+    await FirebaseAdmin.firestore()
+      .collection('Accounts')
+      .doc(id)
       .set(account);
   } catch (error) {
     const errorCode = error.code || 'infindi/server-error';
@@ -342,7 +346,7 @@ async function genCreateTransaction(
   uid: ID,
   rawTransaction: Plaid$Transaction,
 ) {
-  const nowInSeconds = Math.floor(Date.now() / 1000);
+  const now = new Date();
   const category =
     rawTransaction.category && rawTransaction.category.length > 0
       ? rawTransaction.category[rawTransaction.category.length - 1]
@@ -355,7 +359,7 @@ async function genCreateTransaction(
     },
     amount: rawTransaction.amount,
     category,
-    createdAt: nowInSeconds,
+    createdAt: now,
     id: rawTransaction.transaction_id,
     modelType: 'Transaction',
     name: rawTransaction.name,
@@ -363,11 +367,9 @@ async function genCreateTransaction(
       type: 'PLAID',
       value: rawTransaction,
     },
-    transactionDate: Math.floor(
-      getUTCDate(rawTransaction.date).getTime() / 1000,
-    ),
+    transactionDate: getUTCDate(rawTransaction.date),
     type: 'MODEL',
-    updatedAt: nowInSeconds,
+    updatedAt: now,
     userRef: {
       pointerType: 'User',
       type: 'POINTER',
@@ -375,8 +377,9 @@ async function genCreateTransaction(
     },
   };
   try {
-    await FirebaseAdmin.database()
-      .ref(`Transactions/${transaction.id}`)
+    await FirebaseAdmin.firestore()
+      .collection('Transactions')
+      .doc(transaction.id)
       .set(transaction);
   } catch (error) {
     const errorCode = error.code || 'infindi/server-error';

@@ -6,6 +6,8 @@
 //
 // -----------------------------------------------------------------------------
 
+export type Environment = 'sandbox' | 'development' | 'production';
+
 // Plaid Dates follow the format: YYYY-MM-DD
 export type PlaidDate = string;
 

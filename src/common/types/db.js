@@ -8,7 +8,6 @@ import {
   type ModelStub,
   type Pointer,
   type Seconds,
-  type SecondsSinceEpoch,
   type YearMonthDay,
 } from './core';
 import { type Firebase$User } from './firebase';
@@ -117,13 +116,13 @@ export type FinancialGoal$SaveForRetirement = ModelStub<'FinancialGoal'> & {|
  * NOTE: These credentials may expire relatively frequently and need to be
  * updated.
  */
-export type PlaidCredentials = ModelStub<'PlaidCredentials'> & {|
+export type PlaidCredentials = ModelStub<'PlaidCredentials'> & {
   +accessToken: string,
   +environment: 'sandbox' | 'development' | 'production',
   +itemID: string,
   +metadata: Object,
   +userRef: Pointer<'User'>,
-|};
+};
 
 /**
  * PlaidItemDownloadRequest contains all the metadata in charge of tracking
@@ -166,9 +165,9 @@ export type PlaidDownloadStatus =
  * specified.
  */
 export type PlaidDownloadClaim = {|
-  +createdAt: SecondsSinceEpoch,
+  +createdAt: Date,
   +timeout: Seconds,
-  +updatedAt: SecondsSinceEpoch,
+  +updatedAt: Date,
   +workerID: ID,
 |};
 
@@ -204,6 +203,6 @@ export type Transaction = ModelStub<'Transaction'> & {
     +type: 'PLAID',
     +value: Plaid$Transaction,
   |},
-  +transactionDate: SecondsSinceEpoch,
+  +transactionDate: Date,
   +userRef: Pointer<'User'>,
 };

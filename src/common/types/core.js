@@ -17,11 +17,11 @@ export type Pointer<T: string> = {|
 |};
 
 export type ModelStub<T: string> = {
-  +createdAt: SecondsSinceEpoch,
+  +createdAt: Date,
   +id: string,
   +modelType: T,
   +type: 'MODEL',
-  +updatedAt: SecondsSinceEpoch,
+  +updatedAt: Date,
 };
 
 export type Fuzzy<T> = {
