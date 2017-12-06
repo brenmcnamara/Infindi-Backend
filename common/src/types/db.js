@@ -45,7 +45,7 @@ export type UserInfo = ModelStub<'UserInfo'> & {|
   +DOB: YearMonthDay,
   +firstName: string,
   +gender: ?Fuzzy<'MALE' | 'FEMALE'>,
-  +isTestUser: bool,
+  +isTestUser: boolean,
   +lastName: string,
   +accessInline: UserAccess,
 |};
@@ -69,7 +69,7 @@ export type UserInfo = ModelStub<'UserInfo'> & {|
  */
 export type UserAccess = ModelStub<'UserAccess'> & {|
   +alias: string,
-  +canAddAccount: bool,
+  +canAddAccount: boolean,
 |};
 
 /**
