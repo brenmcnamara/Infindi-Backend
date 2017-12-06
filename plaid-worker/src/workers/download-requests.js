@@ -7,18 +7,18 @@ import Plaid from 'plaid';
 import invariant from 'invariant';
 import uuid from 'uuid/v4';
 
-import {
-  type Account,
-  type PlaidCredentials,
-  type PlaidDownloadRequest,
-  type Transaction,
-} from 'common/types/db';
-import {
-  type Account as Plaid$Account,
-  type PlaidDate,
-  type Transaction as Plaid$Transaction,
-} from 'common/types/plaid';
-import { type ID, type Seconds } from 'common/types/core';
+import type {
+  Account,
+  PlaidCredentials,
+  PlaidDownloadRequest,
+  Transaction,
+} from 'common/src/types/db';
+import type {
+  Account as Plaid$Account,
+  PlaidDate,
+  Transaction as Plaid$Transaction,
+} from 'common/src/types/plaid';
+import type { ID, Seconds } from 'common/src/types/core';
 
 const CLAIM_MAX_TIMEOUT: Seconds = 60;
 const YEAR_IN_MILLIS = 1000 * 60 * 60 * 24 * 365;

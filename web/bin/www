@@ -9,7 +9,7 @@
 
 const FirebaseAdmin = require('firebase-admin');
 
-const appModule = require('../build/web-service/app');
+const appModule = require('../build/app');
 const debug = require('debug')('infindi-backend:server');
 const dotenv = require('dotenv');
 const fs = require('fs');
@@ -35,7 +35,7 @@ FirebaseAdmin.initializeApp({
   databaseURL: process.env.FIREBASE_DB_URL,
 });
 
-const port = normalizePort(process.env.WEB_PORT);
+const port = normalizePort(process.env.PORT || process.env.PORT_FALLBACK);
 
 console.log('Initializing App...');
 initializeApp();

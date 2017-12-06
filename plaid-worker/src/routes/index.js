@@ -2,7 +2,7 @@
 
 import express from 'express';
 
-import { getStatusForErrorCode } from 'common/error-codes';
+import { getStatusForErrorCode } from 'common/build/error-codes';
 
 const router = express.Router();
 

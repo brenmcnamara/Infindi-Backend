@@ -6,14 +6,14 @@ import Plaid from 'plaid';
 import express from 'express';
 
 import { checkAuth, type RouteHandler } from '../middleware';
-import { getStatusForErrorCode } from 'common/error-codes';
+import { getStatusForErrorCode } from 'common/build/error-codes';
 
-import { type Environment as Plaid$Environment } from 'common/types/plaid';
-import { type ID } from 'common/types/core';
-import {
-  type PlaidCredentials,
-  type PlaidDownloadRequest,
-} from 'common/types/db';
+import type { Environment as Plaid$Environment } from 'common/src/types/plaid';
+import type { ID } from 'common/src/types/core';
+import type {
+  PlaidCredentials,
+  PlaidDownloadRequest,
+} from 'common/src/types/db';
 
 const router = express.Router();
 

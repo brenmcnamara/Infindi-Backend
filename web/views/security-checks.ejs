@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+  <title>Security Check</title>
+
+  <script>
+
+    window.onready = function() {
+
+    };
+
+    function waitFor(seconds) {
+      return new Promise(function(resolve) {
+        setTimeout(() => {
+          resolve();
+        }, seconds * 1000);
+      });
+    }
+
+    let nextID = 1;
+    const tests = [];
+
+    function test(descriptor, cb) {
+      
+      return cb().then(function(didPass) {
+        if (didPass) {
+          addSuccess(descriptor);
+        }
+      })
+    }
+
+  </script>
+</head>
+
+<body>
+  <div>
+    <p id="status">Running Security Checks...</p>
+    <div id="security-checks">
+    </div>
+  </div>
+</body>
+
+</head>
