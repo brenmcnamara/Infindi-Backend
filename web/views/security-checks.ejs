@@ -71,10 +71,10 @@
           .then(function(user) {
             return Database.collection('UserInfo').get();
           })
-          .then((doc) => {
-            console.log(doc.docs.map(function(d) {return d.data()}));
-            return true;
+          .then(function(doc) {
+            return false;
           })
+          .catch(passIfPermissionDenied);
       });
 
 // -----------------------------------------------------------------------------
@@ -155,6 +155,13 @@
       const p = document.getElementById('test-' + id);
       p.className = 'security-check fail';
       p.innerHTML = '[x] ' + test.id + ') ' + test.descriptor;
+    }
+
+    function passIfPermissionDenied(error) {
+      if (error.code === 'permission-denied') {
+        return true;
+      }
+      throw error;
     }
   </script>
 </head>
