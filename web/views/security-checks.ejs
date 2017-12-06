@@ -56,24 +56,80 @@
 //
 // -----------------------------------------------------------------------------
 
-      runTest('User can access their UserInfo', function() {
+      runTest('[Accounts] Read access for user\'s own Accounts', function() {
+        return waitForAuth
+          .then(function(user) {
+            return Database.collection('Accounts')
+              .where('userRef.refID', '==', user.uid)
+              .get();
+          })
+          .then(passIfNonEmptySnapshot);
+      });
+
+      runTest('[Accounts] No read access for Accounts of other users', function() {
+        return waitForAuth
+          .then(function(user) {
+            return Database.collection('Accounts').get();
+          })
+          .then(failIfNoError)
+          .catch(passIfPermissionDenied);
+      });
+
+      runTest('[PlaidCredentials] No read access', function() {
+        return waitForAuth
+          .then(function(user) {
+            return Database.collection('PlaidCredentials')
+              .where('userRef.refID', '==', user.uid)
+              .get();
+          })
+          .then(failIfNoError)
+          .catch(passIfPermissionDenied);
+      });
+
+      runTest('[PlaidDownloadRequests] No read access', function() {
+        return waitForAuth
+          .then(function(user) {
+            return Database.collection('PlaidDownloadRequest')
+              .where('userRef.refID', '==', user.uid)
+              .get();
+          })
+          .then(failIfNoError)
+          .catch(passIfPermissionDenied);
+      });
+
+      runTest('[Transactions] Read access for user\'s own transactions', function() {
+        return waitForAuth
+          .then(function(user) {
+            return Database.collection('Transactions')
+              .where('userRef.refID', '==', user.uid)
+              .get();
+          })
+          .then(passIfNonEmptySnapshot);
+      });
+
+      runTest('[Transactions] No read access for transactions of other users', function() {
+        return waitForAuth
+          .then(function(user) {
+            return Database.collection('Transactions').get();
+          })
+          .then(failIfNoError)
+          .catch(passIfPermissionDenied);
+      });
+
+      runTest('[UserInfo] Read access for user\'s own UserInfo', function() {
         return waitForAuth
           .then(function(user) {
             return Database.collection('UserInfo').doc(user.uid).get();
           })
-          .then(function(document) {
-            return document.exists;
-          });
+          .then(passIfDocumentExists);
       });
 
-      runTest('User cannot access UserInfo of other users', function() {
+      runTest('[UserInfo] No read access for UserInfo of other users', function() {
         return waitForAuth
           .then(function(user) {
             return Database.collection('UserInfo').get();
           })
-          .then(function(doc) {
-            return false;
-          })
+          .then(failIfNoError)
           .catch(passIfPermissionDenied);
       });
 
@@ -163,6 +219,19 @@
       }
       throw error;
     }
+
+    function failIfNoError() {
+      return false;
+    }
+
+    function passIfDocumentExists(doc) {
+      return doc.exists;
+    }
+
+    function passIfNonEmptySnapshot(snapshot) {
+      return snapshot.docs.length > 0;
+    }
+
   </script>
 </head>
 
