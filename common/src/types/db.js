@@ -1,14 +1,15 @@
 /* @flow */
 
-import {
-  type Dollars,
-  type Fuzzy,
-  type ID,
-  type Location,
-  type ModelStub,
-  type Pointer,
-  type Seconds,
-  type YearMonthDay,
+import type {
+  ClaimableModelStub,
+  Dollars,
+  Fuzzy,
+  ID,
+  Location,
+  ModelStub,
+  Pointer,
+  Seconds,
+  YearMonthDay,
 } from './core';
 import { type Firebase$User } from './firebase';
 import {
@@ -47,7 +48,6 @@ export type UserInfo = ModelStub<'UserInfo'> & {|
   +gender: ?Fuzzy<'MALE' | 'FEMALE'>,
   +isTestUser: boolean,
   +lastName: string,
-  +accessInline: UserAccess,
 |};
 
 /**
@@ -136,7 +136,6 @@ export type PlaidDownloadStatus =
       +type: 'NOT_INITIALIZED',
     |}
   | {|
-      +claim: PlaidDownloadClaim,
       +type: 'IN_PROGRESS',
     |}
   | {|
@@ -144,7 +143,6 @@ export type PlaidDownloadStatus =
       +type: 'COMPLETE',
     |}
   | {|
-      +lastClaim: PlaidDownloadClaim,
       +type: 'CANCELED',
     |}
   | {|
@@ -171,7 +169,9 @@ export type PlaidDownloadClaim = {|
   +workerID: ID,
 |};
 
-export type PlaidDownloadRequest = ModelStub<'PlaidDownloadRequest'> & {
+export type PlaidDownloadRequest = ClaimableModelStub<
+  'PlaidDownloadRequest',
+> & {
   +credentialsRef: Pointer<'PlaidCredentials'>,
   +status: PlaidDownloadStatus,
   +userRef: Pointer<'User'>,

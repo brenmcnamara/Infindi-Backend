@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "common": "../common",
+    "common-backend": "../common-backend",
     "body-parser": "~1.18.2",
     "cookie-parser": "~1.4.3",
     "debug": "~2.6.9",

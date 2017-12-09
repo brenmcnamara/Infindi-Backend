@@ -24,10 +24,21 @@ export type ModelStub<T: string> = {
   +updatedAt: Date,
 };
 
+export type ClaimableModelStub<T: string> = ModelStub<T> & {
+  +claim: Claim | null,
+};
+
 export type Fuzzy<T> = {
   confidence: number,
   value: T,
 };
+
+export type Claim = {|
+  +createdAt: Date,
+  +timeout: Seconds,
+  +updatedAt: Date,
+  +workerID: ID,
+|};
 
 export type Dollars = number;
 

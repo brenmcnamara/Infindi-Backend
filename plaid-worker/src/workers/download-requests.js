@@ -1,6 +1,7 @@
 /* @flow */
 
 import * as FirebaseAdmin from 'firebase-admin';
+import BackendAPI from 'common-backend';
 import Debug from '../debug';
 import Plaid from 'plaid';
 
@@ -19,9 +20,12 @@ import type {
   Transaction as Plaid$Transaction,
 } from 'common/src/types/plaid';
 import type { ID, Seconds } from 'common/src/types/core';
+import type { Document, Snapshot } from 'common-backend/src/data-api';
 
 const CLAIM_MAX_TIMEOUT: Seconds = 60;
 const YEAR_IN_MILLIS = 1000 * 60 * 60 * 24 * 365;
+
+const DB = BackendAPI.DB;
 
 let workerID: ?ID = null;
 let plaidClient;
@@ -57,10 +61,9 @@ export function getWorkerID(): string {
 //
 // -----------------------------------------------------------------------------
 
-// TODO: Add typing to snapshot.
-async function onNewDownloadRequest(snapshot) {
+async function onNewDownloadRequest(snapshot: Snapshot<PlaidDownloadRequest>) {
   // TODO: Flow typing.
-  const requestDocs = snapshot.docs;
+  const requestDocs: Array<Document<PlaidDownloadRequest>> = snapshot.docs;
 
   async function handleRequest(document) {
     const request = document.data();
@@ -87,18 +90,20 @@ async function onNewDownloadRequest(snapshot) {
       const now = new Date();
       const errorCode = error.errorCode || 'infindi/server-error';
       const errorMessage = error.errorMessage || error.toString();
-      await FirebaseAdmin.firestore()
-        .collection('PlaidDownloadRequests')
-        .doc(request.id)
-        .set({
-          ...request,
-          status: {
-            errorCode,
-            errorMessage,
-            type: 'FAILURE',
-          },
-          updatedAt: now,
-        });
+      await DB.transformError(
+        FirebaseAdmin.firestore()
+          .collection('PlaidDownloadRequests')
+          .doc(request.id)
+          .set({
+            ...request,
+            status: {
+              errorCode,
+              errorMessage,
+              type: 'FAILURE',
+            },
+            updatedAt: now,
+          }),
+      );
     }
   }
 
@@ -175,16 +180,12 @@ async function genDownloadRequest(uid: ID, request: PlaidDownloadRequest) {
     },
     updatedAt: now,
   };
-  try {
-    await FirebaseAdmin.firestore()
+  await DB.transformError(
+    FirebaseAdmin.firestore()
       .collection('PlaidDownloadRequests')
       .doc(request.id)
-      .set(newRequest);
-  } catch (error) {
-    const errorCode = error.code || 'infindi/server-error';
-    const errorMessage = error.toString();
-    throw { errorCode, errorMessage };
-  }
+      .set(newRequest),
+  );
 }
 
 async function genAttemptRequestClaim(request: PlaidDownloadRequest) {
@@ -226,32 +227,20 @@ async function genAttemptRequestClaim(request: PlaidDownloadRequest) {
     return true;
   }
 
-  let didClaim: bool;
-  try {
-    didClaim = await FirebaseAdmin.firestore().runTransaction(
-      transactionOperation,
-    );
-  } catch (error) {
-    const errorCode = error.code || 'infindi/server-error';
-    const errorMessage = error.toString();
-    throw { errorCode, errorMessage };
-  }
+  const didClaim: bool = await DB.transformError(
+    FirebaseAdmin.firestore().runTransaction(transactionOperation),
+  );
   return didClaim;
 }
 
 async function genCredentials(credentialsID: ID): Promise<?PlaidCredentials> {
   // TODO: Flow typing.
-  let document;
-  try {
-    document = await FirebaseAdmin.firestore()
+  const document = await DB.transformError(
+    FirebaseAdmin.firestore()
       .collection('PlaidCredentials')
       .doc(credentialsID)
-      .get();
-  } catch (error) {
-    const errorCode = error.code || 'infindi/server-error';
-    const errorMessage = error.toString();
-    throw { errorCode, errorMessage };
-  }
+      .get(),
+  );
   return document.exists ? document.data() : null;
 }
 
@@ -282,17 +271,12 @@ async function genCreateAccount(
     },
   };
 
-  try {
-    await FirebaseAdmin.firestore()
+  await DB.transformError(
+    FirebaseAdmin.firestore()
       .collection('Accounts')
       .doc(id)
-      .set(account);
-  } catch (error) {
-    const errorCode = error.code || 'infindi/server-error';
-    const errorMessage = error.toString();
-    throw { errorCode, errorMessage };
-  }
-
+      .set(account),
+  );
   return account;
 }
 
@@ -376,16 +360,13 @@ async function genCreateTransaction(
       refID: uid,
     },
   };
-  try {
-    await FirebaseAdmin.firestore()
+
+  await DB.transformError(
+    FirebaseAdmin.firestore()
       .collection('Transactions')
       .doc(transaction.id)
-      .set(transaction);
-  } catch (error) {
-    const errorCode = error.code || 'infindi/server-error';
-    const errorMessage = error.toString();
-    throw { errorCode, errorMessage };
-  }
+      .set(transaction),
+  );
   return transaction;
 }
 
