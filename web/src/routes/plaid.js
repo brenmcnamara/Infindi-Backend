@@ -6,12 +6,13 @@ import Plaid from 'plaid';
 
 import express from 'express';
 
-import { checkAuth, type RouteHandler } from '../middleware';
+import { checkAuth } from '../middleware';
 import { getStatusForErrorCode } from 'common/build/error-codes';
 
 import type { Environment as Plaid$Environment } from 'common/src/types/plaid';
 import type { ID, Pointer } from 'common/src/types/core';
 import type { PlaidCredentials } from 'common/src/types/db';
+import type { RouteHandler } from '../middleware';
 
 const router = express.Router();
 

@@ -40,3 +40,5 @@ export type Location = {|
   +street2: ?string,
   +zip: ?string,
 |};
+
+export type ZeroToOneInclusive = number;

@@ -9,6 +9,7 @@ import type {
   Pointer,
   Seconds,
   YearMonthDay,
+  ZeroToOneInclusive,
 } from './core';
 import { type Firebase$User } from './firebase';
 import {
@@ -53,22 +54,15 @@ export type UserInfo = ModelStub<'UserInfo'> & {|
  * This is a detailed object containing the permissions that a partcilar
  * user has. Once created, this cannot be mutated, except through some
  * priveledges process run by an admin.
- *
- * NOTE: The user access is inlined into the user info object. While this will
- * result in a ton of extra state being generated (there are probably only a few
- * configurations access that we care about) as well as some other headaches, we
- * have to do it this way due to limitations on how you can define security
- * rules in Firebase. Would like to eventually move this out into its own table.
- *
- * For documentation on how firebase authorization rules work,
- * start here: https://firebase.google.com/docs/database/security/quickstart
- *
- * For an api reference on how to define new rules, start here:
- * https://firebase.google.com/docs/database/security/securing-data
  */
 export type UserAccess = ModelStub<'UserAccess'> & {|
   +alias: string,
   +canAddAccount: boolean,
+|};
+
+export type UserMetrics = ModelStub<'UserMetrics'> & {|
+  +netWorth: Dollars | null,
+  +savingsRate: ZeroToOneInclusive | null,
 |};
 
 /**

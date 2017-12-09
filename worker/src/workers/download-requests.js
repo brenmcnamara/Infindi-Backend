@@ -5,7 +5,6 @@ import BackendAPI from 'common-backend';
 import Plaid from 'plaid';
 
 import invariant from 'invariant';
-import uuid from 'uuid/v4';
 
 import type {
   Account,
@@ -26,14 +25,14 @@ const DB = BackendAPI.DB;
 let workerID: ?ID = null;
 let plaidClient;
 
-export function initialize(): void {
+export function initialize(_workerID: ID): void {
   plaidClient = new Plaid.Client(
     process.env.PLAID_CLIENT_ID,
     process.env.PLAID_SECRET,
     process.env.PLAID_PUBLIC_KEY,
     Plaid.environments[process.env.PLAID_ENV],
   );
-  workerID = uuid();
+  workerID = _workerID;
 
   BackendAPI.Job.listenToJobRequest(
     'PLAID_INITIAL_DOWNLOAD',
