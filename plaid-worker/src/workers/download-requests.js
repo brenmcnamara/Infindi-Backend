@@ -2,7 +2,6 @@
 
 import * as FirebaseAdmin from 'firebase-admin';
 import BackendAPI from 'common-backend';
-import Debug from '../debug';
 import Plaid from 'plaid';
 
 import invariant from 'invariant';
@@ -11,7 +10,6 @@ import uuid from 'uuid/v4';
 import type {
   Account,
   PlaidCredentials,
-  PlaidDownloadRequest,
   Transaction,
 } from 'common/src/types/db';
 import type {
@@ -19,17 +17,14 @@ import type {
   PlaidDate,
   Transaction as Plaid$Transaction,
 } from 'common/src/types/plaid';
-import type { ID, Seconds } from 'common/src/types/core';
-import type { Document, Snapshot } from 'common-backend/src/data-api';
+import type { ID } from 'common/src/types/core';
 
-const CLAIM_MAX_TIMEOUT: Seconds = 60;
 const YEAR_IN_MILLIS = 1000 * 60 * 60 * 24 * 365;
 
 const DB = BackendAPI.DB;
 
 let workerID: ?ID = null;
 let plaidClient;
-const activeRequests: { [id: ID]: PlaidDownloadRequest } = {};
 
 export function initialize(): void {
   plaidClient = new Plaid.Client(
@@ -40,11 +35,11 @@ export function initialize(): void {
   );
   workerID = uuid();
 
-  const downloadRequestsRef = FirebaseAdmin.firestore()
-    .collection('PlaidDownloadRequests')
-    .where('status.type', '==', 'NOT_INITIALIZED');
-
-  downloadRequestsRef.onSnapshot(onNewDownloadRequest);
+  BackendAPI.Job.listenToJobRequest(
+    'PLAID_INITIAL_DOWNLOAD',
+    workerID,
+    genDownloadRequest,
+  );
 }
 
 export function getWorkerID(): string {
@@ -57,80 +52,21 @@ export function getWorkerID(): string {
 
 // -----------------------------------------------------------------------------
 //
-// DOWNLOAD REQUEST LISTENERS
-//
-// -----------------------------------------------------------------------------
-
-async function onNewDownloadRequest(snapshot: Snapshot<PlaidDownloadRequest>) {
-  // TODO: Flow typing.
-  const requestDocs: Array<Document<PlaidDownloadRequest>> = snapshot.docs;
-
-  async function handleRequest(document) {
-    const request = document.data();
-    invariant(
-      request.status.type === 'NOT_INITIALIZED',
-      'Internal error: Expecting request to not be initialized',
-    );
-    const uid = request.userRef.refID;
-
-    const isClaimed = await genAttemptRequestClaim(request);
-    if (!isClaimed) {
-      return;
-    }
-
-    if (Debug.silentFailDuringPlaidDownloadRequest()) {
-      // Exit after claiming request, but don't actually start the download.
-      return;
-    }
-
-    // Start the download request.
-    try {
-      await genDownloadRequest(uid, request);
-    } catch (error /* InfindiError */) {
-      const now = new Date();
-      const errorCode = error.errorCode || 'infindi/server-error';
-      const errorMessage = error.errorMessage || error.toString();
-      await DB.transformError(
-        FirebaseAdmin.firestore()
-          .collection('PlaidDownloadRequests')
-          .doc(request.id)
-          .set({
-            ...request,
-            status: {
-              errorCode,
-              errorMessage,
-              type: 'FAILURE',
-            },
-            updatedAt: now,
-          }),
-      );
-    }
-  }
-
-  await Promise.all(requestDocs.map(handleRequest));
-}
-
-// -----------------------------------------------------------------------------
-//
-// UTILITIES
+// DOWNLOAD REQUEST JOB
 //
 // -----------------------------------------------------------------------------
 
 // TODO: Add cancel checks intermittently throughout this request.
-async function genDownloadRequest(uid: ID, request: PlaidDownloadRequest) {
-  const startTimeMillis = Date.now();
+async function genDownloadRequest(payload: Object) {
+  const { credentialsID, userID } = payload;
 
-  activeRequests[request.id] = request;
+  const credentials = await genCredentials(credentialsID);
 
-  const credentials = await genCredentials(request.id);
   if (!credentials) {
-    throw {
-      errorCode: 'infindi/server-error',
-      // eslint-disable-next-line max-len
-      errorMessage: `Failed to initiate download request. Could not find credentials with download id ${
-        request.id
-      }`,
-    };
+    const errorCode = 'infindi/resource-not-found';
+    const errorMessage = `Missing credentials: ${credentialsID}`;
+    const toString = () => `[${errorCode}]: ${errorMessage}`;
+    throw { errorCode, errorMessage, toString };
   }
 
   // Download user accounts.
@@ -141,16 +77,10 @@ async function genDownloadRequest(uid: ID, request: PlaidDownloadRequest) {
   );
 
   const accountGenerators: Array<Promise<Plaid$Account>> = plaidAccounts.map(
-    rawAccount => genCreateAccount(uid, rawAccount),
+    rawAccount => genCreateAccount(userID, rawAccount),
   );
 
   await Promise.all(accountGenerators);
-
-  if (Debug.failDuringPlaidDownloadRequest()) {
-    const errorCode = 'infindi/test-failure';
-    const errorMessage = 'Testing failure while downloading request';
-    throw { errorCode, errorMessage };
-  }
 
   // Transactions grouped by their accounts.
   // $FlowFixMe - Why is this an error?
@@ -161,77 +91,16 @@ async function genDownloadRequest(uid: ID, request: PlaidDownloadRequest) {
 
   await Promise.all(
     plaidTransactions.map(transaction =>
-      genCreateTransaction(uid, transaction),
+      genCreateTransaction(userID, transaction),
     ),
   );
-
-  const endTimeMillis = Date.now();
-
-  const totalDownloadTime: Seconds = Math.floor(
-    (endTimeMillis - startTimeMillis) / 1000,
-  );
-
-  const now = new Date();
-  const newRequest: PlaidDownloadRequest = {
-    ...request,
-    status: {
-      totalDownloadTime,
-      type: 'COMPLETE',
-    },
-    updatedAt: now,
-  };
-  await DB.transformError(
-    FirebaseAdmin.firestore()
-      .collection('PlaidDownloadRequests')
-      .doc(request.id)
-      .set(newRequest),
-  );
 }
 
-async function genAttemptRequestClaim(request: PlaidDownloadRequest) {
-  invariant(
-    request.status.type === 'NOT_INITIALIZED',
-    'Attempting to claim request that is not claimable',
-  );
-  const downloadRequestRef = FirebaseAdmin.firestore()
-    .collection('PlaidDownloadRequests')
-    .doc(request.id);
-
-  // TODO: Add typing to transactions
-  async function transactionOperation(transaction: Object) {
-    const document = await transaction.get(downloadRequestRef);
-
-    if (!document.exists || document.data().status.type !== 'NOT_INITIALIZED') {
-      // Someone either claimed or deleted this document. We can't claim it
-      // anymore.
-      return false;
-    }
-
-    const request = document.data();
-
-    const now = new Date();
-    const newRequest: PlaidDownloadRequest = {
-      ...request,
-      status: {
-        claim: {
-          createdAt: now,
-          timeout: CLAIM_MAX_TIMEOUT,
-          updatedAt: now,
-          workerID: getWorkerID(),
-        },
-        type: 'IN_PROGRESS',
-      },
-      updatedAt: now,
-    };
-    transaction.update(downloadRequestRef, newRequest);
-    return true;
-  }
-
-  const didClaim: bool = await DB.transformError(
-    FirebaseAdmin.firestore().runTransaction(transactionOperation),
-  );
-  return didClaim;
-}
+// -----------------------------------------------------------------------------
+//
+// UTILITIES
+//
+// -----------------------------------------------------------------------------
 
 async function genCredentials(credentialsID: ID): Promise<?PlaidCredentials> {
   // TODO: Flow typing.

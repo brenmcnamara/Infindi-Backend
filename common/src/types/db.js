@@ -1,7 +1,6 @@
 /* @flow */
 
 import type {
-  ClaimableModelStub,
   Dollars,
   Fuzzy,
   ID,
@@ -125,59 +124,6 @@ export type PlaidCredentials = ModelStub<'PlaidCredentials'> & {
 };
 
 /**
- * PlaidItemDownloadRequest contains all the metadata in charge of tracking
- * plaid downloads for items. Each download request tracks the download of a
- * plaid credentials object. There can be at most 1 plaid download running at
- * a time per plaid credential, though there can be many interrupted or failed
- * downloads existing.
- */
-export type PlaidDownloadStatus =
-  | {|
-      +type: 'NOT_INITIALIZED',
-    |}
-  | {|
-      +type: 'IN_PROGRESS',
-    |}
-  | {|
-      +totalDownloadTime: Seconds,
-      +type: 'COMPLETE',
-    |}
-  | {|
-      +type: 'CANCELED',
-    |}
-  | {|
-      +errorCode: string,
-      +errorMessage: string,
-      +type: 'FAILURE',
-    |};
-
-/**
- * When a worker wants to claim a download request to work on, it needs to
- * submit a claim transaction to tell other workers not to try to work on this
- * request.
- *
- * It could be the case that a worker is killed before it can complete a task.
- * In order to prevent download requests from being left behind as a result of
- * this, each claim needs to include a timeout before the worker is required
- * to update the claim. The timeout and start time of the claim must be
- * specified.
- */
-export type PlaidDownloadClaim = {|
-  +createdAt: Date,
-  +timeout: Seconds,
-  +updatedAt: Date,
-  +workerID: ID,
-|};
-
-export type PlaidDownloadRequest = ClaimableModelStub<
-  'PlaidDownloadRequest',
-> & {
-  +credentialsRef: Pointer<'PlaidCredentials'>,
-  +status: PlaidDownloadStatus,
-  +userRef: Pointer<'User'>,
-};
-
-/**
  * Represents the bank account of a user.
  */
 export type Account = ModelStub<'Account'> & {
@@ -205,4 +151,19 @@ export type Transaction = ModelStub<'Transaction'> & {
   |},
   +transactionDate: Date,
   +userRef: Pointer<'User'>,
+};
+
+/**
+ * A request for a job that a worker process needs to execute. Jobs are
+ * listened to by the worker instances and picked up for processeing
+ * regularly.
+ */
+export type JobRequest = ModelStub<'JobRequest'> & {
+  +completionTime: Seconds | null,
+  +errorCode: string | null,
+  +name: string,
+  +payload: Object,
+  +status: 'RUNNING' | 'UNCLAIMED' | 'COMPLETE' | 'FAILED',
+  +timeout: Seconds,
+  +workerID: ID | null,
 };

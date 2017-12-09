@@ -7,6 +7,7 @@
  * syntax this works with the runnning version of node.
  */
 
+const BackendAPI = require('common-backend');
 const FirebaseAdmin = require('firebase-admin');
 
 const debug = require('debug')('infindi-backend:server');
@@ -33,6 +34,8 @@ FirebaseAdmin.initializeApp({
   credential: FirebaseAdmin.credential.cert(serviceCert),
   databaseURL: process.env.FIREBASE_DB_URL,
 });
+
+BackendAPI.initialize(FirebaseAdmin);
 
 const port = normalizePort(process.env.PORT || process.env.PORT_FALLBACK);
 

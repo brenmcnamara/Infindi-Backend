@@ -20,6 +20,8 @@ export type Snapshot<TData: Object> = {
   +docs: Array<Document<TData>>,
 };
 
+export type Transaction = Object;
+
 let FirebaseAdmin: ?Object = null;
 
 function initialize(admin: Object): void {
@@ -30,13 +32,12 @@ function initialize(admin: Object): void {
  * Takes a database call that returns a promise and ensures the error is
  * correctly configured.
  */
-function transformError<T: Document<*> | Snapshot<*>>(
-  promise: Promise<T>,
-): Promise<T> {
+function transformError<T>(promise: Promise<T>): Promise<T> {
   return promise.catch(firebaseError => {
     const errorCode = firebaseError.code;
     const errorMessage = firebaseError.message;
-    throw { errorCode, errorMessage };
+    const toString = () => `[${errorCode}]: ${errorMessage}`;
+    throw { errorCode, errorMessage, toString };
   });
 }
 
@@ -57,19 +58,7 @@ function throwIfDocDoesNotExist<T: Object>(
   });
 }
 
-/**
- * Some docs require long-running processes to update. If we have multiple
- * worker instances all ready to run the update process, we don't want all of
- * them to be doing the same exact work. To avoid this, workers must register
- * for a "claim" of the resource. The worker instance that wins the claim has
- * the permission to go ahead and perform the necessary updates.
- */
-async function genClaimDoc(collection: string, docID: ID): Promise<boolean> {
-  return Promise.resolve(false);
-}
-
 export default {
-  genClaimDoc,
   initialize,
   throwIfDocDoesNotExist,
   transformError,

@@ -1,6 +1,7 @@
 /* @flow */
 
 import * as FirebaseAdmin from 'firebase-admin';
+import BackendAPI from 'common-backend';
 import Plaid from 'plaid';
 
 import express from 'express';
@@ -9,11 +10,8 @@ import { checkAuth, type RouteHandler } from '../middleware';
 import { getStatusForErrorCode } from 'common/build/error-codes';
 
 import type { Environment as Plaid$Environment } from 'common/src/types/plaid';
-import type { ID } from 'common/src/types/core';
-import type {
-  PlaidCredentials,
-  PlaidDownloadRequest,
-} from 'common/src/types/db';
+import type { ID, Pointer } from 'common/src/types/core';
+import type { PlaidCredentials } from 'common/src/types/db';
 
 const router = express.Router();
 
@@ -127,8 +125,6 @@ router.post('/credentials', performCredentials());
 
 function performDownload(): RouteHandler {
   return async (req, res) => {
-    const Database = FirebaseAdmin.firestore();
-
     const { decodedIDToken } = req;
     const { uid } = decodedIDToken;
     const { credentialsID } = req.params;
@@ -144,167 +140,24 @@ function performDownload(): RouteHandler {
       return;
     }
 
-    const downloadRequestRef = Database.collection('PlaidDownloadRequests').doc(
-      credentialsID,
-    );
-
-    // Start a transaction when making a download request. We do not want
-    // multiple download requests to start for the same item. This can happen
-    // if different firebase clients are writing simultaneously to Firebase.
-    async function transactionOperation(transaction: Object) {
-      const document = await transaction.get(downloadRequestRef);
-      const request: ?PlaidDownloadRequest = document.exists
-        ? document.data()
-        : null;
-      // Step 2: Check if there are any download requests for the given
-      // credentials that have already been started for this item.
-      if (request && isRequestOpen(request)) {
-        // We already have a running request for the given item. Cannot
-        // create a second download request.
-        const errorCode = 'infindi/bad-request';
-        // eslint-disable-next-line max-len
-        const errorMessage = `Trying to start a plaid download request when a request already exists for credentials ${
-          credentialsID
-        }`;
-        throw { errorCode, errorMessage };
-      }
-
-      // Step 3: Could not find any open requests for this item. Time to
-      // create one.
-      const now = new Date();
-      const downloadRequest: PlaidDownloadRequest = {
-        createdAt: request ? request.createdAt : now,
-        credentialsRef: {
-          pointerType: 'PlaidCredentials',
-          refID: credentialsID,
-          type: 'POINTER',
-        },
-        id: credentialsID,
-        modelType: 'PlaidDownloadRequest',
-        status: { type: 'NOT_INITIALIZED' },
-        type: 'MODEL',
-        updatedAt: now,
-        userRef: {
-          pointerType: 'User',
-          type: 'POINTER',
-          refID: uid,
-        },
-      };
-      transaction.set(downloadRequestRef, downloadRequest);
-    }
-
+    let requestPointer: Pointer<'JobRequest'>;
     try {
-      await Database.runTransaction(transactionOperation);
+      requestPointer = await BackendAPI.Job.genRequestJob(
+        'PLAID_INITIAL_DOWNLOAD',
+        { credentialsID, userID: uid },
+      );
     } catch (error) {
-      // TODO: Should prioritize transaction errors. So if we get an error
-      // thrown here and we notice that we set a transaction error, should
-      // report the transaction error instead of this one.
-
-      // Could be a Firebase error or an infindi error.
-      const errorCode = error.code || 'infindi/server-error';
-      const errorMessage = error.toString();
-      const status = getStatusForErrorCode(errorCode);
-      res.status(status).json({ errorCode, errorMessage });
+      const status = getStatusForErrorCode(error.errorCode);
+      res.status(status).json(error);
       return;
     }
-
-    res.json({
-      data: {
-        pointerType: 'PlaidDownloadRequest',
-        refID: credentialsID,
-        type: 'POINTER',
-      },
-    });
+    res.json({ data: requestPointer });
   };
 }
 
 router.post('/download/:credentialsID', checkPlaidClientInitialized());
 router.post('/download/:credentialsID', checkAuth());
 router.post('/download/:credentialsID', performDownload());
-
-// -----------------------------------------------------------------------------
-//
-// POST plaid/download/:credentialsID/cancel
-//
-// -----------------------------------------------------------------------------
-
-function performDownloadCancel(): RouteHandler {
-  return async (req, res) => {
-    const Database = FirebaseAdmin.firestore();
-
-    const { uid } = req.decodedIDToken;
-    const { credentialsID } = req.params;
-
-    // Step 1: Make sure the credentials actually exist.
-    try {
-      await genCredentials(uid, credentialsID);
-    } catch (error /* InfindiError */) {
-      const status = getStatusForErrorCode(error.errorCode);
-      res.status(status).json(error);
-      return;
-    }
-
-    const downloadRequestRef = Database.collection('PlaidDownloadRequests').doc(
-      credentialsID,
-    );
-    // TODO: Proper typing of transaction
-    async function transactionOperation(transaction: Object) {
-      const document = await transaction.get(downloadRequestRef);
-
-      if (!document.exists) {
-        const errorCode = 'infindi/resource-not-found';
-        const errorMessage = `Could not find download request: ${
-          credentialsID
-        }`;
-        throw { errorCode, errorMessage };
-      }
-
-      const request = document.data();
-
-      if (
-        request.status.type !== 'NOT_INITIALIZED' &&
-        request.status.type !== 'IN_PROGRESS'
-      ) {
-        const errorCode = 'infindi/bad-request';
-        const errorMessage = `Download request ${
-          credentialsID
-        } cannot be canceled`;
-        throw { errorCode, errorMessage };
-      }
-
-      // Step 3: Cancel the request.
-      const now = new Date();
-      const canceledRequest = {
-        ...request,
-        status: { type: 'CANCELED' },
-        updatedAt: now,
-      };
-      transaction.update(downloadRequestRef, canceledRequest);
-    }
-
-    try {
-      await Database.runTransaction(transactionOperation);
-    } catch (error) {
-      const errorCode = error.errorCode || 'infindi/server-error';
-      const errorMessage = error.errorMessage || error.toString();
-      const status = getStatusForErrorCode(errorCode);
-      res.status(status).json({ errorCode, errorMessage });
-      return;
-    }
-
-    res.json({
-      data: {
-        pointerType: 'PlaidDownloadRequest',
-        refID: credentialsID,
-        type: 'POINTER',
-      },
-    });
-  };
-}
-
-router.post('/download/:credentialsID/cancel', checkPlaidClientInitialized());
-router.post('/download/:credentialsID/cancel', checkAuth());
-router.post('/download/:credentialsID/cancel', performDownloadCancel());
 
 // -----------------------------------------------------------------------------
 //
@@ -330,11 +183,14 @@ function performDownloadStatus(): RouteHandler {
     }
 
     // Step 2: Fetch the download request for the credentials.
-    // TODO: Add typing to document.
-    let document;
+    // TODO: Add typing to snapshot.
+    let snapshot;
     try {
-      document = await Database.collection('PlaidDownloadRequests')
-        .doc(credentialsID)
+      snapshot = await Database.collection('JobRequests')
+        .where('name', '==', 'PLAID_INITIAL_DOWNLOAD')
+        .where('payload.credentialsID', '==', credentialsID)
+        .orderBy('updatedAt', 'desc')
+        .limit(1)
         .get();
     } catch (error) {
       const errorCode = error.code || 'infindi/server-error';
@@ -344,7 +200,7 @@ function performDownloadStatus(): RouteHandler {
       return;
     }
 
-    if (!document.exists) {
+    if (!snapshot.docs === 0 || !snapshot.docs[0].exists) {
       const errorCode = 'infindi/resource-not-found';
       const errorMessage = `No download requests exist for credentials ${
         credentialsID
@@ -354,7 +210,7 @@ function performDownloadStatus(): RouteHandler {
       return;
     }
 
-    res.json({ data: document.data() });
+    res.json({ data: snapshot.docs[0].data() });
   };
 }
 
@@ -399,11 +255,4 @@ async function genCredentials(
     throw { errorCode, errorMessage };
   }
   return plaidCredentials;
-}
-
-function isRequestOpen(request: PlaidDownloadRequest): bool {
-  return (
-    request.status.type === 'NOT_INITIALIZED' ||
-    request.status.type === 'IN_PROGRESS'
-  );
 }
