@@ -75,21 +75,19 @@
           .catch(passIfPermissionDenied);
       });
 
-      runTest('[PlaidCredentials] No read access', function() {
+      runTest('[JobRequests] No read access for any job requests', function() {
         return waitForAuth
           .then(function(user) {
-            return Database.collection('PlaidCredentials')
-              .where('userRef.refID', '==', user.uid)
-              .get();
+            return Database.collection('JobRequests').limit(10).get();
           })
           .then(failIfNoError)
           .catch(passIfPermissionDenied);
       });
 
-      runTest('[PlaidDownloadRequests] No read access', function() {
+      runTest('[PlaidCredentials] No read access', function() {
         return waitForAuth
           .then(function(user) {
-            return Database.collection('PlaidDownloadRequest')
+            return Database.collection('PlaidCredentials')
               .where('userRef.refID', '==', user.uid)
               .get();
           })
@@ -128,6 +126,23 @@
         return waitForAuth
           .then(function(user) {
             return Database.collection('UserInfo').get();
+          })
+          .then(failIfNoError)
+          .catch(passIfPermissionDenied);
+      });
+
+      runTest('[UserMetrics] Read access for user\'s own UserMetrics', function() {
+        return waitForAuth
+          .then(function(user) {
+            return Database.collection('UserMetrics').doc(user.uid).get();
+          })
+          .then(passIfDocumentExists);
+      });
+
+      runTest('[UserMetrics] No read access for UserMetrics of other users', function() {
+        return waitForAuth
+          .then(function(user) {
+            return Database.collection('UserMetrics').get();
           })
           .then(failIfNoError)
           .catch(passIfPermissionDenied);
@@ -193,24 +208,29 @@
 
     function renderTest(test) {
       const p = document.createElement('p');
+      const formatID = test.id < 10 ? `0${test.id}` : test.id.toString();
       p.id = 'test-' + test.id;
       p.className = 'security-check';
-      p.innerHTML = '[?] ' + test.id + ') ' + test.descriptor;
+      p.innerHTML = '[?] ' + formatID + ') ' + test.descriptor;
       document.getElementById('security-checks').appendChild(p);
     }
 
     function success(id) {
       const test = tests.find(function(t) { return t.id === id; });
       const p = document.getElementById('test-' + id);
+      const formatID = test.id < 10 ? `0${test.id}` : test.id.toString();
+
       p.className = 'security-check pass';
-      p.innerHTML = '[o] ' + test.id + ') ' + test.descriptor;
+      p.innerHTML = '[o] ' + formatID + ') ' + test.descriptor;
     }
 
     function failure(id) {
       const test = tests.find(function(t) { return t.id === id; });
       const p = document.getElementById('test-' + id);
+      const formatID = test.id < 10 ? `0${test.id}` : test.id.toString();
+
       p.className = 'security-check fail';
-      p.innerHTML = '[x] ' + test.id + ') ' + test.descriptor;
+      p.innerHTML = '[x] ' + formatID + ') ' + test.descriptor;
     }
 
     function passIfPermissionDenied(error) {
