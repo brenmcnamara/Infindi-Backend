@@ -1257,11 +1257,16 @@ commander@^2.11.0, commander@^2.9.0:
 
 "common-backend@git+https://86f8b449cd778036c88467e637378b2e328bf08a@github.com/brenmcnamara/infindi-common-backend.git":
   version "1.0.0"
-  resolved "git+https://86f8b449cd778036c88467e637378b2e328bf08a@github.com/brenmcnamara/infindi-common-backend.git#b7a15eb0ddc349cd4dfd485c1b679139a21c4ef4"
+  resolved "git+https://86f8b449cd778036c88467e637378b2e328bf08a@github.com/brenmcnamara/infindi-common-backend.git#537f079c75f1d78b0334dc9e31178350dd3aedb4"
+  dependencies:
+    common "git+https://86f8b449cd778036c88467e637378b2e328bf08a@github.com/brenmcnamara/infindi-common.git"
+    invariant "^2.2.2"
 
 "common@git+https://86f8b449cd778036c88467e637378b2e328bf08a@github.com/brenmcnamara/infindi-common.git":
   version "1.0.0"
-  resolved "git+https://86f8b449cd778036c88467e637378b2e328bf08a@github.com/brenmcnamara/infindi-common.git#f97537e4860131e03aa4fad4c82630f7e59a7bfd"
+  resolved "git+https://86f8b449cd778036c88467e637378b2e328bf08a@github.com/brenmcnamara/infindi-common.git#c2e003d2b8d60d550a4c3a39653208fd509197d8"
+  dependencies:
+    uuid "^3.1.0"
 
 commondir@^1.0.1:
   version "1.0.1"

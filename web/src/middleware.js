@@ -1,12 +1,13 @@
 /* @flow */
 
 import * as FirebaseAdmin from 'firebase-admin';
-
-import { getStatusForErrorCode } from 'common/build/error-codes';
+import Common from 'common';
 
 import type { DecodedIDToken } from 'common/src/types/firebase-admin';
 
 export type RouteHandler = (req: any, res: any, next: Function) => any;
+
+const { ErrorUtils } = Common;
 
 export function checkAuth(): RouteHandler {
   return async (req, res, next) => {
@@ -18,7 +19,7 @@ export function checkAuth(): RouteHandler {
     } catch (error) {
       const errorCode = error.code || 'infindi/server-error';
       const errorMessage = error.toString();
-      const status = getStatusForErrorCode(errorCode);
+      const status = ErrorUtils.getStatusForErrorCode(errorCode);
       res.status(status).json({ errorCode, errorMessage });
       return;
     }

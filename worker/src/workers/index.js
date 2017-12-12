@@ -4,6 +4,7 @@ import uuid from 'uuid/v4';
 
 import { initialize as initializeCoreMetrics } from './core-metrics';
 import { initialize as initializeDownloadRequests } from './download-requests';
+import { initialize as initializeUpdateAccount } from './update-account';
 
 import type { ID } from 'common/src/types/core';
 
@@ -14,4 +15,5 @@ export function initialize(): void {
 
   initializeCoreMetrics(workerID);
   initializeDownloadRequests(workerID);
+  initializeUpdateAccount(workerID);
 }

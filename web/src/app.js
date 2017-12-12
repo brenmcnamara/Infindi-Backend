@@ -1,12 +1,14 @@
 /* @flow */
 
+import Common from 'common';
+
 import bodyParser from 'body-parser';
 import express from 'express';
 import morgan from 'morgan';
 import path from 'path';
 import routes, { initialize as initializeRoutes } from './routes';
 
-import { getStatusForErrorCode } from 'common/build/error-codes';
+const { ErrorUtils } = Common;
 
 const app = express();
 
@@ -27,7 +29,7 @@ export function initialize(): void {
   app.use((req, res) => {
     const errorCode = 'infindi/resource-not-found';
     const errorMessage = 'Resource not found';
-    const status = getStatusForErrorCode(errorCode);
+    const status = ErrorUtils.getStatusForErrorCode(errorCode);
     res.status(status).json({ errorCode, errorMessage });
     return;
   });

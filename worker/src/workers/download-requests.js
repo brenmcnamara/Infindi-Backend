@@ -4,6 +4,7 @@ import * as FirebaseAdmin from 'firebase-admin';
 import BackendAPI from 'common-backend';
 import Plaid from 'plaid';
 
+import getAccountFromPlaidAccount from '../calculations/getAccountFromPlaidAccount';
 import invariant from 'invariant';
 
 import type {
@@ -76,7 +77,7 @@ async function genDownloadRequest(payload: Object) {
   );
 
   const accountGenerators: Array<Promise<Plaid$Account>> = plaidAccounts.map(
-    rawAccount => genCreateAccount(userID, rawAccount),
+    rawAccount => genCreateAccount(rawAccount, credentials),
   );
 
   await Promise.all(accountGenerators);
@@ -113,36 +114,16 @@ async function genCredentials(credentialsID: ID): Promise<?PlaidCredentials> {
 }
 
 async function genCreateAccount(
-  uid: ID,
   rawPlaidAccount: Plaid$Account,
+  credentials: PlaidCredentials,
 ): Promise<Account> {
-  const now = new Date();
-  const id = rawPlaidAccount.account_id;
-
-  const account: Account = {
-    alias: null,
-    balance: rawPlaidAccount.balances.current,
-    createdAt: now,
-    id,
-    modelType: 'Account',
-    name: rawPlaidAccount.name,
-    sourceOfTruth: {
-      type: 'PLAID',
-      value: rawPlaidAccount,
-    },
-    type: 'MODEL',
-    updatedAt: now,
-    userRef: {
-      pointerType: 'User',
-      type: 'POINTER',
-      refID: uid,
-    },
-  };
-
+  console.log('creating account');
+  const account = getAccountFromPlaidAccount(rawPlaidAccount, credentials);
+  console.log('done getting account', account);
   await DB.transformError(
     FirebaseAdmin.firestore()
       .collection('Accounts')
-      .doc(id)
+      .doc(account.id)
       .set(account),
   );
   return account;

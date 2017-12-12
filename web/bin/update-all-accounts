@@ -1,0 +1,52 @@
+#!/usr/bin/env node
+
+/* eslint-disable no-console */
+
+/**
+ * NOTE: This file is not transformed via babel. Must use
+ * syntax this works with the runnning version of node.
+ */
+
+const CommonBackend = require('common-backend');
+const FirebaseAdmin = require('firebase-admin');
+
+const chalk = require('chalk');
+const dotenv = require('dotenv');
+const fs = require('fs');
+const path = require('path');
+
+console.log('Configuring environment variables...');
+dotenv.config();
+
+console.log('Configuring Firebase Admin...');
+const serviceCertFilename = path.join(
+  __dirname,
+  '../firebase-service-cert.json'
+);
+const serviceCertSerialized = fs.readFileSync(serviceCertFilename).toString();
+const serviceCert = JSON.parse(serviceCertSerialized);
+
+FirebaseAdmin.initializeApp({
+  credential: FirebaseAdmin.credential.cert(serviceCert),
+  databaseURL: process.env.FIREBASE_DB_URL,
+});
+
+CommonBackend.initialize(FirebaseAdmin);
+
+FirebaseAdmin.firestore()
+  .collection('Accounts')
+  .get()
+  .then(snapshot => {
+    const accounts = snapshot.docs.map(doc => doc.data());
+    const jobs = accounts.map(account => {
+      const payload = {accountID: account.id};
+      CommonBackend.Job.genRequestJob('UPDATE_ACCOUNT', payload);
+    });
+    return Promise.all(jobs).then(() => accounts);
+  })
+  .then(accounts => {
+    console.log(chalk.green(`Sent jobs for ${accounts.length} account(s)`));
+  })
+  .catch(error => {
+    console.log(chalk.red(`[${error.errorCode}]: ${error.errorMessage}`));
+  });
