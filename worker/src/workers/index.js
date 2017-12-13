@@ -17,3 +17,7 @@ export function initialize(): void {
   initializeDownloadRequests(workerID);
   initializeUpdateAccount(workerID);
 }
+
+export function getWorkerID(): ?ID {
+  return workerID;
+}
