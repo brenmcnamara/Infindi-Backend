@@ -1,5 +1,19 @@
 # Infindi-Backend
 
+## Testing common and common-backend modules using Infindi-Backend
+
+1. Navigate to local common / common-backend repo and run:
+
+`yarn link`
+
+2. Navigate back to infindi-backend repo and run:
+
+`yarn link common # or common-backend`
+
+3. Make sure to run `npm run build` whenever adding changes to the common / common-backend code
+
+4. When done testing, run `yarn unlink` from common / common-backend
+
 ## Manual Testing
 
 ### Test Job Requests
