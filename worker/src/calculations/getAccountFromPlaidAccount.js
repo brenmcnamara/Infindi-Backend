@@ -64,6 +64,6 @@ function getInstitutionName(credentials: PlaidCredentials): string {
 function correctInstitutionName(bankName: string): string {
   return bankName
     .trim()
-    .replace(/\s+/, '_')
+    .replace(/\s+/g, '_')
     .toUpperCase();
 }
