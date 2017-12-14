@@ -57,7 +57,6 @@ const server = http.createServer(app);
  */
 
 server.listen({
-  host: 'localhost',
   port,
 });
 server.on('clientError', onError);

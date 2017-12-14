@@ -19,6 +19,9 @@ export function initialize(): void {
   router.get('/status', (req, res) => {
     res.json({ status: 'OK' });
   });
+  router.get('/_ah/health', (req, res) => {
+    res.json({ status: 'OK' });
+  });
   router.use('/auth', auth);
   router.use('/metrics', metrics);
   router.use('/plaid', plaid);
