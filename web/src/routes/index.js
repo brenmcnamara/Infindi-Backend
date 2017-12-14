@@ -16,6 +16,9 @@ export function initialize(): void {
   initializePlaid();
   initializeDebug();
 
+  router.get('/status', (req, res) => {
+    res.json({ status: 'OK' });
+  });
   router.use('/auth', auth);
   router.use('/metrics', metrics);
   router.use('/plaid', plaid);

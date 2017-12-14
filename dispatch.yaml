@@ -1,0 +1,7 @@
+dispatch:
+
+  - url: "*/"
+    service: default
+
+  - url: "*/worker"
+    service: worker
