@@ -148,6 +148,19 @@
           .catch(passIfPermissionDenied);
       });
 
+      runTest('[UserSessions] No read access for UserSessions', function() {
+        return waitForAuth
+          .then(function(user) {
+            return Database
+              .collection('UserSessions')
+              .where('userRef.refID', '==', user.uid)
+              .limit(1)
+              .get();
+          })
+          .then(failIfNoError)
+          .catch(passIfPermissionDenied);
+      });
+
 // -----------------------------------------------------------------------------
 //
 // TESTING END
