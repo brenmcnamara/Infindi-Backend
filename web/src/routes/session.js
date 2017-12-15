@@ -12,6 +12,8 @@ import type { ID } from 'common/src/types/core';
 import type { RouteHandler } from '../middleware';
 import type { UserSession } from 'common/src/types/db';
 
+const MAX_OPEN_SESSION_COUNT = 20;
+
 const router = express.Router();
 
 export default router;
@@ -72,10 +74,9 @@ function performStart(): RouteHandler {
   return async (req, res) => {
     const { device } = req.body;
 
-    // NOTE: We first need to check if we have a session already open with this
-    // device id. We assume device ids are unique and there should not be
-    // multiple sessions with the same device id.
-    const { deviceID } = device;
+    // NOTE: We first need to check if we have too many sessions already open with
+    // this device id and bundle identifier.
+    const { bundleIdentifier, deviceID } = device;
 
     let snapshot;
     try {
@@ -84,7 +85,8 @@ function performStart(): RouteHandler {
           .collection('UserSessions')
           .where('status', '==', 'OPEN')
           .where('device.deviceID', '==', deviceID)
-          .limit(1)
+          .where('device.bundleIdentifier', '==', bundleIdentifier)
+          .limit(MAX_OPEN_SESSION_COUNT + 1)
           .get(),
       );
     } catch (error) {
@@ -103,7 +105,7 @@ function performStart(): RouteHandler {
       return;
     }
 
-    if (snapshot.docs.length > 0) {
+    if (snapshot.docs.length > MAX_OPEN_SESSION_COUNT) {
       const errorCode = 'infindi/bad-request';
       const errorMessage =
         'Cannot have 2 open sessions with the same device id';
