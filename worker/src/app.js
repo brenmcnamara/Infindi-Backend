@@ -3,7 +3,7 @@
 import bodyParser from 'body-parser';
 import express from 'express';
 import morgan from 'morgan';
-import routes from './routes';
+import routes, { initialize as initializeRoutes } from './routes';
 
 import { getStatusForErrorCode } from 'common/build/error-codes';
 import { initialize as initializeWorkers } from './workers';
@@ -35,6 +35,7 @@ export function initialize(): void {
     res.render('error');
   });
 
+  initializeRoutes();
   initializeWorkers();
 }
 
