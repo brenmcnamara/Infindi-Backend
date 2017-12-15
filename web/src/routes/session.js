@@ -71,6 +71,47 @@ function validateStart(): RouteHandler {
 function performStart(): RouteHandler {
   return async (req, res) => {
     const { device } = req.body;
+
+    // NOTE: We first need to check if we have a session already open with this
+    // device id. We assume device ids are unique and there should not be
+    // multiple sessions with the same device id.
+    const { deviceID } = device;
+
+    let snapshot;
+    try {
+      snapshot = await CommonBackend.DB.transformError(
+        FirebaseAdmin.firestore()
+          .collection('UserSessions')
+          .where('status', '==', 'OPEN')
+          .where('device.deviceID', '==', deviceID)
+          .limit(1)
+          .get(),
+      );
+    } catch (error) {
+      const errorCode =
+        error.errorCode ||
+        error.code ||
+        error.error_code ||
+        'infindi/server-error';
+      const errorMessage =
+        error.errorMessage ||
+        error.message ||
+        error.error_message ||
+        error.toString();
+      const status = Common.ErrorUtils.getStatusForErrorCode(errorCode);
+      res.status(status).json({ errorCode, errorMessage });
+      return;
+    }
+
+    if (snapshot.docs.length > 0) {
+      const errorCode = 'infindi/bad-request';
+      const errorMessage =
+        'Cannot have 2 open sessions with the same device id';
+      const status = Common.ErrorUtils.getStatusForErrorCode(errorCode);
+      res.status(status).json({ errorCode, errorMessage });
+      return;
+    }
+
     const stub = Common.DBUtils.createModelStub('UserSession');
     const session = {
       ...stub,
