@@ -110,5 +110,5 @@ function performCleanup(): RouteHandler {
   };
 }
 
-router.post('/cleanup', checkGCPCronRequest());
-router.post('/cleanup', performCleanup());
+router.get('/cleanup', checkGCPCronRequest());
+router.get('/cleanup', performCleanup());
