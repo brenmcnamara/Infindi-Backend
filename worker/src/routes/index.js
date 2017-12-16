@@ -19,5 +19,11 @@ export function initialize(): void {
     });
   });
 
-  router.use('/session', session);
+  router.get('/worker/status', (req, res) => {
+    res.json({
+      workerID: getWorkerID(),
+    });
+  });
+
+  router.use('/worker/session', session);
 }

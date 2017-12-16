@@ -1,7 +1,4 @@
 dispatch:
 
-  - url: "*/"
-    service: default
-
-  - url: "*/worker"
+  - url: "*/worker/*"
     service: worker
