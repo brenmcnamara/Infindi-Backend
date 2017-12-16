@@ -108,7 +108,7 @@ function performStart(): RouteHandler {
     if (snapshot.docs.length > MAX_OPEN_SESSION_COUNT) {
       const errorCode = 'infindi/bad-request';
       const errorMessage =
-        'Cannot have 2 open sessions with the same device id';
+        'There are too many open session with this bundle id and device id';
       const status = Common.ErrorUtils.getStatusForErrorCode(errorCode);
       res.status(status).json({ errorCode, errorMessage });
       return;

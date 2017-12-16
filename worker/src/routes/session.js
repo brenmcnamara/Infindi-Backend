@@ -6,6 +6,8 @@ import CommonBackend from 'common-backend';
 
 import express from 'express';
 
+import { checkGCPCronRequest } from '../middleware';
+
 import type { RouteHandler } from '../middleware';
 import type { UserSession } from 'common/src/types/db';
 
@@ -108,4 +110,5 @@ function performCleanup(): RouteHandler {
   };
 }
 
+router.post('/cleanup', checkGCPCronRequest());
 router.post('/cleanup', performCleanup());

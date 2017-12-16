@@ -29,3 +29,21 @@ export function checkAuth(): RouteHandler {
     next();
   };
 }
+
+/**
+ * Authorizes the request if it is from Google Cloud PLatform.
+ */
+export function checkGCPCronRequest(): RouteHandler {
+  return (req, res, next) => {
+    const cronHeader = req.get('X-Appengine-Cron');
+    const isCron = cronHeader === true || cronHeader === 'true';
+    if (!isCron) {
+      const errorCode = 'infindi/resource-not-found';
+      const errorMessage = 'Resource not found';
+      const status = ErrorUtils.getStatusForErrorCode(errorCode);
+      res.status(status).json({ errorCode, errorMessage });
+      return;
+    }
+    next();
+  };
+}
