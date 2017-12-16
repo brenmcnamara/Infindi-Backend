@@ -7,18 +7,19 @@ import CommonBackend from 'common-backend';
 import express from 'express';
 
 import { checkAuth } from '../middleware';
+import { INFO } from '../log-utils';
 
-import type { ID } from 'common/src/types/core';
+import type { ID, Seconds } from 'common/src/types/core';
 import type { RouteHandler } from '../middleware';
 import type { UserSession } from 'common/src/types/db';
-
-const MAX_OPEN_SESSION_COUNT = 20;
 
 const router = express.Router();
 
 export default router;
 
 export function initialize(): void {}
+
+const CLOSE_SESSION_TIMEOUT: Seconds = 5 * 60;
 
 // -----------------------------------------------------------------------------
 //
@@ -70,23 +71,23 @@ function validateStart(): RouteHandler {
   };
 }
 
-function performStart(): RouteHandler {
-  return async (req, res) => {
+function handleExistingSessions(): RouteHandler {
+  return async (req, res, next) => {
     const { device } = req.body;
 
     // NOTE: We first need to check if we have too many sessions already open with
     // this device id and bundle identifier.
     const { bundleIdentifier, deviceID } = device;
-
-    let snapshot;
+    let snapshotOpen;
+    let snapshotNonResponsive;
     try {
-      snapshot = await CommonBackend.DB.transformError(
+      snapshotOpen = await CommonBackend.DB.transformError(
         FirebaseAdmin.firestore()
           .collection('UserSessions')
           .where('status', '==', 'OPEN')
           .where('device.deviceID', '==', deviceID)
           .where('device.bundleIdentifier', '==', bundleIdentifier)
-          .limit(MAX_OPEN_SESSION_COUNT + 1)
+          .limit(1)
           .get(),
       );
     } catch (error) {
@@ -105,15 +106,113 @@ function performStart(): RouteHandler {
       return;
     }
 
-    if (snapshot.docs.length > MAX_OPEN_SESSION_COUNT) {
-      const errorCode = 'infindi/bad-request';
+    try {
+      snapshotNonResponsive = await CommonBackend.DB.transformError(
+        FirebaseAdmin.firestore()
+          .collection('UserSessions')
+          .where('status', '==', 'NON_RESPONSIVE')
+          .where('device.deviceID', '==', deviceID)
+          .where('device.bundleIdentifier', '==', bundleIdentifier)
+          .limit(1)
+          .get(),
+      );
+    } catch (error) {
+      const errorCode =
+        error.errorCode ||
+        error.code ||
+        error.error_code ||
+        'infindi/server-error';
       const errorMessage =
-        'There are too many open session with this bundle id and device id';
+        error.errorMessage ||
+        error.message ||
+        error.error_message ||
+        error.toString();
       const status = Common.ErrorUtils.getStatusForErrorCode(errorCode);
       res.status(status).json({ errorCode, errorMessage });
       return;
     }
 
+    const docs = snapshotOpen.docs.concat(snapshotNonResponsive.docs);
+
+    if (docs.length === 0 || !docs[0].exists) {
+      INFO('SESSION', 'No existing sessions found when starting new session');
+      next();
+      return;
+    }
+
+    const session = docs[0].data();
+    const { timeout, updatedAt } = session;
+
+    const now = Math.floor(Date.now() / 1000);
+    const lastUpdate = Math.floor(updatedAt.getTime() / 1000);
+
+    if (lastUpdate + timeout - now < CLOSE_SESSION_TIMEOUT) {
+      INFO('SESSION', 'Found an existing session that will be reused');
+      // TODO: In the future, we should do some more strict checking here.
+      const existingSession = {
+        ...Common.DBUtils.updateModelStub(session),
+        status: 'OPEN',
+      };
+      try {
+        await genUpdateSession(existingSession);
+      } catch (error) {
+        const errorCode =
+          error.errorCode ||
+          error.code ||
+          error.error_code ||
+          'infindi/server-error';
+        const errorMessage =
+          error.errorMessage ||
+          error.message ||
+          error.error_message ||
+          error.toString();
+        const status = Common.ErrorUtils.getStatusForErrorCode(errorCode);
+        res.status(status).json({ errorCode, errorMessage });
+      }
+      res.json({
+        data: {
+          pointerType: 'UserSession',
+          type: 'POINTER',
+          refID: session.id,
+        },
+      });
+      return;
+    } else {
+      INFO('SESSION', 'Found an existing session that must be closed');
+      const expiredSession = {
+        ...Common.DBUtils.updateModelStub(session),
+        status: 'CLOSED',
+      };
+      try {
+        await genUpdateSession(expiredSession);
+      } catch (error) {
+        const errorCode =
+          error.errorCode ||
+          error.code ||
+          error.error_code ||
+          'infindi/server-error';
+        const errorMessage =
+          error.errorMessage ||
+          error.message ||
+          error.error_message ||
+          error.toString();
+        const status = Common.ErrorUtils.getStatusForErrorCode(errorCode);
+        res.status(status).json({ errorCode, errorMessage });
+        return;
+      }
+      // We closed the previous session, go to the next middleware function to
+      // create a new request.
+      next();
+    }
+  };
+}
+
+function performStart(): RouteHandler {
+  return async (req, res) => {
+    INFO('SESSION', 'Starting a new user session');
+    const { device } = req.body;
+
+    // We do not have any existing sessions. Creating a new one.
     const stub = Common.DBUtils.createModelStub('UserSession');
     const session = {
       ...stub,
@@ -156,6 +255,7 @@ function performStart(): RouteHandler {
 
 router.post('/start', checkAuth());
 router.post('/start', validateStart());
+router.post('/start', handleExistingSessions());
 router.post('/start', performStart());
 
 // -----------------------------------------------------------------------------
@@ -166,6 +266,7 @@ router.post('/start', performStart());
 
 function performHeartbeat(): RouteHandler {
   return async (req, res) => {
+    INFO('SESSION', 'Handling session heartbeat');
     const { sessionID } = req.params;
     let session;
     try {
@@ -256,6 +357,7 @@ router.post('/heartbeat/:sessionID', performHeartbeat());
 
 function performEnd(): RouteHandler {
   return async (req, res) => {
+    INFO('SESSION', 'Ending session');
     const { sessionID } = req.params;
     let session: ?UserSession;
     try {
