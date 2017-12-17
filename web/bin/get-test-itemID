@@ -11,7 +11,7 @@
  * Module dependencies.
  */
 
-const Firebase = require('Firebase');
+const Firebase = require('firebase');
 
 const dotenv = require('dotenv');
 

@@ -5,7 +5,6 @@ import BackendAPI from 'common-backend';
 import Plaid from 'plaid';
 
 import getAccountFromPlaidAccount from '../calculations/getAccountFromPlaidAccount';
-import invariant from 'invariant';
 
 import { ERROR, INFO } from '../log-utils';
 
@@ -25,31 +24,22 @@ const YEAR_IN_MILLIS = 1000 * 60 * 60 * 24 * 365;
 
 const DB = BackendAPI.DB;
 
-let workerID: ?ID = null;
 let plaidClient;
 
-export function initialize(_workerID: ID): void {
+export function initialize(workerID: ID): void {
+  INFO('INITIALIZATION', 'Initializating download-request worker');
   plaidClient = new Plaid.Client(
     process.env.PLAID_CLIENT_ID,
     process.env.PLAID_SECRET,
     process.env.PLAID_PUBLIC_KEY,
     Plaid.environments[process.env.PLAID_ENV],
   );
-  workerID = _workerID;
 
   BackendAPI.Job.listenToJobRequest(
     'PLAID_INITIAL_DOWNLOAD',
     workerID,
     genDownloadRequest,
   );
-}
-
-export function getWorkerID(): string {
-  invariant(
-    workerID,
-    'You must initialize plaid worker before fetching worker id',
-  );
-  return workerID;
 }
 
 // -----------------------------------------------------------------------------

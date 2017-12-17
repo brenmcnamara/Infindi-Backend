@@ -1,6 +1,8 @@
 /* @flow */
 
 export const LogGroup = {
+  INITIALIZATION: 'INITIALIZATION',
+  LITMUS: 'LITMUS',
   PLAID: 'PLAID',
   SESSION: 'SESSION',
 };

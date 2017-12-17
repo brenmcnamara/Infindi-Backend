@@ -6,15 +6,15 @@ import CommonBackend from 'common-backend';
 import getAccountFromPlaidAccount from '../calculations/getAccountFromPlaidAccount';
 import invariant from 'invariant';
 
+import { INFO } from '../log-utils';
+
 import type { Account, PlaidCredentials } from 'common/src/types/db';
 import type { ID } from 'common/src/types/core';
 
-let workerID: ?ID = null;
-
 const { Job } = CommonBackend;
 
-export function initialize(_workerID: ID): void {
-  workerID = _workerID;
+export function initialize(workerID: ID): void {
+  INFO('INITIALIZATION', 'Initializing update-account worker');
   Job.listenToJobRequest('UPDATE_ACCOUNT', workerID, genUpdateAccount);
 }
 

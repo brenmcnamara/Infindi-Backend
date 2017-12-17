@@ -1,22 +1,22 @@
 /* @flow */
 
 import * as FirebaseAdmin from 'firebase-admin';
-import BackendAPI from 'common-backend';
+import CommonBackend from 'common-backend';
 
 import genNetWorth from '../calculations/genNetWorth';
 import genSavingsRate from '../calculations/genSavingsRate';
 
+import { INFO } from '../log-utils';
+
 import type { ID } from 'common/src/types/core';
 import type { UserMetrics } from 'common/src/types/db';
 
-const DB = BackendAPI.DB;
+const { DB } = CommonBackend;
 
-let workerID: ?ID = null;
+export function initialize(workerID: ID): void {
+  INFO('INITIALIZATION', 'Initializing core-metrics worker');
 
-export function initialize(_workerID: ID): void {
-  workerID = _workerID;
-
-  BackendAPI.Job.listenToJobRequest(
+  CommonBackend.Job.listenToJobRequest(
     'CALCULATE_CORE_METRICS',
     workerID,
     genCalculateCoreMetrics,
