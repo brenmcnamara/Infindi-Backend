@@ -7,6 +7,8 @@ import Plaid from 'plaid';
 import getAccountFromPlaidAccount from '../calculations/getAccountFromPlaidAccount';
 import invariant from 'invariant';
 
+import { ERROR, INFO } from '../log-utils';
+
 import type {
   Account,
   PlaidCredentials,
@@ -58,42 +60,48 @@ export function getWorkerID(): string {
 
 // TODO: Add cancel checks intermittently throughout this request.
 async function genDownloadRequest(payload: Object) {
+  INFO('PLAID', 'Detecting download request for plaid item');
   const { credentialsID, userID } = payload;
 
   const credentials = await genCredentials(credentialsID);
 
   if (!credentials) {
+    ERROR('PLAID', 'Failed to find desired plaid credentials for download');
     const errorCode = 'infindi/resource-not-found';
     const errorMessage = `Missing credentials: ${credentialsID}`;
     const toString = () => `[${errorCode}]: ${errorMessage}`;
     throw { errorCode, errorMessage, toString };
   }
 
-  // Download user accounts.
+  INFO('PLAID', 'Fetching plaid accounts');
   // $FlowFixMe - Why is this an error?
   const plaidAccounts = await genPlaidAccounts(
     plaidClient,
     credentials.accessToken,
   );
 
+  INFO('PLAID', 'Writing plaid accounts to Firebase');
   const accountGenerators: Array<Promise<Plaid$Account>> = plaidAccounts.map(
     rawAccount => genCreateAccount(rawAccount, credentials),
   );
 
   await Promise.all(accountGenerators);
 
-  // Transactions grouped by their accounts.
+  INFO('PLAID', 'Fetching plaid transactions');
   // $FlowFixMe - Why is this an error?
   const plaidTransactions = await genPlaidTransactions(
     plaidClient,
     credentials.accessToken,
   );
 
+  INFO('PLAID', 'Writing plaid transactions to Firebase');
   await Promise.all(
     plaidTransactions.map(transaction =>
       genCreateTransaction(userID, transaction),
     ),
   );
+
+  INFO('PLAID', 'Finished downloading plaid credentials');
 }
 
 // -----------------------------------------------------------------------------
@@ -117,9 +125,7 @@ async function genCreateAccount(
   rawPlaidAccount: Plaid$Account,
   credentials: PlaidCredentials,
 ): Promise<Account> {
-  console.log('creating account');
   const account = getAccountFromPlaidAccount(rawPlaidAccount, credentials);
-  console.log('done getting account', account);
   await DB.transformError(
     FirebaseAdmin.firestore()
       .collection('Accounts')

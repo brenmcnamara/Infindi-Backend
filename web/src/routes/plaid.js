@@ -7,6 +7,7 @@ import Plaid from 'plaid';
 import express from 'express';
 
 import { checkAuth } from '../middleware';
+import { ERROR, INFO } from '../log-utils';
 import { getStatusForErrorCode } from 'common/build/error-codes';
 
 import type { Environment as Plaid$Environment } from 'common/src/types/plaid';
@@ -70,11 +71,18 @@ function performCredentials(): RouteHandler {
 
     plaidClient.exchangePublicToken(publicToken, async (error, response) => {
       if (error !== null) {
+        ERROR(
+          'PLAID',
+          `Public token exchange failed: [${error.error_code}]: ${
+            error.error_message
+          }`,
+        );
         const errorCode = 'infindi/server-error';
         const errorMessage = 'Error when exchanging public token with Plaid';
         res.status(500).json({ errorCode, errorMessage });
         return;
       }
+      INFO('PLAID', 'Generated item access token from plaid');
       const accessToken = response.access_token;
       const itemID = response.item_id;
       const uid = req.decodedIDToken.uid;
@@ -103,6 +111,12 @@ function performCredentials(): RouteHandler {
           .doc(itemID)
           .set(credentials);
       } catch (error) {
+        ERROR(
+          'PLAID',
+          `Failed to save plaid access token to firebase: [${error.code}]: ${
+            error.message
+          }`,
+        );
         const errorCode = error.code || 'infindi/server-error';
         const errorMessage = error.toString();
         const status = getStatusForErrorCode(errorCode);
@@ -135,12 +149,16 @@ function performDownload(): RouteHandler {
     // user.
     try {
       await genCredentials(uid, credentialsID);
-    } catch (error /* InfindiError */) {
-      const status = getStatusForErrorCode(error.errorCode);
-      res.status(status).json(error);
+    } catch (error) {
+      const errorCode = error.errorCode || error.code || 'infindi/server-error';
+      const errorMessage =
+        error.errorMessage || error.message || error.toString();
+      const status = getStatusForErrorCode(errorCode);
+      res.status(status).json({ errorCode, errorMessage });
       return;
     }
 
+    INFO('PLAID', 'Submitting job for downloading plaid item');
     let requestPointer: Pointer<'JobRequest'>;
     try {
       requestPointer = await BackendAPI.Job.genRequestJob(
@@ -148,8 +166,11 @@ function performDownload(): RouteHandler {
         { credentialsID, userID: uid },
       );
     } catch (error) {
-      const status = getStatusForErrorCode(error.errorCode);
-      res.status(status).json(error);
+      const errorCode = error.errorCode || error.code || 'infindi/server-error';
+      const errorMessage =
+        error.errorMessage || error.message || error.toString();
+      const status = getStatusForErrorCode(errorCode);
+      res.status(status).json({ errorCode, errorMessage });
       return;
     }
     res.json({ data: requestPointer });
