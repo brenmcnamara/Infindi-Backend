@@ -13,6 +13,7 @@
 
 const Firebase = require('firebase');
 
+const chalk = require('chalk');
 const dotenv = require('dotenv');
 
 console.log('Configuring environment variables...');
@@ -34,11 +35,10 @@ Firebase.auth()
   .signInWithEmailAndPassword(email, password)
   .then(user => user.getIdToken())
   .then(idToken => {
-    console.log(idToken);
+    console.log(chalk.green(idToken));
     process.exit(0);
   })
   .catch(error => {
-    console.log('ERROR');
-    console.log(error.toString());
+    console.log(chalk.red(error.toString()));
     process.exit(1);
   });

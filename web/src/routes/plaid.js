@@ -1,17 +1,17 @@
 /* @flow */
 
 import * as FirebaseAdmin from 'firebase-admin';
-import BackendAPI from 'common-backend';
+import Common from 'common';
+import CommonBackend from 'common-backend';
 import Plaid from 'plaid';
 
 import express from 'express';
 
 import { checkAuth } from '../middleware';
-import { ERROR, INFO } from '../log-utils';
-import { getStatusForErrorCode } from 'common/build/error-codes';
+import { DEBUG, ERROR, INFO } from '../log-utils';
 
 import type { Environment as Plaid$Environment } from 'common/src/types/plaid';
-import type { ID, Pointer } from 'common/src/types/core';
+import type { ID } from 'common/src/types/core';
 import type { PlaidCredentials } from 'common/src/types/db';
 import type { RouteHandler } from '../middleware';
 
@@ -28,19 +28,6 @@ export function initialize(): void {
     process.env.PLAID_PUBLIC_KEY,
     Plaid.environments[process.env.PLAID_ENV],
   );
-}
-
-function checkPlaidClientInitialized(): RouteHandler {
-  return (req, res, next) => {
-    if (!plaidClient) {
-      const errorCode = 'infind/server-error';
-      const errorMessage = 'Plaid client not initialized';
-      const status = getStatusForErrorCode(errorCode);
-      res.status(status).json({ errorCode, errorMessage });
-      return;
-    }
-    next();
-  };
 }
 
 // -----------------------------------------------------------------------------
@@ -65,10 +52,11 @@ function validateCredentials(): RouteHandler {
 
 // TODO: Return credentials when this is done.
 function performCredentials(): RouteHandler {
-  return (req, res) => {
+  return handleError((req, res) => {
     const publicToken = req.body.publicToken;
     const metadata = req.body.metadata || {};
 
+    INFO('PLAID', 'Exchanging plaid public token for access token');
     plaidClient.exchangePublicToken(publicToken, async (error, response) => {
       if (error !== null) {
         ERROR(
@@ -77,54 +65,47 @@ function performCredentials(): RouteHandler {
             error.error_message
           }`,
         );
-        const errorCode = 'infindi/server-error';
-        const errorMessage = 'Error when exchanging public token with Plaid';
-        res.status(500).json({ errorCode, errorMessage });
-        return;
+        throw {
+          errorCode: 'infindi/server-error',
+          errorMessage: 'Error when exchanging public token with Plaid',
+        };
       }
       INFO('PLAID', 'Generated item access token from plaid');
       const accessToken = response.access_token;
       const itemID = response.item_id;
       const uid = req.decodedIDToken.uid;
-      const now = new Date();
-      // $FlowFixMe - THis is correct
+
+      // $FlowFixMe - This is correct
       const environment: Plaid$Environment = process.env.PLAID_ENV;
       const credentials: PlaidCredentials = {
+        ...Common.DBUtils.createModelStub('PlaidCredentials'),
         accessToken,
-        createdAt: now,
+        downloadStatus: { type: 'NOT_DOWNLOADED' },
         environment,
         id: itemID,
         itemID,
         metadata,
-        modelType: 'PlaidCredentials',
-        type: 'MODEL',
-        updatedAt: now,
         userRef: {
           pointerType: 'User',
           type: 'POINTER',
           refID: uid,
         },
       };
-      try {
-        await FirebaseAdmin.firestore()
-          .collection('PlaidCredentials')
-          .doc(itemID)
-          .set(credentials);
-      } catch (error) {
-        ERROR(
-          'PLAID',
-          `Failed to save plaid access token to firebase: [${error.code}]: ${
-            error.message
-          }`,
-        );
-        const errorCode = error.code || 'infindi/server-error';
-        const errorMessage = error.toString();
-        const status = getStatusForErrorCode(errorCode);
-        res.status(status).json({ errorCode, errorMessage });
-      }
-      res.json({ accessToken, itemID });
+
+      await FirebaseAdmin.firestore()
+        .collection('PlaidCredentials')
+        .doc(itemID)
+        .set(credentials);
+
+      res.json({
+        data: {
+          pointerType: 'PlaidCredentials',
+          type: 'POINTER',
+          refID: credentials.id,
+        },
+      });
     });
-  };
+  });
 }
 
 router.post('/credentials', checkPlaidClientInitialized());
@@ -134,111 +115,108 @@ router.post('/credentials', performCredentials());
 
 // -----------------------------------------------------------------------------
 //
-// POST plaid/download/:credentialsID
+// POST plaid/credentials/:credentialsID/download
 //
 // -----------------------------------------------------------------------------
 
 function performDownload(): RouteHandler {
-  return async (req, res) => {
-    const { decodedIDToken } = req;
-    const { uid } = decodedIDToken;
-    const { credentialsID } = req.params;
-
-    // TODO: Move this into middleware.
-    // Step 1: Make sure the credentials exist and belong to the authenticated
-    // user.
-    try {
-      await genCredentials(uid, credentialsID);
-    } catch (error) {
-      const errorCode = error.errorCode || error.code || 'infindi/server-error';
-      const errorMessage =
-        error.errorMessage || error.message || error.toString();
-      const status = getStatusForErrorCode(errorCode);
-      res.status(status).json({ errorCode, errorMessage });
-      return;
-    }
+  return handleError(async (req, res) => {
+    const { credentials } = req;
+    const { uid } = req.decodedIDToken;
 
     INFO('PLAID', 'Submitting job for downloading plaid item');
-    let requestPointer: Pointer<'JobRequest'>;
-    try {
-      requestPointer = await BackendAPI.Job.genRequestJob(
-        'PLAID_INITIAL_DOWNLOAD',
-        { credentialsID, userID: uid },
-      );
-    } catch (error) {
-      const errorCode = error.errorCode || error.code || 'infindi/server-error';
-      const errorMessage =
-        error.errorMessage || error.message || error.toString();
-      const status = getStatusForErrorCode(errorCode);
-      res.status(status).json({ errorCode, errorMessage });
-      return;
-    }
+    const requestPointer = await CommonBackend.Job.genRequestJob(
+      'PLAID_INITIAL_DOWNLOAD',
+      { credentialsID: credentials.id, userID: uid },
+    );
+
     res.json({ data: requestPointer });
-  };
+  }, true);
 }
 
-router.post('/download/:credentialsID', checkPlaidClientInitialized());
-router.post('/download/:credentialsID', checkAuth());
-router.post('/download/:credentialsID', performDownload());
+router.post(
+  '/credentials/:credentialsID/download',
+  checkPlaidClientInitialized(),
+);
+router.post('/credentials/:credentialsID/download', checkAuth());
+router.post('/credentials/:credentialsID/download', checkCredentials());
+router.post('/credentials/:credentialsID/download', performDownload());
 
 // -----------------------------------------------------------------------------
 //
-// GET /plaid/download/:credentialsID
+// GET /plaid/credentials/:credentialsID/download
 //
 // -----------------------------------------------------------------------------
 
 function performDownloadStatus(): RouteHandler {
-  return async (req, res) => {
+  return handleError(async (req, res) => {
     const Database = FirebaseAdmin.firestore();
 
-    const { uid } = req.decodedIDToken;
-    const { credentialsID } = req.params;
-
-    // Step 1: Confirm that there are credentials that exist for the particular
-    // id.
-    try {
-      await genCredentials(uid, credentialsID);
-    } catch (error /* InfindiError */) {
-      const status = getStatusForErrorCode(error.errorCode);
-      res.status(status).json(error);
-      return;
-    }
+    const { credentials } = req;
 
     // Step 2: Fetch the download request for the credentials.
     // TODO: Add typing to snapshot.
-    let snapshot;
-    try {
-      snapshot = await Database.collection('JobRequests')
-        .where('name', '==', 'PLAID_INITIAL_DOWNLOAD')
-        .where('payload.credentialsID', '==', credentialsID)
-        .orderBy('updatedAt', 'desc')
-        .limit(1)
-        .get();
-    } catch (error) {
-      const errorCode = error.code || 'infindi/server-error';
-      const errorMessage = error.toString();
-      const status = getStatusForErrorCode(errorCode);
-      res.status(status).json({ errorCode, errorMessage });
-      return;
-    }
+    const snapshot = await Database.collection('JobRequests')
+      .where('name', '==', 'PLAID_INITIAL_DOWNLOAD')
+      .where('payload.credentialsID', '==', credentials.id)
+      .orderBy('updatedAt', 'desc')
+      .limit(1)
+      .get();
 
     if (!snapshot.docs === 0 || !snapshot.docs[0].exists) {
       const errorCode = 'infindi/resource-not-found';
       const errorMessage = `No download requests exist for credentials ${
-        credentialsID
+        credentials.id
       }`;
-      const status = getStatusForErrorCode(errorCode);
+      const status = Common.ErrorUtils.getStatusForErrorCode(errorCode);
       res.status(status).json({ errorCode, errorMessage });
       return;
     }
 
     res.json({ data: snapshot.docs[0].data() });
-  };
+  }, true);
 }
 
-router.get('/download/:credentialsID', checkPlaidClientInitialized());
-router.get('/download/:credentialsID', checkAuth());
-router.get('/download/:credentialsID', performDownloadStatus());
+router.get(
+  '/credentials/:credentialsID/download',
+  checkPlaidClientInitialized(),
+);
+router.get('/credentials/:credentialsID/download', checkAuth());
+router.get('/credentials/:credentialsID/download', checkCredentials());
+router.get('/credentials/:credentialsID/download', performDownloadStatus());
+
+// -----------------------------------------------------------------------------
+//
+// GET /plaid/credentials/status
+//
+// -----------------------------------------------------------------------------
+
+function performCredentialsStatus(): RouteHandler {
+  return handleError(async (req, res) => {
+    const Database = FirebaseAdmin.firestore();
+    const { uid } = req.decodedIDToken;
+
+    const snapshot = await Database.collection('PlaidCredentials')
+      .where('userRef.refID', '==', uid)
+      .get();
+
+    const credentialsList = snapshot.docs
+      .filter(doc => doc.exists)
+      .map(doc => doc.data());
+
+    const data = {};
+
+    credentialsList.forEach(credentials => {
+      data[credentials.id] = credentials.downloadStatus;
+    });
+
+    res.json({ data });
+  }, true);
+}
+
+router.get('/credentials/status', checkPlaidClientInitialized());
+router.get('/credentials/status', checkAuth());
+router.get('/credentials/status', performCredentialsStatus());
 
 // -----------------------------------------------------------------------------
 //
@@ -247,34 +225,89 @@ router.get('/download/:credentialsID', performDownloadStatus());
 // -----------------------------------------------------------------------------
 
 // TODO: Should this return null or throw error when they do not exist?
-async function genCredentials(
-  userID: ID,
-  credentialsID: ID,
-): Promise<PlaidCredentials> {
-  const Database = FirebaseAdmin.firestore();
-  let document;
-  try {
-    document = await Database.collection('PlaidCredentials')
-      .doc(credentialsID)
-      .get();
-  } catch (error) {
-    const errorCode = error.code || 'infindi/server-error';
-    const errorMessage = error.toString();
-    throw { errorCode, errorMessage };
-  }
+async function genCredentials(credentialsID: ID): Promise<?PlaidCredentials> {
+  const document = await FirebaseAdmin.firestore().collection(
+    'PlaidCredentials',
+  );
+  return document.exists ? document.data() : null;
+}
 
-  if (!document.exists) {
-    const errorCode = 'infindi/resource-not-found';
-    const errorMessage = `Could not find credentials with id: ${credentialsID}`;
-    throw { errorCode, errorMessage };
-  }
+function handleError(
+  routeHandler: RouteHandler,
+  isAsync: bool = false,
+): RouteHandler {
+  return (req, res, next) => {
+    if (isAsync) {
+      // Assume the route handler is operating via Promise.
+      routeHandler(req, res, next).catch(error => {
+        const infindiError = createError(error);
+        const status = Common.ErrorUtils.getStatusForErrorCode(error.errorCode);
+        res.status(status).json(infindiError);
+      });
+    } else {
+      try {
+        routeHandler(req, res, next);
+      } catch (error) {
+        const infindiError = createError(error);
+        const status = Common.ErrorUtils.getStatusForErrorCode(error.errorCode);
+        res.status(status).json(infindiError);
+      }
+    }
+  };
+}
 
-  const plaidCredentials = document.data();
+function createError(error: Object) {
+  const errorCode =
+    error.errorCode || error.code || error.error_code || 'infindi/server-error';
+  const errorMessage =
+    error.errorMessage ||
+    error.message ||
+    error.error_message ||
+    error.toString();
+  const toString = () => `[${errorCode}]: ${errorMessage}`;
+  return { errorCode, errorMessage, toString };
+}
 
-  if (plaidCredentials.userRef.refID !== userID) {
-    const errorCode = 'infindi/forbidden';
-    const errorMessage = 'Accessing resource without correct permissions';
-    throw { errorCode, errorMessage };
-  }
-  return plaidCredentials;
+// -----------------------------------------------------------------------------
+//
+// MIDDLEWARE UTILITIES
+//
+// -----------------------------------------------------------------------------
+
+function checkPlaidClientInitialized(): RouteHandler {
+  return (req, res, next) => {
+    if (!plaidClient) {
+      const errorCode = 'infind/server-error';
+      const errorMessage = 'Plaid client not initialized';
+      const status = Common.ErrorUtils.getStatusForErrorCode(errorCode);
+      const toString = () => `[${errorCode}]: ${errorMessage}`;
+      res.status(status).json({ errorCode, errorMessage, toString });
+      return;
+    }
+    next();
+  };
+}
+
+function checkCredentials(): RouteHandler {
+  return handleError(async (req, res, next) => {
+    const { uid } = req.decodedIDToken;
+    const { credentialsID } = req.params;
+
+    DEBUG('PLAID', 'Checking plaid credentials');
+    // Step 1: Make sure the credentials exist and belong to the authenticated
+    // user.
+    const credentials = await genCredentials(credentialsID);
+    if (!credentials || credentials.userRef.refID !== uid) {
+      ERROR(
+        'PLAID',
+        `Could not find valid credentials with id: ${credentialsID}`,
+      );
+      throw {
+        errorCode: 'infindi/resource-not-found',
+        errorMessage: 'Resource not found',
+      };
+    }
+    req.credentials = credentials;
+    next();
+  }, true);
 }

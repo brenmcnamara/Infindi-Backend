@@ -5,6 +5,7 @@ import CommonBackend from 'common-backend';
 import Plaid from 'plaid';
 
 import getAccountFromPlaidAccount from '../calculations/getAccountFromPlaidAccount';
+import invariant from 'invariant';
 
 import { ERROR, INFO } from '../log-utils';
 
@@ -26,8 +27,12 @@ const { DB } = CommonBackend;
 
 let plaidClient;
 
-export function initialize(workerID: ID): void {
+let workerID: ?ID = null;
+
+export function initialize(_workerID: ID): void {
   INFO('INITIALIZATION', 'Initializating download-request worker');
+
+  workerID = _workerID;
   plaidClient = new Plaid.Client(
     process.env.PLAID_CLIENT_ID,
     process.env.PLAID_SECRET,
@@ -42,6 +47,11 @@ export function initialize(workerID: ID): void {
   );
 }
 
+function getWorkerID(): ID {
+  invariant(workerID, 'Must initialize download-request before using');
+  return workerID;
+}
+
 // -----------------------------------------------------------------------------
 //
 // DOWNLOAD REQUEST JOB
@@ -53,7 +63,7 @@ async function genDownloadRequest(payload: Object) {
   INFO('PLAID', 'Detecting download request for plaid item');
   const { credentialsID, userID } = payload;
 
-  const credentials = await genCredentials(credentialsID);
+  let credentials = await genCredentials(credentialsID);
 
   if (!credentials) {
     ERROR('PLAID', 'Failed to find desired plaid credentials for download');
@@ -62,6 +72,24 @@ async function genDownloadRequest(payload: Object) {
     const toString = () => `[${errorCode}]: ${errorMessage}`;
     throw { errorCode, errorMessage, toString };
   }
+
+  if (credentials.downloadStatus.type === 'RUNNING') {
+    ERROR(
+      'PLAID',
+      'Running download request on credentials that have download running',
+    );
+    const errorCode = 'infindi/bad-request';
+    const errorMessage =
+      'Running download request on credentials that have download running';
+    const toString = () => `[${errorCode}]: ${errorMessage}`;
+    throw { errorCode, errorMessage, toString };
+  }
+
+  credentials = {
+    ...credentials,
+    downloadStatus: { type: 'RUNNING' },
+  };
+  await genUpdateCredentials(credentials);
 
   INFO('PLAID', 'Fetching plaid accounts');
   // $FlowFixMe - Why is this an error?
@@ -72,6 +100,7 @@ async function genDownloadRequest(payload: Object) {
 
   INFO('PLAID', 'Writing plaid accounts to Firebase');
   const accountGenerators: Array<Promise<Plaid$Account>> = plaidAccounts.map(
+    // $FlowFixMe - Credentials can't be null at this point.
     rawAccount => genCreateAccount(rawAccount, credentials),
   );
 
@@ -91,6 +120,12 @@ async function genDownloadRequest(payload: Object) {
     ),
   );
 
+  INFO('PLAID', 'Marking credentials download status as COMPLETE');
+  const now = new Date();
+  credentials = {
+    ...credentials,
+    downloadStatus: { downloadedAt: now, type: 'COMPLETE' },
+  };
   INFO('PLAID', 'Finished downloading plaid credentials');
   INFO('PLAID', 'Sending request to update metrics after plaid download');
   await CommonBackend.Job.sendRequestJob('CALCULATE_CORE_METRICS', { userID });
@@ -102,7 +137,9 @@ async function genDownloadRequest(payload: Object) {
 //
 // -----------------------------------------------------------------------------
 
-async function genCredentials(credentialsID: ID): Promise<?PlaidCredentials> {
+async function genCredentials(
+  credentialsID: ID,
+): Promise<PlaidCredentials | null> {
   // TODO: Flow typing.
   const document = await DB.transformError(
     FirebaseAdmin.firestore()
@@ -111,6 +148,15 @@ async function genCredentials(credentialsID: ID): Promise<?PlaidCredentials> {
       .get(),
   );
   return document.exists ? document.data() : null;
+}
+
+async function genUpdateCredentials(
+  credentials: PlaidCredentials,
+): Promise<void> {
+  await FirebaseAdmin.firestore()
+    .collection('PlaidCredentials')
+    .doc(credentials.id)
+    .set(credentials);
 }
 
 async function genCreateAccount(
