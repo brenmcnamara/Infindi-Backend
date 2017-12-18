@@ -1,7 +1,7 @@
 /* @flow */
 
 import * as FirebaseAdmin from 'firebase-admin';
-import BackendAPI from 'common-backend';
+import CommonBackend from 'common-backend';
 import Plaid from 'plaid';
 
 import getAccountFromPlaidAccount from '../calculations/getAccountFromPlaidAccount';
@@ -22,7 +22,7 @@ import type { ID } from 'common/src/types/core';
 
 const YEAR_IN_MILLIS = 1000 * 60 * 60 * 24 * 365;
 
-const DB = BackendAPI.DB;
+const { DB } = CommonBackend;
 
 let plaidClient;
 
@@ -35,7 +35,7 @@ export function initialize(workerID: ID): void {
     Plaid.environments[process.env.PLAID_ENV],
   );
 
-  BackendAPI.Job.listenToJobRequest(
+  CommonBackend.Job.listenToJobRequest(
     'PLAID_INITIAL_DOWNLOAD',
     workerID,
     genDownloadRequest,
@@ -92,6 +92,8 @@ async function genDownloadRequest(payload: Object) {
   );
 
   INFO('PLAID', 'Finished downloading plaid credentials');
+  INFO('PLAID', 'Sending request to update metrics after plaid download');
+  await CommonBackend.Job.sendRequestJob('CALCULATE_CORE_METRICS', { userID });
 }
 
 // -----------------------------------------------------------------------------
