@@ -3,6 +3,7 @@
 export const LogGroup = {
   INITIALIZATION: 'INITIALIZATION',
   LITMUS: 'LITMUS',
+  METRICS: 'METRICS',
   PLAID: 'PLAID',
   SESSION: 'SESSION',
 };

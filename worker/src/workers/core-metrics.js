@@ -24,6 +24,7 @@ export function initialize(workerID: ID): void {
 }
 
 async function genCalculateCoreMetrics(payload: Object) {
+  INFO('METRICS', 'Updating core metrics for user');
   const { userID } = payload;
   const [netWorth, savingsRate] = await Promise.all([
     genNetWorth(userID),
@@ -43,10 +44,12 @@ async function genCalculateCoreMetrics(payload: Object) {
     updatedAt: now,
   };
 
+  INFO('METRICS', 'Generates new core metrics for user');
   await FirebaseAdmin.firestore()
     .collection('UserMetrics')
     .doc(userID)
     .set(newUserMetrics);
+  INFO('METRICS', 'Finished writing new core metrics for user');
 }
 
 async function genUserMetrics(userID: ID): Promise<?UserMetrics> {

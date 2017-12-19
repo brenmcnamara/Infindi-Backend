@@ -1,11 +1,11 @@
 /* @flow */
 
 import * as FirebaseAdmin from 'firebase-admin';
+import Common from 'common';
 import CommonBackend from 'common-backend';
 import Plaid from 'plaid';
 
 import getAccountFromPlaidAccount from '../calculations/getAccountFromPlaidAccount';
-import invariant from 'invariant';
 
 import { ERROR, INFO } from '../log-utils';
 
@@ -27,12 +27,9 @@ const { DB } = CommonBackend;
 
 let plaidClient;
 
-let workerID: ?ID = null;
-
-export function initialize(_workerID: ID): void {
+export function initialize(workerID: ID): void {
   INFO('INITIALIZATION', 'Initializating download-request worker');
 
-  workerID = _workerID;
   plaidClient = new Plaid.Client(
     process.env.PLAID_CLIENT_ID,
     process.env.PLAID_SECRET,
@@ -45,11 +42,6 @@ export function initialize(_workerID: ID): void {
     workerID,
     genDownloadRequest,
   );
-}
-
-function getWorkerID(): ID {
-  invariant(workerID, 'Must initialize download-request before using');
-  return workerID;
 }
 
 // -----------------------------------------------------------------------------
@@ -86,7 +78,7 @@ async function genDownloadRequest(payload: Object) {
   }
 
   credentials = {
-    ...credentials,
+    ...Common.DBUtils.updateModelStub(credentials),
     downloadStatus: { type: 'RUNNING' },
   };
   await genUpdateCredentials(credentials);
@@ -123,12 +115,13 @@ async function genDownloadRequest(payload: Object) {
   INFO('PLAID', 'Marking credentials download status as COMPLETE');
   const now = new Date();
   credentials = {
-    ...credentials,
+    ...Common.DBUtils.updateModelStub(credentials),
     downloadStatus: { downloadedAt: now, type: 'COMPLETE' },
   };
+
+  await genUpdateCredentials(credentials);
+
   INFO('PLAID', 'Finished downloading plaid credentials');
-  INFO('PLAID', 'Sending request to update metrics after plaid download');
-  await CommonBackend.Job.sendRequestJob('CALCULATE_CORE_METRICS', { userID });
 }
 
 // -----------------------------------------------------------------------------

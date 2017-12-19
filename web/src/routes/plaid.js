@@ -226,9 +226,10 @@ router.get('/credentials/status', performCredentialsStatus());
 
 // TODO: Should this return null or throw error when they do not exist?
 async function genCredentials(credentialsID: ID): Promise<?PlaidCredentials> {
-  const document = await FirebaseAdmin.firestore().collection(
-    'PlaidCredentials',
-  );
+  const document = await FirebaseAdmin.firestore()
+    .collection('PlaidCredentials')
+    .doc(credentialsID)
+    .get();
   return document.exists ? document.data() : null;
 }
 
