@@ -9,10 +9,8 @@
   },
   "dependencies": {
     "body-parser": "~1.18.2",
-    "common":
-      "git+https://86f8b449cd778036c88467e637378b2e328bf08a@github.com/brenmcnamara/infindi-common.git",
-    "common-backend":
-      "git+https://86f8b449cd778036c88467e637378b2e328bf08a@github.com/brenmcnamara/infindi-common-backend.git",
+    "common": "git+https://86f8b449cd778036c88467e637378b2e328bf08a@github.com/brenmcnamara/infindi-common.git",
+    "common-backend": "git+https://86f8b449cd778036c88467e637378b2e328bf08a@github.com/brenmcnamara/infindi-common-backend.git",
     "cookie-parser": "~1.4.3",
     "debug": "~2.6.9",
     "dotenv": "^4.0.0",
@@ -21,6 +19,7 @@
     "firebase": "^4.6.2",
     "firebase-admin": "^5.5.1",
     "morgan": "~1.9.0",
+    "nullthrows": "^1.0.0",
     "plaid": "^2.1.1",
     "serve-favicon": "~2.4.5",
     "uuid": "^3.1.0"

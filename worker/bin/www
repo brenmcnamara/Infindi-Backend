@@ -9,6 +9,7 @@
 
 const BackendAPI = require('common-backend');
 const FirebaseAdmin = require('firebase-admin');
+const PlaidClient = require('../build/plaid-client');
 
 const debug = require('debug')('infindi-backend:server');
 const dotenv = require('dotenv');
@@ -41,6 +42,9 @@ const port = normalizePort(process.env.PORT || process.env.PORT_FALLBACK);
 
 console.log('Initializing Workers...');
 workers.initialize();
+
+console.log('Initialziing plaid client...');
+PlaidClient.initialize();
 
 console.log(`Setting up HTTP Server on port ${port}...`);
 app.set('port', port);

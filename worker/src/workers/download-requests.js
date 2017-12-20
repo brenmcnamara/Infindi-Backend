@@ -3,40 +3,31 @@
 import * as FirebaseAdmin from 'firebase-admin';
 import Common from 'common';
 import CommonBackend from 'common-backend';
-import Plaid from 'plaid';
 
+import genNetWorth from '../calculations/genNetWorth';
+import genSavingsRate from '../calculations/genSavingsRate';
 import getAccountFromPlaidAccount from '../calculations/getAccountFromPlaidAccount';
+import getTransactionFromPlaidTransaction from '../calculations/getTransactionFromPlaidTransaction';
+import nullthrows from 'nullthrows';
 
 import { ERROR, INFO } from '../log-utils';
+import { genPlaidAccounts, genPlaidTransactions } from '../plaid-client';
 
 import type {
   Account,
   PlaidCredentials,
-  Transaction,
+  UserMetrics,
 } from 'common/src/types/db';
 import type {
   Account as Plaid$Account,
-  PlaidDate,
   Transaction as Plaid$Transaction,
 } from 'common/src/types/plaid';
 import type { ID } from 'common/src/types/core';
 
-const YEAR_IN_MILLIS = 1000 * 60 * 60 * 24 * 365;
-
 const { DB } = CommonBackend;
-
-let plaidClient;
 
 export function initialize(workerID: ID): void {
   INFO('INITIALIZATION', 'Initializating download-request worker');
-
-  plaidClient = new Plaid.Client(
-    process.env.PLAID_CLIENT_ID,
-    process.env.PLAID_SECRET,
-    process.env.PLAID_PUBLIC_KEY,
-    Plaid.environments[process.env.PLAID_ENV],
-  );
-
   CommonBackend.Job.listenToJobRequest(
     'PLAID_INITIAL_DOWNLOAD',
     workerID,
@@ -53,7 +44,7 @@ export function initialize(workerID: ID): void {
 // TODO: Add cancel checks intermittently throughout this request.
 async function genDownloadRequest(payload: Object) {
   INFO('PLAID', 'Detecting download request for plaid item');
-  const { credentialsID, userID } = payload;
+  const { credentialsID } = payload;
 
   let credentials = await genCredentials(credentialsID);
 
@@ -85,30 +76,23 @@ async function genDownloadRequest(payload: Object) {
 
   INFO('PLAID', 'Fetching plaid accounts');
   // $FlowFixMe - Why is this an error?
-  const plaidAccounts = await genPlaidAccounts(
-    plaidClient,
-    credentials.accessToken,
-  );
+  const plaidAccounts = await genPlaidAccounts(credentials);
 
   INFO('PLAID', 'Writing plaid accounts to Firebase');
-  const accountGenerators: Array<Promise<Plaid$Account>> = plaidAccounts.map(
-    // $FlowFixMe - Credentials can't be null at this point.
-    rawAccount => genCreateAccount(rawAccount, credentials),
+  const accountGenerators: Array<Promise<Account>> = plaidAccounts.map(
+    rawAccount => genCreateAccount(rawAccount, nullthrows(credentials)),
   );
 
   await Promise.all(accountGenerators);
 
   INFO('PLAID', 'Fetching plaid transactions');
   // $FlowFixMe - Why is this an error?
-  const plaidTransactions = await genPlaidTransactions(
-    plaidClient,
-    credentials.accessToken,
-  );
+  const plaidTransactions = await genPlaidTransactions(credentials);
 
   INFO('PLAID', 'Writing plaid transactions to Firebase');
   await Promise.all(
-    plaidTransactions.map(transaction =>
-      genCreateTransaction(userID, transaction),
+    plaidTransactions.map(plaidTransaction =>
+      genCreateTransaction(plaidTransaction, nullthrows(credentials)),
     ),
   );
 
@@ -120,6 +104,28 @@ async function genDownloadRequest(payload: Object) {
   };
 
   await genUpdateCredentials(credentials);
+
+  INFO('PLAID', 'Updating core metrics');
+
+  const userMetrics = await genUserMetrics(credentials.userRef.refID);
+  const [netWorth, savingsRate] = await Promise.all([
+    genNetWorth(credentials.userRef.refID),
+    genSavingsRate(credentials.userRef.refID),
+  ]);
+
+  const newUserMetrics = userMetrics
+    ? {
+        ...Common.DBUtils.updateModelStub(userMetrics),
+        netWorth,
+        savingsRate,
+      }
+    : {
+        ...Common.DBUtils.createModelStub('UserMetrics'),
+        netWorth,
+        savingsRate,
+      };
+
+  await genUpsertUserMetrics(newUserMetrics);
 
   INFO('PLAID', 'Finished downloading plaid credentials');
 }
@@ -153,99 +159,25 @@ async function genUpdateCredentials(
 }
 
 async function genCreateAccount(
-  rawPlaidAccount: Plaid$Account,
+  plaidAccount: Plaid$Account,
   credentials: PlaidCredentials,
 ): Promise<Account> {
-  const account = getAccountFromPlaidAccount(rawPlaidAccount, credentials);
-  await DB.transformError(
-    FirebaseAdmin.firestore()
-      .collection('Accounts')
-      .doc(account.id)
-      .set(account),
-  );
+  const account = getAccountFromPlaidAccount(plaidAccount, credentials);
+  await FirebaseAdmin.firestore()
+    .collection('Accounts')
+    .doc(account.id)
+    .set(account);
   return account;
 }
 
-function genPlaidAccounts(
-  client: Object,
-  accessToken: string,
-): Promise<Array<Plaid$Account>> {
-  return new Promise(resolve => {
-    client.getAccounts(accessToken, (error, response) => {
-      if (error) {
-        const errorCode = error.error_code || 'infindi/server-error';
-        const errorMessage =
-          error.error_message ||
-          'Unknown error when fetching accounts from plaid';
-        throw { errorCode, errorMessage };
-      }
-      resolve(response.accounts);
-    });
-  });
-}
-
-function genPlaidTransactions(
-  client: Object,
-  accessToken: string,
-): Promise<Array<Plaid$Transaction>> {
-  return new Promise(resolve => {
-    const endDate = new Date();
-    const startDate = new Date(endDate.getTime() - 2 * YEAR_IN_MILLIS);
-    const startPlaidDate = getPlaidDate(startDate);
-    const endPlaidDate = getPlaidDate(endDate);
-    client.getTransactions(
-      accessToken,
-      startPlaidDate,
-      endPlaidDate,
-      (error, response) => {
-        if (error) {
-          const errorCode = error.error_code || 'infindi/server-error';
-          const errorMessage =
-            error.error_message ||
-            'Unknown plaid error when fetching transactions';
-          throw { errorCode, errorMessage };
-        }
-        const transactions: Array<Plaid$Transaction> = response.transactions;
-        resolve(transactions);
-      },
-    );
-  });
-}
-
 async function genCreateTransaction(
-  uid: ID,
-  rawTransaction: Plaid$Transaction,
+  plaidTransaction: Plaid$Transaction,
+  credentials: PlaidCredentials,
 ) {
-  const now = new Date();
-  const category =
-    rawTransaction.category && rawTransaction.category.length > 0
-      ? rawTransaction.category[rawTransaction.category.length - 1]
-      : null;
-  const transaction: Transaction = {
-    accountRef: {
-      pointerType: 'Account',
-      type: 'POINTER',
-      refID: rawTransaction.account_id,
-    },
-    amount: rawTransaction.amount,
-    category,
-    createdAt: now,
-    id: rawTransaction.transaction_id,
-    modelType: 'Transaction',
-    name: rawTransaction.name,
-    sourceOfTruth: {
-      type: 'PLAID',
-      value: rawTransaction,
-    },
-    transactionDate: getUTCDate(rawTransaction.date),
-    type: 'MODEL',
-    updatedAt: now,
-    userRef: {
-      pointerType: 'User',
-      type: 'POINTER',
-      refID: uid,
-    },
-  };
+  const transaction = getTransactionFromPlaidTransaction(
+    plaidTransaction,
+    credentials,
+  );
 
   await DB.transformError(
     FirebaseAdmin.firestore()
@@ -256,22 +188,21 @@ async function genCreateTransaction(
   return transaction;
 }
 
-function getPlaidDate(date: Date): PlaidDate {
-  const day = date.getUTCDate();
-  const month = date.getUTCMonth();
-  const year = date.getUTCFullYear();
+async function genUserMetrics(userID: ID): Promise<?UserMetrics> {
+  const document = await FirebaseAdmin.firestore()
+    .collection('UserMetrics')
+    .doc(userID)
+    .get();
 
-  const dayFormatted = day < 10 ? `0${day}` : day.toString();
-  const monthFormatted = month < 10 ? `0${month}` : month.toString();
-  const yearFormatted = year.toString();
-
-  return `${yearFormatted}-${monthFormatted}-${dayFormatted}`;
+  if (!document.exists) {
+    return null;
+  }
+  return document.data();
 }
 
-function getUTCDate(plaidDate: PlaidDate): Date {
-  const [yearFormatted, monthFormatted, dayFormatted] = plaidDate.split('-');
-  const year = parseInt(yearFormatted, 10);
-  const month = parseInt(monthFormatted, 10);
-  const day = parseInt(dayFormatted, 10);
-  return new Date(Date.UTC(year, month, day));
+async function genUpsertUserMetrics(userMetrics: UserMetrics): Promise<void> {
+  await FirebaseAdmin.firestore()
+    .collection('UserMetrics')
+    .doc(userMetrics.id)
+    .set(userMetrics);
 }
