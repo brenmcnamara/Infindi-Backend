@@ -167,7 +167,7 @@ async function genUpdateAll(payload: Object) {
       };
     }
 
-    batch.update(
+    batch.set(
       FirebaseAdmin.firestore()
         .collection('UserMetrics')
         .doc(updatedMetrics.id),
