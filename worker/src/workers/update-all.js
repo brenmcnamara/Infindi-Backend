@@ -156,12 +156,14 @@ async function genUpdateAll(payload: Object) {
     if (userMetrics) {
       updatedMetrics = {
         ...Common.DBUtils.updateModelStub(userMetrics),
+        id: userID,
         netWorth,
         savingsRate,
       };
     } else {
       updatedMetrics = {
         ...Common.DBUtils.createModelStub('UserMetrics'),
+        id: userID,
         netWorth,
         savingsRate,
       };

@@ -220,6 +220,60 @@ router.get('/credentials/status', performCredentialsStatus());
 
 // -----------------------------------------------------------------------------
 //
+// POST /plaid/webhook
+//
+// -----------------------------------------------------------------------------
+
+// TODO: We do not yet support deleting or updating transactions. Need to
+// do that and make sure it's secure.
+function performWebhook(): RouteHandler {
+  INFO('PLAID', 'Receiving plaid webhook update');
+  return handleError(async (req, res) => {
+    const DONE = () => res.status(201).json({ status: 'OK' });
+
+    const payload = req.body;
+    const credentialsID = payload.item_id;
+
+    const credentials = await genCredentials(credentialsID);
+    if (!credentials) {
+      // NOTE: This should be a security notice.
+      INFO(
+        'PLAID',
+        'Quitting plaid webhook update because credentials being updated do not exist',
+      );
+      return DONE();
+    }
+
+    INFO('PLAID', 'Checking if we have running updates for this user');
+    const requests = await genDocs(
+      FirebaseAdmin.firestore()
+        .collection('JobRequests')
+        .where('name', '==', 'UPDATE_ALL')
+        .where('status', '==', 'RUNNING')
+        .where('payload.userID', '==', credentials.userRef.refID)
+        .get(),
+    );
+
+    // TODO: There could be race conditions here.
+    // Already performing a user download. Should not be doing this.
+    if (requests.length > 0) {
+      INFO('PLAID', 'Updates exist. Quitting early');
+      return DONE();
+    }
+
+    INFO('PLAID', 'No updates exist. Starting a plaid update for this user');
+    await CommonBackend.Job.genRequestJob('UPDATE_ALL', {
+      userID: credentials.userRef.refID,
+    });
+
+    return DONE();
+  }, true);
+}
+
+router.post('/webhook', performWebhook());
+
+// -----------------------------------------------------------------------------
+//
 // UTILITIES
 //
 // -----------------------------------------------------------------------------
@@ -311,4 +365,11 @@ function checkCredentials(): RouteHandler {
     req.credentials = credentials;
     next();
   }, true);
+}
+
+async function genDocs<T: Object>(
+  firebaseSnapshotPromise: Object,
+): Promise<Array<T>> {
+  const snapshot = await firebaseSnapshotPromise;
+  return snapshot.docs.filter(doc => doc.exists).map(doc => doc.data());
 }

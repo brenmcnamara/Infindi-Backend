@@ -16,7 +16,7 @@
     env: 'sandbox',
     key: '9ef581824905d24a16c3fa522b949d',
     product: ['auth', 'transactions'],
-    webhook: 'https://requestb.in', // Optional – use webhooks to get transaction and error updates
+    webhook: 'http://plaid.infindidev.ultrahook.com',
     onLoad: function() {
       // Optional, called when Link loads
     },
@@ -26,22 +26,6 @@
       // user selected and the account ID, if the Account Select view
       // is enabled.
       console.log('onSuccess:', public_token, metadata);
-      /*
-      $.ajax({
-        url: '/plaid/get_access_token',
-        type: 'post',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        data: JSON.stringify({
-          public_token: public_token,
-        }),
-        dataType: 'json',
-        success: function(data) {
-          console.log('successfully fetched access token', data);
-        },
-      });
-      */
     },
     onExit: function(err, metadata) {
       // The user exited the Link flow.
