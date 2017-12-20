@@ -8,6 +8,7 @@ import genNetWorth from '../calculations/genNetWorth';
 import genSavingsRate from '../calculations/genSavingsRate';
 import getAccountFromPlaidAccount from '../calculations/getAccountFromPlaidAccount';
 import getTransactionFromPlaidTransaction from '../calculations/getTransactionFromPlaidTransaction';
+import invariant from 'invariant';
 
 import { forEachObject } from '../obj-utils';
 import { genPlaidAccounts, genPlaidTransactions } from '../plaid-client';
@@ -144,45 +145,32 @@ async function genUpdateAll(payload: Object) {
     INFO('PLAID', 'Waiting for plaid updates to set changes to batch process');
     await Promise.all(updates);
 
+    INFO('PLAID', 'Submitting batched update to firestore');
+    await batch.commit();
+
     INFO('PLAID', 'Updating user core metrics');
+    // TODO: We just updated all the account and transaction of the user,
+    // and now we are going to use that to update the user metrics. Is it
+    // possible that we may be waiting for database consistency to happen?
+    // Could we accidentally get stale data here for the account and
+    // transactions of a user?
     const [netWorth, savingsRate] = await Promise.all([
       genNetWorth(userID),
       genSavingsRate(userID),
     ]);
 
     const userMetrics = await genUserMetrics(userID);
-    let updatedMetrics: UserMetrics;
+    const updatedMetrics: UserMetrics = {
+      ...Common.DBUtils.updateModelStub(userMetrics),
+      id: userID,
+      netWorth,
+      savingsRate,
+    };
 
-    if (userMetrics) {
-      updatedMetrics = {
-        ...Common.DBUtils.updateModelStub(userMetrics),
-        id: userID,
-        netWorth,
-        savingsRate,
-      };
-    } else {
-      updatedMetrics = {
-        ...Common.DBUtils.createModelStub('UserMetrics'),
-        id: userID,
-        netWorth,
-        savingsRate,
-      };
-    }
-
-    batch.set(
-      FirebaseAdmin.firestore()
-        .collection('UserMetrics')
-        .doc(updatedMetrics.id),
-      updatedMetrics,
-    );
-
-    INFO('PLAID', 'Submitting batched update to firestore');
-    await batch.commit();
+    await genUpdateUserMetrics(updatedMetrics);
   } catch (error) {
-    ERROR(
-      'PLAID',
-      'Failed to download successfully, rolling back download status of credentials',
-    );
+    ERROR('PLAID', `UPDATE_ALL failed: [${error.toString()}]`);
+    ERROR('PLAID', 'Rolling back download status of credentials');
     // Failed to update. Need to make sure that we roll back credentials before
     // propagating the error.
     const failedBatch = FirebaseAdmin.firestore().batch();
@@ -266,16 +254,25 @@ async function genAllAccounts(userID: ID): Promise<JSONMap<ID, Account>> {
   return map;
 }
 
-async function genUserMetrics(userID: ID): Promise<?UserMetrics> {
+async function genUserMetrics(userID: ID): Promise<UserMetrics> {
   const document = await FirebaseAdmin.firestore()
     .collection('UserMetrics')
     .doc(userID)
     .get();
 
-  if (!document.exists) {
-    return null;
-  }
+  invariant(
+    document.exists,
+    'Expected user metrics for user to exist: %s',
+    userID,
+  );
   return document.data();
+}
+
+async function genUpdateUserMetrics(userMetrics: UserMetrics): UserMetrics {
+  await FirebaseAdmin.firestore()
+    .collection('UserMetrics')
+    .doc(userMetrics.id)
+    .set(userMetrics);
 }
 
 // This is the date we need to fetch our credentials from.
