@@ -245,18 +245,28 @@ function performWebhook(): RouteHandler {
     }
 
     INFO('PLAID', 'Checking if we have running updates for this user');
-    const requests = await genDocs(
-      FirebaseAdmin.firestore()
-        .collection('JobRequests')
-        .where('name', '==', 'UPDATE_ALL')
-        .where('status', '==', 'RUNNING')
-        .where('payload.userID', '==', credentials.userRef.refID)
-        .get(),
-    );
+    const [unclaimedRequests, runningRequests] = await Promise.all([
+      await genDocs(
+        FirebaseAdmin.firestore()
+          .collection('JobRequests')
+          .where('name', '==', 'UPDATE_ALL')
+          .where('status', '==', 'UNCLAIMED')
+          .where('payload.userID', '==', credentials.userRef.refID)
+          .get(),
+      ),
+      await genDocs(
+        FirebaseAdmin.firestore()
+          .collection('JobRequests')
+          .where('name', '==', 'UPDATE_ALL')
+          .where('status', '==', 'RUNNING')
+          .where('payload.userID', '==', credentials.userRef.refID)
+          .get(),
+      ),
+    ]);
 
     // TODO: There could be race conditions here.
     // Already performing a user download. Should not be doing this.
-    if (requests.length > 0) {
+    if (unclaimedRequests.length > 0 || runningRequests.length > 0) {
       INFO('PLAID', 'Updates exist. Quitting early');
       return DONE();
     }
