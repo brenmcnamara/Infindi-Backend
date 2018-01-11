@@ -1257,7 +1257,7 @@ commander@^2.11.0, commander@^2.9.0:
 
 "common-backend@git+https://86f8b449cd778036c88467e637378b2e328bf08a@github.com/brenmcnamara/infindi-common-backend.git":
   version "1.0.0"
-  resolved "git+https://86f8b449cd778036c88467e637378b2e328bf08a@github.com/brenmcnamara/infindi-common-backend.git#44e144172896f9567c2730d6069f3feaacda46fd"
+  resolved "git+https://86f8b449cd778036c88467e637378b2e328bf08a@github.com/brenmcnamara/infindi-common-backend.git#076f6af5297e659cba3030d5a2bee626e2e38fc2"
   dependencies:
     common "git+https://86f8b449cd778036c88467e637378b2e328bf08a@github.com/brenmcnamara/infindi-common.git"
     invariant "^2.2.2"
