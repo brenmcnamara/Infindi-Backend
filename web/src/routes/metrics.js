@@ -5,9 +5,9 @@ import BackendAPI from 'common-backend';
 import express from 'express';
 
 import { checkAuth } from '../middleware';
-import { getStatusForErrorCode } from 'common/build/error-codes';
+import { getStatusForErrorCode } from 'common/lib/error-utils';
 
-import type { Pointer } from 'common/src/types/core';
+import type { Pointer } from 'common/types/core';
 import type { RouteHandler } from '../middleware';
 
 const router = express.Router();

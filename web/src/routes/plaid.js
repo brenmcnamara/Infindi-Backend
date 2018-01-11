@@ -10,9 +10,9 @@ import express from 'express';
 import { checkAuth } from '../middleware';
 import { DEBUG, ERROR, INFO } from '../log-utils';
 
-import type { Environment as Plaid$Environment } from 'common/src/types/plaid';
-import type { ID } from 'common/src/types/core';
-import type { PlaidCredentials } from 'common/src/types/db';
+import type { Environment as Plaid$Environment } from 'common/types/plaid';
+import type { ID } from 'common/types/core';
+import type { PlaidCredentials } from 'common/lib/models/PlaidCredentials';
 import type { RouteHandler } from '../middleware';
 
 const router = express.Router();

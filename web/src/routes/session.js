@@ -9,9 +9,9 @@ import express from 'express';
 import { checkAuth } from '../middleware';
 import { INFO } from '../log-utils';
 
-import type { ID, Seconds } from 'common/src/types/core';
+import type { ID, Seconds } from 'common/types/core';
 import type { RouteHandler } from '../middleware';
-import type { UserSession } from 'common/src/types/db';
+import type { UserSession } from 'common/lib/models/UserSession';
 
 const router = express.Router();
 
