@@ -8,8 +8,8 @@ import genSavingsRate from '../calculations/genSavingsRate';
 
 import { INFO } from '../log-utils';
 
-import type { ID } from 'common/src/types/core';
-import type { UserMetrics } from 'common/src/types/db';
+import type { ID } from 'common/types/core';
+import type { UserMetrics } from 'common/lib/models/UserMetrics';
 
 const { DB } = CommonBackend;
 

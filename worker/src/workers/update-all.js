@@ -14,12 +14,10 @@ import { forEachObject } from '../obj-utils';
 import { genPlaidAccounts, genPlaidTransactions } from '../plaid-client';
 import { ERROR, INFO } from '../log-utils';
 
-import type {
-  Account,
-  PlaidCredentials,
-  UserMetrics,
-} from 'common/src/types/db';
-import type { ID } from 'common/src/types/core';
+import type { Account } from 'common/lib/models/Account';
+import type { ID } from 'common/types/core';
+import type { PlaidCredentials } from 'common/lib/models/PlaidCredentials';
+import type { UserMetrics } from 'common/lib/models/UserMetrics';
 
 const { Job } = CommonBackend;
 
@@ -268,7 +266,7 @@ async function genUserMetrics(userID: ID): Promise<UserMetrics> {
   return document.data();
 }
 
-async function genUpdateUserMetrics(userMetrics: UserMetrics): UserMetrics {
+async function genUpdateUserMetrics(userMetrics: UserMetrics): Promise<void> {
   await FirebaseAdmin.firestore()
     .collection('UserMetrics')
     .doc(userMetrics.id)

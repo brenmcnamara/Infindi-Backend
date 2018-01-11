@@ -5,7 +5,7 @@ import express from 'express';
 import morgan from 'morgan';
 import routes, { initialize as initializeRoutes } from './routes';
 
-import { getStatusForErrorCode } from 'common/build/error-codes';
+import { getStatusForErrorCode } from 'common/lib/error-utils';
 import { initialize as initializeWorkers } from './workers';
 
 const app = express();

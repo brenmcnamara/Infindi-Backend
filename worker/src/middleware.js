@@ -3,7 +3,7 @@
 import * as FirebaseAdmin from 'firebase-admin';
 import Common from 'common';
 
-import type { DecodedIDToken } from 'common/src/types/firebase-admin';
+import type { DecodedIDToken } from 'common/types/firebase-admin';
 
 export type RouteHandler = (req: any, res: any, next: Function) => any;
 

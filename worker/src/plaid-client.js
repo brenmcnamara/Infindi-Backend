@@ -8,8 +8,8 @@ import type {
   Account as Plaid$Account,
   PlaidDate,
   Transaction as Plaid$Transaction,
-} from 'common/src/types/plaid';
-import type { PlaidCredentials } from 'common/src/types/db';
+} from 'common/types/plaid';
+import type { PlaidCredentials } from 'common/lib/models/PlaidCredentials';
 
 const YEAR_IN_MILLIS = 1000 * 60 * 60 * 24 * 365;
 

@@ -1,10 +1,11 @@
 /* @flow */
 
-import type { PlaidCredentials, Transaction } from 'common/src/types/db';
+import type { PlaidCredentials } from 'common/lib/models/PlaidCredentials';
 import type {
   PlaidDate,
   Transaction as Plaid$Transaction,
-} from 'common/src/types/plaid';
+} from 'common/types/plaid';
+import type { Transaction } from 'common/lib/models/Transaction';
 
 export default function getTransactionFromPlaidTransaction(
   plaidTransaction: Plaid$Transaction,

@@ -7,7 +7,7 @@ import { initialize as initializeDownloadRequests } from './download-requests';
 import { initialize as initializePing } from './ping';
 import { initialize as initializeUpdateAll } from './update-all';
 
-import type { ID } from 'common/src/types/core';
+import type { ID } from 'common/types/core';
 
 let workerID: ?ID = null;
 

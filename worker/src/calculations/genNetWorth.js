@@ -2,8 +2,8 @@
 
 import * as FirebaseAdmin from 'firebase-admin';
 
-import type { Account } from 'common/src/types/db';
-import type { Dollars, ID } from 'common/src/types/core';
+import type { Account } from 'common/lib/models/Account';
+import type { Dollars, ID } from 'common/types/core';
 
 async function genNetWorth(userID: ID): Promise<Dollars> {
   const Database = FirebaseAdmin.firestore();

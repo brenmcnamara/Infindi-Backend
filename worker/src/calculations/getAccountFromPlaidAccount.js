@@ -2,9 +2,10 @@
 
 import Common from 'common';
 
-import type { Account, PlaidCredentials } from 'common/src/types/db';
-import type { Account as Plaid$Account } from 'common/src/types/plaid';
-import type { ModelStub } from 'common/src/types/core';
+import type { Account } from 'common/lib/models/Account';
+import type { Account as Plaid$Account } from 'common/types/plaid';
+import type { ModelStub } from 'common/types/core';
+import type { PlaidCredentials } from 'common/lib/models/PlaidCredentials';
 
 const { DBUtils } = Common;
 

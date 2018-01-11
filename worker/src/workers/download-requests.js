@@ -13,16 +13,14 @@ import nullthrows from 'nullthrows';
 import { ERROR, INFO } from '../log-utils';
 import { genPlaidAccounts, genPlaidTransactions } from '../plaid-client';
 
-import type {
-  Account,
-  PlaidCredentials,
-  UserMetrics,
-} from 'common/src/types/db';
+import type { Account } from 'common/lib/models/Account';
 import type {
   Account as Plaid$Account,
   Transaction as Plaid$Transaction,
-} from 'common/src/types/plaid';
-import type { ID } from 'common/src/types/core';
+} from 'common/types/plaid';
+import type { PlaidCredentials } from 'common/lib/models/PlaidCredentials';
+import type { UserMetrics } from 'common/lib/models/UserMetrics';
+import type { ID } from 'common/types/core';
 
 const { DB } = CommonBackend;
 

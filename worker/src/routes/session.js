@@ -9,7 +9,7 @@ import express from 'express';
 import { checkGCPCronRequest } from '../middleware';
 
 import type { RouteHandler } from '../middleware';
-import type { UserSession } from 'common/src/types/db';
+import type { UserSession } from 'common/lib/models/UserSession';
 
 const router = express.Router();
 
