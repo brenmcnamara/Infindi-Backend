@@ -5,7 +5,6 @@ import express from 'express';
 import metrics, { initialize as initializeMetrics } from './metrics';
 import plaid, { initialize as initializePlaid } from './plaid';
 import debug, { initialize as initializeDebug } from './debug';
-import session, { initialize as initializeSession } from './session';
 import update, { initialize as initializeUpdate } from './update';
 import yodlee, { initialize as initializeYodlee } from './yodlee';
 
@@ -18,7 +17,6 @@ export function initialize(): void {
   initializeDebug();
   initializeMetrics();
   initializePlaid();
-  initializeSession();
   initializeUpdate();
   initializeYodlee();
 
@@ -32,7 +30,6 @@ export function initialize(): void {
   router.use('/auth', auth);
   router.use('/metrics', metrics);
   router.use('/plaid', plaid);
-  router.use('/session', session);
   router.use('/update', update);
   router.use('/yodlee', yodlee);
 
