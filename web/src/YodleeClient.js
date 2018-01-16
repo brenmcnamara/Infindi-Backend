@@ -4,115 +4,22 @@ import invariant from 'invariant';
 import nullthrows from 'nullthrows';
 import request from 'request';
 
-const BASE_URI = 'https://developer.api.yodlee.com';
+import type {
+  Account,
+  AccessToken,
+  Locale,
+  Provider,
+  ProviderAccount,
+  User,
+} from 'common/types/yodlee';
+
+const BASE_URI = 'https://developer.api.yodlee.com/ysl/restserver/v1';
 
 // -----------------------------------------------------------------------------
 //
 // TYPES
 //
 // -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-//
-// TYPES / DATA MODEL
-//
-// https://developer.yodlee.com/Data_Model/Overview
-//
-// -----------------------------------------------------------------------------
-
-export type DateString = string; // yyyy-MM-dd
-
-export type DateTimeString = string; // 2017-11-14T04:23:10Z
-
-// NOTE: Javascript does not support longs. Need to extract this from the
-// request as a string to avoid overflows.
-export type Long = number;
-
-// TODO: MORE HERE
-export type Currency = 'USD';
-
-// TODO: MORE HERE
-export type DateFormat = 'MM/dd/yyyy';
-
-// TODO: MORE HERE
-export type Locale = 'en_US';
-
-// TODO: MORE HERE
-export type Timezone = 'PST';
-
-export type Preference = {|
-  +currency: Currency,
-  +dateFormat: DateFormat,
-  +locale: Locale,
-  +timezone: Timezone,
-|};
-
-export type User = {|
-  +id: Long,
-  +loginName: string,
-  +name: {|
-    +first: string,
-    +last: string,
-  |},
-  +preferences: Preference,
-  +roleType: 'INDIVIDUAL',
-  +session: {|
-    +userSession: string,
-  |},
-|};
-
-export type ProviderAccount = {|
-  +aggregationSource: 'USER' | 'SYSTEM',
-  +createdDate: DateString,
-  +id: Long,
-  +isManual: bool,
-  +lastUpdated: DateTimeString,
-  +loginForm: LoginForm,
-  +providerId: Long,
-  +refreshInfo: RefreshInfo,
-|};
-
-// Account types and containers can be found here:
-// https://developer.yodlee.com/Data_Model/Resource_Provider_Accounts
-export type Account = {|
-  +accountNumber: string,
-  +accountStatus: 'ACTIVE' | 'TO_BE_CLOSED' | string,
-  +accountType: 'INDIVIDUAL' | string,
-  +aggregationSource: 'USER' | 'SYSTEM',
-  +availableBalance?: AccountBalance,
-  +balance?: AccountBalance,
-  +bankTransferCode?: {| +id: string |},
-  +cash?: AccountBalance, // Found this field in my schwab account.
-  +CONTAINER: string,
-  +createdDate: DateTimeString,
-  +currentBalance?: AccountBalance,
-  +holderProfile?: Object, // Found this field in my schwab account.
-  +id: Long,
-  +includeInNetWorth?: bool,
-  +isAsset: bool,
-  +isManual: bool,
-  +lastUpdated: DateTimeString,
-  +providerAccountId: Long,
-  +providerId: string,
-  +providerName: string,
-  +refreshinfo: RefreshInfo,
-|};
-
-export type AccountBalance = {|
-  +amount: number,
-  +currency: Currency,
-|};
-
-export type RefreshInfo = {|
-  +lastRefreshed: DateTimeString,
-  +lastRefreshAttempt: DateTimeString,
-  +nextRefreshScheduled: DateTimeString,
-  +status: string,
-  +statusCode: number,
-  +statusMessage: string,
-|};
-
-export type LoginForm = {||};
 
 // -----------------------------------------------------------------------------
 //
@@ -126,6 +33,7 @@ type ErrorResponse = {|
   +referenceCode: string,
 |};
 
+// eslint-disable-next-line no-unused-vars
 type CobrandResponse = {|
   +applicationId: string,
   +cobrandId: number,
@@ -145,6 +53,16 @@ type ProviderAccountResponse = {|
 
 type AccountsResponse = {|
   +account: Array<Account>,
+|};
+
+type AccessTokensResponse = {|
+  +user: {|
+    +accessTokens: Array<AccessToken>,
+  |},
+|};
+
+type ProvidersResponse = {|
+  +provider: Array<Provider>,
 |};
 
 // -----------------------------------------------------------------------------
@@ -202,7 +120,7 @@ export default class YodleeClient {
             locale,
           },
         }),
-        uri: `${BASE_URI}/ysl/restserver/v1/cobrand/login`,
+        uri: `${BASE_URI}/cobrand/login`,
       };
 
       const onComplete = (error: Error, response: Object, body: string) => {
@@ -210,7 +128,11 @@ export default class YodleeClient {
           reject(error);
           return;
         }
-        const json: CobrandResponse = JSON.parse(body);
+        const json = JSON.parse(body);
+        if (json.errorCode) {
+          reject(json);
+          return;
+        }
         this._applicationID = json.applicationId;
         this._cobrandID = json.cobrandId;
         this._cobrandSession = json.session.cobSession;
@@ -225,7 +147,6 @@ export default class YodleeClient {
   genLoginUser(loginName: string, password: string): Promise<void> {
     return this._genValidateCobrandLogin()
       .then(() => {
-        const uri = `${BASE_URI}/ysl/restserver/v1/user/login`;
         const request = {
           user: {
             loginName,
@@ -233,7 +154,7 @@ export default class YodleeClient {
             locale: nullthrows(this._locale),
           },
         };
-        return this._genPostRequest(uri, request);
+        return this._genPostRequest(`${BASE_URI}/user/login`, request);
       })
       .then((response: UserLoginResponse) => {
         this._currentUser = response.user;
@@ -242,22 +163,43 @@ export default class YodleeClient {
 
   genLogoutUser(): Promise<void> {
     return this._genValidateUserLogin()
-      .then(() => {
-        const uri = `${BASE_URI}/ysl/restserver/v1/user/logout`;
-        return this._genPostRequest(uri, {});
-      })
+      .then(() => this._genPostRequest(`${BASE_URI}/user/logout`, {}))
       .then(() => {
         this._currentUser = null;
       });
   }
 
-  genProviderAccounts(): Promise<Array<ProviderAccount>> {
+  genFastLinkToken(): Promise<AccessToken> {
+    return this._genValidateCobrandLogin()
+      .then(() => this._genValidateUserLogin())
+      .then(() =>
+        this._genGetRequest(`${BASE_URI}/user/accessTokens?appIds=10003620`),
+      )
+      .then((response: AccessTokensResponse) => {
+        return response.user.accessTokens[0];
+      });
+  }
+
+  genProviders(
+    offset: number = 0,
+    limit: number = 500,
+  ): Promise<Array<Provider>> {
     return this._genValidateCobrandLogin()
       .then(() => this._genValidateUserLogin())
       .then(() => {
-        const uri = `${BASE_URI}/ysl/restserver/v1/providerAccounts`;
+        const uri =
+          offset === 0
+            ? `${BASE_URI}/providers?max=${limit}`
+            : `${BASE_URI}/providers?skip=${offset}&max=${limit}`;
         return this._genGetRequest(uri);
       })
+      .then((response: ProvidersResponse) => response.provider);
+  }
+
+  genProviderAccounts(): Promise<Array<ProviderAccount>> {
+    return this._genValidateCobrandLogin()
+      .then(() => this._genValidateUserLogin())
+      .then(() => this._genGetRequest(`${BASE_URI}/providerAccounts`))
       .then((response: ProviderAccountResponse) => {
         return response.providerAccount;
       });
@@ -266,10 +208,7 @@ export default class YodleeClient {
   genAccounts(): Promise<Array<Account>> {
     return this._genValidateCobrandLogin()
       .then(() => this._genValidateUserLogin())
-      .then(() => {
-        const uri = `${BASE_URI}/ysl/restserver/v1/accounts`;
-        return this._genGetRequest(uri);
-      })
+      .then(() => this._genGetRequest(`${BASE_URI}/accounts`))
       .then((response: AccountsResponse) => response.account);
   }
 
