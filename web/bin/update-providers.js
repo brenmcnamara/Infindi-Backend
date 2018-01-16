@@ -8,7 +8,6 @@
  */
 
 const Common = require('common');
-const CommonBackend = require('common-backend');
 const FirebaseAdmin = require('firebase-admin');
 const YodleeClient = require('../build/YodleeClient').default;
 const YodleeProvider = require('common/lib/models/YodleeProvider');
@@ -42,7 +41,6 @@ FirebaseAdmin.initializeApp({
 });
 
 Common.initializeAsAdmin(FirebaseAdmin);
-CommonBackend.initialize(FirebaseAdmin);
 
 console.log(chalk.blue('Authenticating with yodlee...'));
 const yodlee = new YodleeClient();
