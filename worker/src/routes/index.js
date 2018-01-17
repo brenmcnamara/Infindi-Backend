@@ -2,8 +2,6 @@
 
 import express from 'express';
 
-import session, { initialize as initializeSession } from './session';
-
 import { getWorkerID } from '../workers';
 
 const router = express.Router();
@@ -11,8 +9,6 @@ const router = express.Router();
 export default router;
 
 export function initialize(): void {
-  initializeSession();
-
   router.get('/status', (req, res) => {
     res.json({
       workerID: getWorkerID(),
@@ -24,6 +20,4 @@ export function initialize(): void {
       workerID: getWorkerID(),
     });
   });
-
-  router.use('/worker/session', session);
 }

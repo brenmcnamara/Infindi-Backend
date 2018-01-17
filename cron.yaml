@@ -1,4 +1,0 @@
-cron:
-  - description: "Mark abandoned user sessions as non-responsive"
-    url: /worker/session/cleanup
-    schedule: every 1 hours
