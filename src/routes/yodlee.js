@@ -1,19 +1,13 @@
 /* @flow */
 
-// import * as FirebaseAdmin from 'firebase-admin';
 import AlgoliaSearch from 'algoliasearch';
-// import Common from 'common';
-// import CommonBackend from 'common-backend';
 
 import express from 'express';
 import invariant from 'invariant';
 
 import { checkAuth } from '../middleware';
-// import { DEBUG, ERROR, INFO } from '../log-utils';
-import { genFetchProvider } from 'common/lib/models/YodleeProvider';
 import { handleError } from '../route-utils';
 
-// import type { ID } from 'common/types/core';
 import type { RouteHandler } from '../middleware';
 
 const router = express.Router();
