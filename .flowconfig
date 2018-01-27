@@ -1,0 +1,15 @@
+[ignore]
+dist/
+.*/node_modules/common-backend/src/.*
+; my node modules
+.*/node_modules/common/src.*
+; random node modules
+.*/protobufjs/.*
+.*/web_DEPRECATED/.*
+.*/worker_DEPRECATED/.*
+
+[include]
+
+[libs]
+
+[options]

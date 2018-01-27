@@ -5,6 +5,7 @@
   "scripts": {
     "build": "babel src --out-dir build",
     "build-watch": "npm run build -- --watch",
+    "postinstall": "npm run build",
     "start": "node ./bin/www"
   },
   "dependencies": {
