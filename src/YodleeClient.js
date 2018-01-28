@@ -8,8 +8,11 @@ import type {
   Account,
   AccessToken,
   Locale,
+  Long,
   Provider,
+  ProviderFull,
   ProviderAccount,
+  RefreshInfo,
   User,
 } from 'common/types/yodlee';
 
@@ -63,6 +66,15 @@ type AccessTokensResponse = {|
 
 type ProvidersResponse = {|
   +provider: Array<Provider>,
+|};
+
+type ProviderResponse = {|
+  +provider?: Array<ProviderFull>,
+|};
+
+type ProviderLoginResponse = {|
+  +providerAccountId: Long,
+  +refreshInfo: RefreshInfo,
 |};
 
 // -----------------------------------------------------------------------------
@@ -189,11 +201,31 @@ export default class YodleeClient {
       .then(() => {
         const uri =
           offset === 0
-            ? `${BASE_URI}/providers?max=${limit}`
-            : `${BASE_URI}/providers?skip=${offset}&max=${limit}`;
+            ? `${BASE_URI}/providers?top=${limit}`
+            : `${BASE_URI}/providers?skip=${offset}&top=${limit}`;
         return this._genGetRequest(uri);
       })
       .then((response: ProvidersResponse) => response.provider);
+  }
+
+  genProviderFull(id: number): Promise<ProviderFull | null> {
+    return this._genValidateCobrandLogin()
+      .then(() => this._genValidateUserLogin())
+      .then(() => this._genGetRequest(`${BASE_URI}/providers/${id}`))
+      .then(
+        (response: ProviderResponse) =>
+          response.provider ? response.provider[0] : null,
+      );
+  }
+
+  genProviderLogin(providerFull: ProviderFull): Promise<ProviderLoginResponse> {
+    return this._genValidateCobrandLogin()
+      .then(() => this._genValidateUserLogin())
+      .then(() =>
+        this._genPostRequest(`${BASE_URI}/providers/${providerFull.id}`, {
+          provider: [providerFull],
+        }),
+      );
   }
 
   genProviderAccounts(): Promise<Array<ProviderAccount>> {

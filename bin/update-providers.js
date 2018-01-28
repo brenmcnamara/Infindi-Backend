@@ -15,7 +15,9 @@ const YodleeProvider = require('common/lib/models/YodleeProvider');
 const chalk = require('chalk');
 const dotenv = require('dotenv');
 const fs = require('fs');
+const invariant = require('invariant');
 const path = require('path');
+const uuid = require('uuid/v4');
 
 const COBRAND_LOGIN = 'sbCobbrenmcnamara';
 const COBRAND_PASSWORD = 'd19ced89-5e46-43da-9b4f-cd5ba339d9ce';
@@ -23,6 +25,7 @@ const COBRAND_LOCALE = 'en_US';
 const LOGIN_NAME = 'sbMembrenmcnamara1';
 const LOGIN_PASSWORD = 'sbMembrenmcnamara1#123';
 const PROVIDER_FETCH_LIMIT = Infinity;
+const PROVIDER_FETCH_PAGING = 500;
 
 console.log('Configuring environment variables...');
 dotenv.config();
@@ -51,7 +54,7 @@ Promise.resolve()
   .then(() => yodlee.genLoginUser(LOGIN_NAME, LOGIN_PASSWORD))
   .then(() => console.log(chalk.blue('Logged in user...')))
   .then(() => console.log(chalk.blue('Fetching providers. This can take a few minutes...')))
-  .then(() => fetchAndSyncProviders(0))
+  .then(() => fetchAndSyncProviders(9000))
   .then(() => {
     console.log(chalk.green('Done updating!'));
     process.exit(0);
@@ -62,18 +65,75 @@ Promise.resolve()
   });
 
 function fetchAndSyncProviders(offset) {
-  return yodlee.genProviders(offset, 500)
+  const limit = Math.min(PROVIDER_FETCH_PAGING, PROVIDER_FETCH_LIMIT - offset);
+  return yodlee.genProviders(offset, limit)
     .then(rawProviders => {
-      const providers = rawProviders.map(raw => YodleeProvider.createProvider(raw));
       console.log(offset, rawProviders.length);
       const shouldFetchMore =
-        providers.length === 500 &&
-        offset + providers.length < PROVIDER_FETCH_LIMIT;
-      return YodleeProvider.genUpsertProviders(providers).then(() => shouldFetchMore);
+        rawProviders.length === PROVIDER_FETCH_PAGING &&
+        offset + rawProviders.length < PROVIDER_FETCH_LIMIT;
+      const fetchFull = Promise.all(rawProviders.map(p => fetchFullProvider(p)));
+      return fetchFull
+        .then(fullProviders => {
+          const providers = fullProviders.map(raw => YodleeProvider.createProvider(raw));
+          return YodleeProvider.genUpsertProviders(providers);
+        })
+        .then(() => shouldFetchMore);
     })
     .then(shouldFetchMore => {
       if (shouldFetchMore) {
-        return fetchAndSyncProviders(offset + 500);
+        return fetchAndSyncProviders(offset + PROVIDER_FETCH_PAGING);
       }
     });
+}
+
+function fetchFullProvider(provider) {
+  let requestID = null;
+  return requestSemaphore()
+    .then((_requestID) => {
+      requestID = _requestID;
+      return yodlee.genProviderFull(provider.id);
+    })
+    .catch(error => {
+      console.log(`Failed on provider ${provider.id}: ${error.toString()}`);
+      return null;
+    })
+    .then(provider => {
+      releaseSemaphore(requestID);
+      invariant(provider, 'No Provider');
+      return provider;
+    });
+}
+
+// Assuming requests for semaphore are all on the same thread. Node makes things
+// easy :)
+const MAX_AVAILABLE_SEMAPHORES = 1;
+let pendingRequestPayloads = [];
+let runningRequests = [];
+
+let count = 0;
+
+function requestSemaphore() {
+  const requestID = uuid();
+  if (runningRequests.length < MAX_AVAILABLE_SEMAPHORES) {
+    runningRequests.push(requestID);
+    console.log('Count:', ++count);
+    return Promise.resolve(requestID);
+  }
+  return new Promise(resolve => {
+    pendingRequestPayloads.push({requestID, resolve});
+  });
+}
+
+function releaseSemaphore(requestID) {
+  const index = runningRequests.indexOf(requestID);
+  invariant(index >= 0, 'Trying to release semaphore that is not posessed');
+  const payload = pendingRequestPayloads.shift();
+  runningRequests.splice(index, 1);
+  if (payload) {
+    runningRequests.push(payload.requestID);
+    console.log('Count:', ++count);
+    payload.resolve(payload.requestID);
+  }
+  return Promise.resolve();
 }

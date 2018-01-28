@@ -1,20 +1,34 @@
 /* @flow */
 
 import AlgoliaSearch from 'algoliasearch';
+import YodleeClient from '../YodleeClient';
 
 import express from 'express';
 import invariant from 'invariant';
+import nullthrows from 'nullthrows';
 
 import { checkAuth } from '../middleware';
+import {
+  createRefreshInfo,
+  genCreateRefreshInfo,
+} from 'common/lib/models/YodleeRefreshInfo';
 import { handleError } from '../route-utils';
 
 import type { RouteHandler } from '../middleware';
+
+const COBRAND_LOGIN = 'sbCobbrenmcnamara';
+const COBRAND_PASSWORD = 'd19ced89-5e46-43da-9b4f-cd5ba339d9ce';
+const COBRAND_LOCALE = 'en_US';
+const LOGIN_NAME = 'sbMembrenmcnamara1';
+const LOGIN_PASSWORD = 'sbMembrenmcnamara1#123';
 
 const router = express.Router();
 
 export default router;
 
 let providerIndex: Object | null = null;
+let yodleeClient: YodleeClient | null = null;
+let genWaitForLogin: Promise<void> | null = null;
 
 export function initialize(): void {
   const algolia = AlgoliaSearch(
@@ -22,6 +36,12 @@ export function initialize(): void {
     process.env.ALGOLIA_API_KEY,
   );
   providerIndex = algolia.initIndex('YodleeProviders');
+  yodleeClient = new YodleeClient();
+  genWaitForLogin = yodleeClient
+    .genCobrandAuth(COBRAND_LOGIN, COBRAND_PASSWORD, COBRAND_LOCALE)
+    .then(() =>
+      nullthrows(yodleeClient).genLoginUser(LOGIN_NAME, LOGIN_PASSWORD),
+    );
 }
 
 // -----------------------------------------------------------------------------
@@ -80,6 +100,54 @@ router.get('/providers/search', performProviderSearch());
 
 // -----------------------------------------------------------------------------
 //
+// POST yodlee/providers/login
+//
+// -----------------------------------------------------------------------------
+
+function validateProviderLogin(): RouteHandler {
+  return handleError(async (req, res, next) => {
+    // TODO: Throw error if trying to login with a provider that is in the
+    // middle of a login.
+    next();
+  }, true);
+}
+
+function performProviderLogin(): RouteHandler {
+  return handleError(async (req, res) => {
+    console.log('starting request');
+    const provider = req.body.provider;
+    const yodleeClient = await genYodleeClient();
+    console.log('got yodlee client');
+    const loginPayload = await yodleeClient.genProviderLogin(provider);
+    console.log('login payload fetched');
+    const rawRefreshInfo = loginPayload.refreshInfo;
+    const userID = req.decodedIDToken.uid;
+    const providerID = String(provider.id);
+    const providerAccountID = String(loginPayload.providerAccountId);
+    const refreshInfo = createRefreshInfo(
+      rawRefreshInfo,
+      userID,
+      providerID,
+      providerAccountID,
+    );
+    console.log('writing to firebase');
+    await genCreateRefreshInfo(refreshInfo);
+    res.send({
+      data: {
+        pointerType: 'YodleeRefreshInfo',
+        type: 'POINTER',
+        refID: refreshInfo.id,
+      },
+    });
+  }, true);
+}
+
+router.post('/providers/login', checkAuth());
+router.post('/providers/login', validateProviderLogin());
+router.post('/providers/login', performProviderLogin());
+
+// -----------------------------------------------------------------------------
+//
 // UTILITIES
 //
 // -----------------------------------------------------------------------------
@@ -90,4 +158,14 @@ function getProviderIndex(): Object {
     'Trying to access providerIndex before routes have been initialized',
   );
   return providerIndex;
+}
+
+function genYodleeClient(): Promise<YodleeClient> {
+  if (!yodleeClient) {
+    return Promise.reject({
+      errorCode: 'infindi/server-error',
+      errorMessage: 'Trying to access yodlee client before initialization',
+    });
+  }
+  return nullthrows(genWaitForLogin).then(() => nullthrows(yodleeClient));
 }
