@@ -26,7 +26,7 @@ export function initialize(): void {
 
 // -----------------------------------------------------------------------------
 //
-// GET yodlee/provider/search?limit=<n>&page=<n>&query=<s>
+// GET yodlee/providers/search?limit=<n>&page=<n>&query=<s>
 //
 // -----------------------------------------------------------------------------
 
@@ -74,9 +74,9 @@ function performProviderSearch(): RouteHandler {
   }, true);
 }
 
-router.get('/provider/search', checkAuth());
-router.get('/provider/search', validateProviderSearch());
-router.get('/provider/search', performProviderSearch());
+router.get('/providers/search', checkAuth());
+router.get('/providers/search', validateProviderSearch());
+router.get('/providers/search', performProviderSearch());
 
 // -----------------------------------------------------------------------------
 //
