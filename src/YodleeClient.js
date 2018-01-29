@@ -264,6 +264,15 @@ export default class YodleeClient {
       .then((response: AccountsResponse) => response.account);
   }
 
+  genAccountsForProviderAccount(id: ID): Promise<Array<Account>> {
+    return this._genValidateCobrandLogin()
+      .then(() => this._genValidateUserLogin())
+      .then(() =>
+        this._genGetRequest(`${BASE_URI}/accounts?providerAccountId=${id}`),
+      )
+      .then((response: AccountsResponse) => response.account);
+  }
+
   // ---------------------------------------------------------------------------
   //
   // UTILITIES

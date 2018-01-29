@@ -73,3 +73,19 @@ export function releaseSemaphore(
   }
   return Promise.resolve();
 }
+
+export async function wrapInSemaphoreRequest<T>(
+  semaphore: Semaphore,
+  defer: () => Promise<T>,
+): Promise<T> {
+  const request = await requestSemaphore(semaphore);
+  let result: T;
+  try {
+    result = await defer();
+  } catch (error) {
+    await releaseSemaphore(semaphore, request);
+    throw error;
+  }
+  await releaseSemaphore(semaphore, request);
+  return result;
+}
