@@ -15,6 +15,7 @@ import type {
   RefreshInfo,
   User,
 } from 'common/types/yodlee';
+import type { ID } from 'common/types/core';
 
 const BASE_URI = 'https://developer.api.yodlee.com/ysl/restserver/v1';
 
@@ -50,8 +51,12 @@ type UserLoginResponse = {|
   +user: User,
 |};
 
-type ProviderAccountResponse = {|
+type ProviderAccountsResponse = {|
   +providerAccount: Array<ProviderAccount>,
+|};
+
+type ProviderAccountResponse = {|
+  +providerAccount: ProviderAccount,
 |};
 
 type AccountsResponse = {|
@@ -232,8 +237,23 @@ export default class YodleeClient {
     return this._genValidateCobrandLogin()
       .then(() => this._genValidateUserLogin())
       .then(() => this._genGetRequest(`${BASE_URI}/providerAccounts`))
+      .then((response: ProviderAccountsResponse) => {
+        return response.providerAccount;
+      });
+  }
+
+  genProviderAccount(id: ID): Promise<ProviderAccount | null> {
+    return this._genValidateCobrandLogin()
+      .then(() => this._genValidateUserLogin())
+      .then(() => this._genGetRequest(`${BASE_URI}/providerAccounts/${id}`))
       .then((response: ProviderAccountResponse) => {
         return response.providerAccount;
+      })
+      .catch(error => {
+        if (error.errorCode === 'Y807') {
+          return null;
+        }
+        throw error;
       });
   }
 

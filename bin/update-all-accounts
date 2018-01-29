@@ -7,13 +7,24 @@
  * syntax this works with the runnning version of node.
  */
 
+const Common = require('common');
 const CommonBackend = require('common-backend');
 const FirebaseAdmin = require('firebase-admin');
+const YodleeClient = require('../build/YodleeClient').default;
+const YodleeJobs = require('../build/jobs/yodlee');
 
 const chalk = require('chalk');
 const dotenv = require('dotenv');
 const fs = require('fs');
 const path = require('path');
+
+// Should eventually abstract this.
+const USER_ID = 'hHAvgFX13ZXNwdpT3fAgArHBfGG2';
+const COBRAND_LOGIN = 'sbCobbrenmcnamara';
+const COBRAND_PASSWORD = 'd19ced89-5e46-43da-9b4f-cd5ba339d9ce';
+const COBRAND_LOCALE = 'en_US';
+const LOGIN_NAME = 'sbMembrenmcnamara1';
+const LOGIN_PASSWORD = 'sbMembrenmcnamara1#123';
 
 console.log('Configuring environment variables...');
 dotenv.config();
@@ -32,21 +43,22 @@ FirebaseAdmin.initializeApp({
 });
 
 CommonBackend.initialize(FirebaseAdmin);
+Common.initializeAsAdmin(FirebaseAdmin);
 
-FirebaseAdmin.firestore()
-  .collection('Accounts')
-  .get()
-  .then(snapshot => {
-    const accounts = snapshot.docs.map(doc => doc.data());
-    const jobs = accounts.map(account => {
-      const payload = {accountID: account.id};
-      CommonBackend.Job.genRequestJob('UPDATE_ACCOUNT', payload);
-    });
-    return Promise.all(jobs).then(() => accounts);
-  })
-  .then(accounts => {
-    console.log(chalk.green(`Sent jobs for ${accounts.length} account(s)`));
+const yodleeClient = new YodleeClient();
+
+console.log(chalk.blue('Configuring yodlee'));
+
+yodleeClient
+  .genCobrandAuth(COBRAND_LOGIN, COBRAND_PASSWORD, COBRAND_LOCALE)
+  .then(() => yodleeClient.genLoginUser(LOGIN_NAME, LOGIN_PASSWORD))
+  .then(() => console.log(chalk.blue('Updating accounts...')))
+  .then(() => YodleeJobs.genUpdateAccounts(yodleeClient, USER_ID))
+  .then(() => {
+    console.log(chalk.green('Done!'));
+    process.exit(0);
   })
   .catch(error => {
-    console.log(chalk.red(`[${error.errorCode}]: ${error.errorMessage}`));
+    console.log(chalk.red(error.toString()));
+    process.exit(1);
   });
