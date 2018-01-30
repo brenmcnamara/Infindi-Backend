@@ -11,10 +11,16 @@ import { checkAuth } from '../middleware';
 import {
   createRefreshInfo,
   genCreateRefreshInfo,
+  genFetchRefreshInfoForProvider,
+  isPending,
+  updateRefreshInfo,
 } from 'common/lib/models/YodleeRefreshInfo';
 import { handleError } from '../route-utils';
 
+import type { ID } from 'common/types/core';
 import type { RouteHandler } from '../middleware';
+import type { ProviderFull as RawYodleeProvider } from 'common/types/yodlee';
+import type { YodleeRefreshInfo } from 'common/lib/models/YodleeRefreshInfo';
 
 const COBRAND_LOGIN = 'sbCobbrenmcnamara';
 const COBRAND_PASSWORD = 'd19ced89-5e46-43da-9b4f-cd5ba339d9ce';
@@ -106,6 +112,19 @@ router.get('/providers/search', performProviderSearch());
 
 function validateProviderLogin(): RouteHandler {
   return handleError(async (req, res, next) => {
+    const provider: RawYodleeProvider = req.body.provider;
+    const userID: ID = req.decodedIDToken.uid;
+    const refreshInfo = await genFetchRefreshInfoForProvider(
+      userID,
+      String(provider.id),
+    );
+    if (refreshInfo && isPending(refreshInfo)) {
+      throw {
+        errorCode: 'infindi/bad-request',
+        errorMessage: 'Provider is already being logged in',
+      };
+    }
+    req.refreshInfo = refreshInfo;
     // TODO: Throw error if trying to login with a provider that is in the
     // middle of a login.
     next();
@@ -114,23 +133,22 @@ function validateProviderLogin(): RouteHandler {
 
 function performProviderLogin(): RouteHandler {
   return handleError(async (req, res) => {
-    console.log('starting request');
-    const provider = req.body.provider;
+    const provider: RawYodleeProvider = req.body.provider;
     const yodleeClient = await genYodleeClient();
-    console.log('got yodlee client');
     const loginPayload = await yodleeClient.genProviderLogin(provider);
-    console.log('login payload fetched');
     const rawRefreshInfo = loginPayload.refreshInfo;
-    const userID = req.decodedIDToken.uid;
+    const userID: ID = req.decodedIDToken.uid;
     const providerID = String(provider.id);
     const providerAccountID = String(loginPayload.providerAccountId);
-    const refreshInfo = createRefreshInfo(
-      rawRefreshInfo,
-      userID,
-      providerID,
-      providerAccountID,
-    );
-    console.log('writing to firebase');
+    const refreshInfo: YodleeRefreshInfo = req.refreshInfo
+      ? updateRefreshInfo(req.RefreshInfo, rawRefreshInfo)
+      : createRefreshInfo(
+          rawRefreshInfo,
+          userID,
+          providerID,
+          providerAccountID,
+        );
+
     await genCreateRefreshInfo(refreshInfo);
     res.send({
       data: {
