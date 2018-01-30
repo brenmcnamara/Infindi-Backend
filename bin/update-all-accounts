@@ -52,8 +52,10 @@ console.log(chalk.blue('Configuring yodlee'));
 yodleeClient
   .genCobrandAuth(COBRAND_LOGIN, COBRAND_PASSWORD, COBRAND_LOCALE)
   .then(() => yodleeClient.genLoginUser(LOGIN_NAME, LOGIN_PASSWORD))
-  .then(() => console.log(chalk.blue('Updating accounts...')))
-  .then(() => YodleeJobs.genUpdateAccounts(yodleeClient, USER_ID))
+  .then(userSession => {
+    console.log(chalk.blue('Updating accounts...'));
+    return YodleeJobs.genUpdateAccounts(userSession, yodleeClient, USER_ID);
+  })
   .then(() => {
     console.log(chalk.green('Done!'));
     process.exit(0);

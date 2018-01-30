@@ -32,11 +32,16 @@ const yodleeSemaphore = createSemaphore(1);
  * the accounts for that data.
  */
 export async function genUpdateAccounts(
+  yodleeUserSession: string,
   client: YodleeClient,
   userID: ID,
 ): Promise<void> {
   const refreshes = await genFetchRefreshInfoForUser(userID);
-  const providerAccounts = await genFetchProviderAccounts(client, refreshes);
+  const providerAccounts = await genFetchProviderAccounts(
+    yodleeUserSession,
+    client,
+    refreshes,
+  );
 
   const refreshInfoBatch = FirebaseAdmin.firestore().batch();
   // Mapping from provider account id to array of accounts.
@@ -50,7 +55,12 @@ export async function genUpdateAccounts(
       const { providerAccountID } = newRefreshInfo;
       genUpdateAndSyncAllProviderAccounts = genUpdateAndSyncAllProviderAccounts.then(
         () =>
-          genUpdateAndSyncProviderAccount(client, userID, providerAccountID),
+          genUpdateAndSyncProviderAccount(
+            yodleeUserSession,
+            client,
+            userID,
+            providerAccountID,
+          ),
       );
       // Fetch the new accounts and add them to the batch.
     }
@@ -72,13 +82,14 @@ export async function genUpdateAccounts(
 // -----------------------------------------------------------------------------
 
 async function genUpdateAndSyncProviderAccount(
+  yodleeUserSession: string,
   client: YodleeClient,
   userID: ID,
   providerAccountID: ID,
 ): Promise<void> {
   // Step 1: Fetch the yodlee accounts.
   const yodleeAccounts = await wrapInSemaphoreRequest(yodleeSemaphore, () =>
-    client.genAccountsForProviderAccount(providerAccountID),
+    client.genAccountsForProviderAccount(yodleeUserSession, providerAccountID),
   );
 
   // Step 2: Update the accounts that were fetched.
@@ -89,6 +100,7 @@ async function genUpdateAndSyncProviderAccount(
 }
 
 function genFetchProviderAccounts(
+  yodleeUserSession: string,
   client: YodleeClient,
   refreshes: Array<YodleeRefreshInfo>,
 ): Promise<Array<ProviderAccount>> {
@@ -96,7 +108,7 @@ function genFetchProviderAccounts(
     refreshInfo => {
       const { providerAccountID } = refreshInfo;
       return wrapInSemaphoreRequest(yodleeSemaphore, () =>
-        client.genProviderAccount(providerAccountID),
+        client.genProviderAccount(yodleeUserSession, providerAccountID),
       ).then(providerAccount => {
         invariant(
           providerAccount,

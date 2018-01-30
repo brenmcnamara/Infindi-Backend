@@ -33,6 +33,7 @@ export default router;
 let providerIndex: Object | null = null;
 let yodleeClient: YodleeClient | null = null;
 let genWaitForCobrandLogin: Promise<void> | null = null;
+const userToYodleeSession: { [userID: string]: string } = {};
 
 export function initialize(): void {
   const algolia = AlgoliaSearch(
@@ -133,7 +134,11 @@ function performProviderLogin(): RouteHandler {
   return handleError(async (req, res) => {
     const provider: RawYodleeProvider = req.body.provider;
     const yodleeClient = getYodleeClient();
-    const loginPayload = await yodleeClient.genProviderLogin(provider);
+    const yodleeUserSession: string = req.yodleeUserSession;
+    const loginPayload = await yodleeClient.genProviderLogin(
+      yodleeUserSession,
+      provider,
+    );
     const rawRefreshInfo = loginPayload.refreshInfo;
     const userID: ID = req.decodedIDToken.uid;
     const providerID = String(provider.id);
@@ -174,10 +179,23 @@ function performYodleeUserLogin(): RouteHandler {
     const userID: ID = req.decodedIDToken.uid;
     const credentials = await genFetchYodleeCredentials(userID);
     await genWaitForCobrandLogin;
-    await getYodleeClient().genLoginUser(
+    const yodleeClient = getYodleeClient();
+    if (userToYodleeSession[userID]) {
+      const session = userToYodleeSession[userID];
+      const isActiveSession = await yodleeClient.genIsActiveSession(session);
+      if (isActiveSession) {
+        req.yodleeUserSession = session;
+        next();
+        return;
+      }
+      delete userToYodleeSession[userID];
+    }
+    const session = await yodleeClient.genLoginUser(
       credentials.loginName,
       credentials.password,
     );
+    userToYodleeSession[userID] = session;
+    req.yodleeUserSession = session;
     next();
   }, true);
 }
