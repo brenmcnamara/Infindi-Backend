@@ -5,6 +5,7 @@ import YodleeClient from '../YodleeClient';
 
 import express from 'express';
 import invariant from 'invariant';
+import nullthrows from 'nullthrows';
 
 import { checkAuth } from '../middleware';
 import {
@@ -22,10 +23,6 @@ import type { RouteHandler } from '../middleware';
 import type { ProviderFull as RawYodleeProvider } from 'common/types/yodlee';
 import type { YodleeRefreshInfo } from 'common/lib/models/YodleeRefreshInfo';
 
-const COBRAND_LOGIN = 'sbCobbrenmcnamara';
-const COBRAND_PASSWORD = 'd19ced89-5e46-43da-9b4f-cd5ba339d9ce';
-const COBRAND_LOCALE = 'en_US';
-
 const router = express.Router();
 
 export default router;
@@ -36,6 +33,21 @@ let genWaitForCobrandLogin: Promise<void> | null = null;
 const userToYodleeSession: { [userID: string]: string } = {};
 
 export function initialize(): void {
+  const cobrandLogin = process.env.YODLEE_COBRAND_LOGIN;
+  invariant(
+    cobrandLogin,
+    'Yodlee Cobrand Login not provided in the environment variables',
+  );
+  const cobrandPassword = process.env.YODLEE_COBRAND_PASSWORD;
+  invariant(
+    cobrandPassword,
+    'Yodlee Cobrand Password not provided in the environment variables.',
+  );
+  const cobrandLocale = process.env.YODLEE_COBRAND_LOCALE;
+  invariant(
+    cobrandLocale === 'en_US',
+    'Yodlee Cobrand Locale not provided in the environment variables.',
+  );
   const algolia = AlgoliaSearch(
     process.env.ALGOLIA_APP_ID,
     process.env.ALGOLIA_API_KEY,
@@ -43,9 +55,9 @@ export function initialize(): void {
   providerIndex = algolia.initIndex('YodleeProviders');
   yodleeClient = new YodleeClient();
   genWaitForCobrandLogin = yodleeClient.genCobrandAuth(
-    COBRAND_LOGIN,
-    COBRAND_PASSWORD,
-    COBRAND_LOCALE,
+    cobrandLogin,
+    cobrandPassword,
+    cobrandLocale,
   );
 }
 
