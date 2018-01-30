@@ -5,7 +5,6 @@ import YodleeClient from '../YodleeClient';
 
 import express from 'express';
 import invariant from 'invariant';
-import nullthrows from 'nullthrows';
 
 import { checkAuth } from '../middleware';
 import {
@@ -15,6 +14,7 @@ import {
   isPending,
   updateRefreshInfo,
 } from 'common/lib/models/YodleeRefreshInfo';
+import { genFetchYodleeCredentials } from 'common/lib/models/YodleeCredentials';
 import { handleError } from '../route-utils';
 
 import type { ID } from 'common/types/core';
@@ -25,8 +25,6 @@ import type { YodleeRefreshInfo } from 'common/lib/models/YodleeRefreshInfo';
 const COBRAND_LOGIN = 'sbCobbrenmcnamara';
 const COBRAND_PASSWORD = 'd19ced89-5e46-43da-9b4f-cd5ba339d9ce';
 const COBRAND_LOCALE = 'en_US';
-const LOGIN_NAME = 'sbMembrenmcnamara1';
-const LOGIN_PASSWORD = 'sbMembrenmcnamara1#123';
 
 const router = express.Router();
 
@@ -34,7 +32,7 @@ export default router;
 
 let providerIndex: Object | null = null;
 let yodleeClient: YodleeClient | null = null;
-let genWaitForLogin: Promise<void> | null = null;
+let genWaitForCobrandLogin: Promise<void> | null = null;
 
 export function initialize(): void {
   const algolia = AlgoliaSearch(
@@ -43,11 +41,11 @@ export function initialize(): void {
   );
   providerIndex = algolia.initIndex('YodleeProviders');
   yodleeClient = new YodleeClient();
-  genWaitForLogin = yodleeClient
-    .genCobrandAuth(COBRAND_LOGIN, COBRAND_PASSWORD, COBRAND_LOCALE)
-    .then(() =>
-      nullthrows(yodleeClient).genLoginUser(LOGIN_NAME, LOGIN_PASSWORD),
-    );
+  genWaitForCobrandLogin = yodleeClient.genCobrandAuth(
+    COBRAND_LOGIN,
+    COBRAND_PASSWORD,
+    COBRAND_LOCALE,
+  );
 }
 
 // -----------------------------------------------------------------------------
@@ -134,14 +132,14 @@ function validateProviderLogin(): RouteHandler {
 function performProviderLogin(): RouteHandler {
   return handleError(async (req, res) => {
     const provider: RawYodleeProvider = req.body.provider;
-    const yodleeClient = await genYodleeClient();
+    const yodleeClient = getYodleeClient();
     const loginPayload = await yodleeClient.genProviderLogin(provider);
     const rawRefreshInfo = loginPayload.refreshInfo;
     const userID: ID = req.decodedIDToken.uid;
     const providerID = String(provider.id);
     const providerAccountID = String(loginPayload.providerAccountId);
     const refreshInfo: YodleeRefreshInfo = req.refreshInfo
-      ? updateRefreshInfo(req.RefreshInfo, rawRefreshInfo)
+      ? updateRefreshInfo(req.refreshInfo, rawRefreshInfo)
       : createRefreshInfo(
           rawRefreshInfo,
           userID,
@@ -161,6 +159,7 @@ function performProviderLogin(): RouteHandler {
 }
 
 router.post('/providers/login', checkAuth());
+router.post('/providers/login', performYodleeUserLogin());
 router.post('/providers/login', validateProviderLogin());
 router.post('/providers/login', performProviderLogin());
 
@@ -170,6 +169,19 @@ router.post('/providers/login', performProviderLogin());
 //
 // -----------------------------------------------------------------------------
 
+function performYodleeUserLogin(): RouteHandler {
+  return handleError(async (req, res, next) => {
+    const userID: ID = req.decodedIDToken.uid;
+    const credentials = await genFetchYodleeCredentials(userID);
+    await genWaitForCobrandLogin;
+    await getYodleeClient().genLoginUser(
+      credentials.loginName,
+      credentials.password,
+    );
+    next();
+  }, true);
+}
+
 function getProviderIndex(): Object {
   invariant(
     providerIndex,
@@ -178,12 +190,10 @@ function getProviderIndex(): Object {
   return providerIndex;
 }
 
-function genYodleeClient(): Promise<YodleeClient> {
-  if (!yodleeClient) {
-    return Promise.reject({
-      errorCode: 'infindi/server-error',
-      errorMessage: 'Trying to access yodlee client before initialization',
-    });
-  }
-  return nullthrows(genWaitForLogin).then(() => nullthrows(yodleeClient));
+function getYodleeClient(): YodleeClient {
+  invariant(
+    yodleeClient,
+    'Trying to access yodlee client before initialization',
+  );
+  return yodleeClient;
 }
