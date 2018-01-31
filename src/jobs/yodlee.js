@@ -75,6 +75,19 @@ export async function genUpdateAccounts(
   ]);
 }
 
+export async function genForceUpdateAccounts(
+  yodleeUserSession: string,
+  client: YodleeClient,
+  userID: ID,
+): Promise<void> {
+  const yodleeAccounts = await client.genAccounts(yodleeUserSession);
+  const updates = yodleeAccounts.map(yodleeAccount =>
+    genUpsertAccountFromYodleeAccount(yodleeAccount, userID),
+  );
+
+  await Promise.all(updates);
+}
+
 // -----------------------------------------------------------------------------
 //
 // UTILITIES

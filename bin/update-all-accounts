@@ -16,6 +16,7 @@ const YodleeJobs = require('../build/jobs/yodlee');
 const chalk = require('chalk');
 const dotenv = require('dotenv');
 const fs = require('fs');
+const minimist = require('minimist');
 const path = require('path');
 
 // Should eventually abstract this.
@@ -25,6 +26,8 @@ const COBRAND_PASSWORD = 'd19ced89-5e46-43da-9b4f-cd5ba339d9ce';
 const COBRAND_LOCALE = 'en_US';
 const LOGIN_NAME = 'sbMembrenmcnamara1';
 const LOGIN_PASSWORD = 'sbMembrenmcnamara1#123';
+
+const argv = minimist(process.argv.slice(2));
 
 console.log('Configuring environment variables...');
 dotenv.config();
@@ -54,7 +57,9 @@ yodleeClient
   .then(() => yodleeClient.genLoginUser(LOGIN_NAME, LOGIN_PASSWORD))
   .then(userSession => {
     console.log(chalk.blue('Updating accounts...'));
-    return YodleeJobs.genUpdateAccounts(userSession, yodleeClient, USER_ID);
+    return argv.force
+      ? YodleeJobs.genForceUpdateAccounts(userSession, yodleeClient, USER_ID)
+      : YodleeJobs.genUpdateAccounts(userSession, yodleeClient, USER_ID);
   })
   .then(() => {
     console.log(chalk.green('Done!'));
