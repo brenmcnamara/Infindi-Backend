@@ -5,7 +5,6 @@ import YodleeClient from '../YodleeClient';
 
 import express from 'express';
 import invariant from 'invariant';
-import nullthrows from 'nullthrows';
 
 import { checkAuth } from '../middleware';
 import {
@@ -17,6 +16,7 @@ import {
 } from 'common/lib/models/YodleeRefreshInfo';
 import { genFetchYodleeCredentials } from 'common/lib/models/YodleeCredentials';
 import { handleError } from '../route-utils';
+import { INFO } from '../log-utils';
 
 import type { ID } from 'common/types/core';
 import type { RouteHandler } from '../middleware';
@@ -48,12 +48,14 @@ export function initialize(): void {
     cobrandLocale === 'en_US',
     'Yodlee Cobrand Locale not provided in the environment variables.',
   );
+  INFO('YODLEE', 'Initializing algolia search');
   const algolia = AlgoliaSearch(
     process.env.ALGOLIA_APP_ID,
     process.env.ALGOLIA_API_KEY,
   );
   providerIndex = algolia.initIndex('YodleeProviders');
   yodleeClient = new YodleeClient();
+  INFO('YODLEE', 'Initializing cobrand auth');
   genWaitForCobrandLogin = yodleeClient.genCobrandAuth(
     cobrandLogin,
     cobrandPassword,
@@ -196,12 +198,14 @@ function performYodleeUserLogin(): RouteHandler {
       const session = userToYodleeSession[userID];
       const isActiveSession = await yodleeClient.genIsActiveSession(session);
       if (isActiveSession) {
+        INFO('YODLEE', 'User session has expired. Creating new session');
         req.yodleeUserSession = session;
         next();
         return;
       }
       delete userToYodleeSession[userID];
     }
+    INFO('YODLEE', 'No user session exists. Creating new session');
     const session = await yodleeClient.genLoginUser(
       credentials.loginName,
       credentials.password,
