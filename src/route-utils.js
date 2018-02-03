@@ -15,11 +15,13 @@ export function handleError(
         const infindiError = createError(error);
         const status = Common.ErrorUtils.getStatusForErrorCode(error.errorCode);
         res.status(status).json(infindiError);
+        console.log(error.stack);
       });
     } else {
       try {
         routeHandler(req, res, next);
       } catch (error) {
+        console.log(error.stack);
         const infindiError = createError(error);
         const status = Common.ErrorUtils.getStatusForErrorCode(error.errorCode);
         res.status(status).json(infindiError);

@@ -14,6 +14,7 @@ import {
   isPending,
   updateRefreshInfo,
 } from 'common/lib/models/YodleeRefreshInfo';
+import { genFetchProvider } from 'common/lib/models/YodleeProvider';
 import { genFetchYodleeCredentials } from 'common/lib/models/YodleeCredentials';
 import { handleError } from '../route-utils';
 import { INFO } from '../log-utils';
@@ -100,6 +101,12 @@ function validateProviderSearch(): RouteHandler {
 function performProviderSearch(): RouteHandler {
   return handleError(async (req, res) => {
     const index = getProviderIndex();
+    const chase = await genFetchProvider('643');
+    res.json({
+      data: [chase],
+    });
+    return;
+    // TODO: I hit a quota. Need to come down from the quota.
     const result = await index.search({
       hitsPerPage: req.query.limit,
       page: req.query.page,
