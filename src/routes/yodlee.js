@@ -1,12 +1,13 @@
 /* @flow */
 
-import AlgoliaSearch from 'algoliasearch';
+// import AlgoliaSearch from 'algoliasearch';
 import YodleeClient from '../YodleeClient';
 
 import express from 'express';
 import invariant from 'invariant';
 
 import { checkAuth } from '../middleware';
+import { DEBUG, INFO } from '../log-utils';
 import {
   createRefreshInfo,
   genCreateRefreshInfo,
@@ -17,10 +18,10 @@ import {
 import { genFetchProvider } from 'common/lib/models/YodleeProvider';
 import { genFetchYodleeCredentials } from 'common/lib/models/YodleeCredentials';
 import { handleError } from '../route-utils';
-import { INFO } from '../log-utils';
 
 import type { ID } from 'common/types/core';
 import type { RouteHandler } from '../middleware';
+import type { Provider as YodleeProvider } from 'common/lib/models/YodleeProvider';
 import type { ProviderFull as RawYodleeProvider } from 'common/types/yodlee';
 import type { YodleeRefreshInfo } from 'common/lib/models/YodleeRefreshInfo';
 
@@ -28,7 +29,7 @@ const router = express.Router();
 
 export default router;
 
-let providerIndex: Object | null = null;
+// let providerIndex: Object | null = null;
 let yodleeClient: YodleeClient | null = null;
 let genWaitForCobrandLogin: Promise<void> | null = null;
 const userToYodleeSession: { [userID: string]: string } = {};
@@ -50,11 +51,11 @@ export function initialize(): void {
     'Yodlee Cobrand Locale not provided in the environment variables.',
   );
   INFO('YODLEE', 'Initializing algolia search');
-  const algolia = AlgoliaSearch(
-    process.env.ALGOLIA_APP_ID,
-    process.env.ALGOLIA_API_KEY,
-  );
-  providerIndex = algolia.initIndex('YodleeProviders');
+  // const algolia = AlgoliaSearch(
+  //   process.env.ALGOLIA_APP_ID,
+  //   process.env.ALGOLIA_API_KEY,
+  // );
+  // providerIndex = algolia.initIndex('YodleeProviders');
   yodleeClient = new YodleeClient();
   INFO('YODLEE', 'Initializing cobrand auth');
   genWaitForCobrandLogin = yodleeClient.genCobrandAuth(
@@ -100,23 +101,22 @@ function validateProviderSearch(): RouteHandler {
 
 function performProviderSearch(): RouteHandler {
   return handleError(async (req, res) => {
-    const index = getProviderIndex();
+    // const index = getProviderIndex();
     const chase = await genFetchProvider('643');
     res.json({
       data: [chase],
     });
-    return;
     // TODO: I hit a quota. Need to come down from the quota.
-    const result = await index.search({
-      hitsPerPage: req.query.limit,
-      page: req.query.page,
-      query: req.query.query,
-    });
-    res.json({
-      data: result.hits,
-      limit: req.query.limit,
-      page: req.query.offset,
-    });
+    // const result = await index.search({
+    //   hitsPerPage: req.query.limit,
+    //   page: req.query.page,
+    //   query: req.query.query,
+    // });
+    // res.json({
+    //   data: result.hits,
+    //   limit: req.query.limit,
+    //   page: req.query.offset,
+    // });
   }, true);
 }
 
@@ -153,12 +153,14 @@ function validateProviderLogin(): RouteHandler {
 
 function performProviderLogin(): RouteHandler {
   return handleError(async (req, res) => {
-    const provider: RawYodleeProvider = req.body.provider;
+    DEBUG('YODLEE', 'Attempting to login with provider');
+    const provider: YodleeProvider = req.body.provider;
     const yodleeClient = getYodleeClient();
     const yodleeUserSession: string = req.yodleeUserSession;
+    DEBUG('YODLEE', 'Sending login to yodlee service');
     const loginPayload = await yodleeClient.genProviderLogin(
       yodleeUserSession,
-      provider,
+      provider.raw,
     );
     const rawRefreshInfo = loginPayload.refreshInfo;
     const userID: ID = req.decodedIDToken.uid;
@@ -173,7 +175,10 @@ function performProviderLogin(): RouteHandler {
           providerAccountID,
         );
 
+    DEBUG('YODLEE', 'Creating / Updating refresh info');
     await genCreateRefreshInfo(refreshInfo);
+
+    DEBUG('YODLEE', 'Sending response');
     res.send({
       data: {
         pointerType: 'YodleeRefreshInfo',
@@ -223,13 +228,13 @@ function performYodleeUserLogin(): RouteHandler {
   }, true);
 }
 
-function getProviderIndex(): Object {
-  invariant(
-    providerIndex,
-    'Trying to access providerIndex before routes have been initialized',
-  );
-  return providerIndex;
-}
+// function getProviderIndex(): Object {
+//   invariant(
+//     providerIndex,
+//     'Trying to access providerIndex before routes have been initialized',
+//   );
+//   return providerIndex;
+// }
 
 function getYodleeClient(): YodleeClient {
   invariant(
