@@ -9,6 +9,8 @@ import path from 'path';
 import routes, { initialize as initializeRoutes } from './routes';
 import serveFavicon from 'serve-favicon';
 
+import { initialize as initializeListenForJobs } from './listen-for-jobs';
+
 const { ErrorUtils } = Common;
 
 const app = express();
@@ -16,12 +18,13 @@ const app = express();
 export default app;
 
 export function initialize(): void {
-
   // view engine setup
   app.set('views', path.join(__dirname, '..', 'views'));
   app.set('view engine', 'ejs');
 
-  app.use(serveFavicon(path.join(__dirname, '..', 'assets', 'favicon-16x16.ico')));
+  app.use(
+    serveFavicon(path.join(__dirname, '..', 'assets', 'favicon-16x16.ico')),
+  );
   app.use(morgan('dev'));
   app.use(bodyParser.json());
 
@@ -47,4 +50,5 @@ export function initialize(): void {
   });
 
   initializeRoutes();
+  initializeListenForJobs();
 }

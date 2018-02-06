@@ -11,7 +11,7 @@ const Common = require('common');
 const CommonBackend = require('common-backend');
 const FirebaseAdmin = require('firebase-admin');
 const YodleeClient = require('../build/YodleeClient').default;
-const YodleeJobs = require('../build/jobs/yodlee');
+const YodleeJobs = require('../build/operations/yodlee');
 
 const chalk = require('chalk');
 const dotenv = require('dotenv');
