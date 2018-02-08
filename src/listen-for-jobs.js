@@ -63,12 +63,12 @@ function isLegalJobChange(originalJob: Job, modifiedJob): bool {
   const originalSchedule = originalJob.schedule;
   const modifiedSchedule = modifiedJob.schedule;
   invariant(
-    originalSchedule.type === 'ONCE',
+    originalSchedule.recurringType === 'ONCE',
     'Only support jobs with schedule type ONCE',
   );
   const originalRunAt = originalSchedule.runAt;
   invariant(
-    modifiedSchedule.type === 'ONCE',
+    modifiedSchedule.recurringType === 'ONCE',
     'Only support jobs with schedule type ONCE',
   );
   const modifiedRunAt = modifiedSchedule.runAt;
@@ -92,7 +92,7 @@ function scheduleJob(jobID: ID, schedule: JobSchedule): Subscription {
     'Trying to schedule a job that is expired',
   );
   invariant(
-    schedule.type === 'ONCE',
+    schedule.recurringType === 'ONCE',
     'Scheduling jobs only supports schedule type ONCE',
   );
   const runAtMillis = schedule.runAt;

@@ -1,22 +1,23 @@
 /* @flow */
 
 // import AlgoliaSearch from 'algoliasearch';
-import YodleeClient from '../YodleeClient';
 
 import express from 'express';
-import invariant from 'invariant';
 
 import { checkAuth } from '../middleware';
-import { DEBUG, INFO } from '../log-utils';
+import { createJob, genCreateJob } from 'common/lib/models/Job';
 import {
   createRefreshInfo,
+  createRefreshSchedule,
   genCreateRefreshInfo,
   genFetchRefreshInfoForProvider,
-  isPending,
+  isInProgress,
+  isPendingStatus,
   updateRefreshInfo,
 } from 'common/lib/models/YodleeRefreshInfo';
+import { DEBUG, INFO } from '../log-utils';
 import { genFetchProvider } from 'common/lib/models/YodleeProvider';
-import { genFetchYodleeCredentials } from 'common/lib/models/YodleeCredentials';
+import { getYodleeClient, performYodleeUserLogin } from '../yodlee-manager';
 import { handleError } from '../route-utils';
 
 import type { ID } from 'common/types/core';
@@ -30,39 +31,14 @@ const router = express.Router();
 export default router;
 
 // let providerIndex: Object | null = null;
-let yodleeClient: YodleeClient | null = null;
-let genWaitForCobrandLogin: Promise<void> | null = null;
-const userToYodleeSession: { [userID: string]: string } = {};
 
 export function initialize(): void {
-  const cobrandLogin = process.env.YODLEE_COBRAND_LOGIN;
-  invariant(
-    cobrandLogin,
-    'Yodlee Cobrand Login not provided in the environment variables',
-  );
-  const cobrandPassword = process.env.YODLEE_COBRAND_PASSWORD;
-  invariant(
-    cobrandPassword,
-    'Yodlee Cobrand Password not provided in the environment variables.',
-  );
-  const cobrandLocale = process.env.YODLEE_COBRAND_LOCALE;
-  invariant(
-    cobrandLocale === 'en_US',
-    'Yodlee Cobrand Locale not provided in the environment variables.',
-  );
-  INFO('YODLEE', 'Initializing algolia search');
+  // INFO('YODLEE', 'Initializing algolia search');
   // const algolia = AlgoliaSearch(
   //   process.env.ALGOLIA_APP_ID,
   //   process.env.ALGOLIA_API_KEY,
   // );
   // providerIndex = algolia.initIndex('YodleeProviders');
-  yodleeClient = new YodleeClient();
-  INFO('YODLEE', 'Initializing cobrand auth');
-  genWaitForCobrandLogin = yodleeClient.genCobrandAuth(
-    cobrandLogin,
-    cobrandPassword,
-    cobrandLocale,
-  );
 }
 
 // -----------------------------------------------------------------------------
@@ -132,13 +108,17 @@ router.get('/providers/search', performProviderSearch());
 
 function validateProviderLogin(): RouteHandler {
   return handleError(async (req, res, next) => {
+    DEBUG('YODLEE', 'Validating json body of provider payload');
     const provider: RawYodleeProvider = req.body.provider;
     const userID: ID = req.decodedIDToken.uid;
     const refreshInfo = await genFetchRefreshInfoForProvider(
       userID,
       String(provider.id),
     );
-    if (refreshInfo && isPending(refreshInfo)) {
+    if (
+      refreshInfo &&
+      (isPendingStatus(refreshInfo) || isInProgress(refreshInfo))
+    ) {
       throw {
         errorCode: 'infindi/bad-request',
         errorMessage: 'Provider is already being logged in',
@@ -178,6 +158,11 @@ function performProviderLogin(): RouteHandler {
     DEBUG('YODLEE', 'Creating / Updating refresh info');
     await genCreateRefreshInfo(refreshInfo);
 
+    INFO('YODLEE', 'Sending refresh job');
+    const schedule = createRefreshSchedule(refreshInfo);
+    const job = createJob('/update-accounts', { userID }, schedule);
+    await genCreateJob(job);
+
     DEBUG('YODLEE', 'Sending response');
     res.send({
       data: {
@@ -200,34 +185,6 @@ router.post('/providers/login', performProviderLogin());
 //
 // -----------------------------------------------------------------------------
 
-function performYodleeUserLogin(): RouteHandler {
-  return handleError(async (req, res, next) => {
-    const userID: ID = req.decodedIDToken.uid;
-    const credentials = await genFetchYodleeCredentials(userID);
-    await genWaitForCobrandLogin;
-    const yodleeClient = getYodleeClient();
-    if (userToYodleeSession[userID]) {
-      const session = userToYodleeSession[userID];
-      const isActiveSession = await yodleeClient.genIsActiveSession(session);
-      if (isActiveSession) {
-        INFO('YODLEE', 'User session has expired. Creating new session');
-        req.yodleeUserSession = session;
-        next();
-        return;
-      }
-      delete userToYodleeSession[userID];
-    }
-    INFO('YODLEE', 'No user session exists. Creating new session');
-    const session = await yodleeClient.genLoginUser(
-      credentials.loginName,
-      credentials.password,
-    );
-    userToYodleeSession[userID] = session;
-    req.yodleeUserSession = session;
-    next();
-  }, true);
-}
-
 // function getProviderIndex(): Object {
 //   invariant(
 //     providerIndex,
@@ -235,11 +192,3 @@ function performYodleeUserLogin(): RouteHandler {
 //   );
 //   return providerIndex;
 // }
-
-function getYodleeClient(): YodleeClient {
-  invariant(
-    yodleeClient,
-    'Trying to access yodlee client before initialization',
-  );
-  return yodleeClient;
-}
