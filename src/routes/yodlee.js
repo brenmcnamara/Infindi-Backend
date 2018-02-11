@@ -15,7 +15,7 @@ import {
   isPendingStatus,
   updateRefreshInfo,
 } from 'common/lib/models/YodleeRefreshInfo';
-import { DEBUG, INFO } from '../log-utils';
+import { DEBUG, ERROR, INFO } from '../log-utils';
 import { genFetchProvider } from 'common/lib/models/YodleeProvider';
 import { getYodleeClient, performYodleeUserLogin } from '../yodlee-manager';
 import { handleError } from '../route-utils';

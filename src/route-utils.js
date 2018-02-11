@@ -15,15 +15,13 @@ export function handleError(
         const infindiError = createError(error);
         const status = Common.ErrorUtils.getStatusForErrorCode(error.errorCode);
         res.status(status).json(infindiError);
-        console.log(error.stack);
       });
     } else {
       try {
         routeHandler(req, res, next);
       } catch (error) {
-        console.log(error.stack);
         const infindiError = createError(error);
-        const status = Common.ErrorUtils.getStatusForErrorCode(error.errorCode);
+        const status = getStatusForError(error);
         res.status(status).json(infindiError);
       }
     }
@@ -35,6 +33,14 @@ export function handleError(
 // UTILITIES
 //
 // -----------------------------------------------------------------------------
+
+function getStatusForError(error: Error): number {
+  if (error.errorCode === 'Y400') {
+    // This may not always be correct.
+    return 401;
+  }
+  return Common.ErrorUtils.getStatusForErrorCode(error.errorCode);
+}
 
 function createError(error: Object) {
   const errorCode =
