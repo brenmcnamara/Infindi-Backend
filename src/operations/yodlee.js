@@ -9,19 +9,20 @@ import {
   wrapInSemaphoreRequest,
 } from '../SingleThreadSemaphore';
 import { genUpsertAccountFromYodleeAccount } from 'common/lib/models/Account';
+import { INFO } from '../log-utils';
 
 import {
   genFetchRefreshInfoForUser,
-  getYodleeRefreshInfoCollection,
+  getRefreshInfoCollection,
   isComplete,
   updateRefreshInfo,
-} from 'common/lib/models/YodleeRefreshInfo';
+} from 'common/lib/models/RefreshInfo';
 
 import type YodleeClient from '../YodleeClient';
 
 import type { ID } from 'common/types/core';
 import type { ProviderAccount } from 'common/types/yodlee';
-import type { YodleeRefreshInfo } from 'common/lib/models/YodleeRefreshInfo';
+import type { RefreshInfo } from 'common/lib/models/RefreshInfo';
 
 // Only 1 yodlee operation allowed at a time.
 const yodleeSemaphore = createSemaphore(1);
@@ -49,10 +50,24 @@ export async function genUpdateAccounts(
 
   providerAccounts.forEach((providerAccount, index) => {
     const refreshInfo = refreshes[index];
-    const newRawRefreshInfo = providerAccount.refreshInfo;
-    const newRefreshInfo = updateRefreshInfo(refreshInfo, newRawRefreshInfo);
+    const newYodleeRefreshInfo = providerAccount.refreshInfo;
+    const sourceOfTruth = {
+      providerAccountID: String(providerAccount.id),
+      type: 'YODLEE',
+      value: newYodleeRefreshInfo,
+    };
+    const newRefreshInfo = updateRefreshInfo(refreshInfo, sourceOfTruth);
     if (isComplete(newRefreshInfo)) {
-      const { providerAccountID } = newRefreshInfo;
+      const { sourceOfTruth } = newRefreshInfo;
+      invariant(
+        sourceOfTruth.type === 'YODLEE',
+        'Expecting refresh info to come from YODLEE',
+      );
+      const { providerAccountID } = sourceOfTruth;
+      INFO(
+        'YODLEE',
+        `Updating provider accounts for refresh ${newRefreshInfo.id}`,
+      );
       genUpdateAndSyncAllProviderAccounts = genUpdateAndSyncAllProviderAccounts.then(
         () =>
           genUpdateAndSyncProviderAccount(
@@ -65,7 +80,7 @@ export async function genUpdateAccounts(
       // Fetch the new accounts and add them to the batch.
     }
 
-    const ref = getYodleeRefreshInfoCollection().doc(newRefreshInfo.id);
+    const ref = getRefreshInfoCollection().doc(newRefreshInfo.id);
     refreshInfoBatch.update(ref, newRefreshInfo);
   });
 
@@ -115,11 +130,16 @@ async function genUpdateAndSyncProviderAccount(
 function genFetchProviderAccounts(
   yodleeUserSession: string,
   client: YodleeClient,
-  refreshes: Array<YodleeRefreshInfo>,
+  refreshes: Array<RefreshInfo>,
 ): Promise<Array<ProviderAccount>> {
   const promises: Array<Promise<ProviderAccount>> = refreshes.map(
     refreshInfo => {
-      const { providerAccountID } = refreshInfo;
+      const { sourceOfTruth } = refreshInfo;
+      invariant(
+        sourceOfTruth.type === 'YODLEE',
+        'Expecting refresh info to come from YODLEE',
+      );
+      const { providerAccountID } = sourceOfTruth;
       return wrapInSemaphoreRequest(yodleeSemaphore, () =>
         client.genProviderAccount(yodleeUserSession, providerAccountID),
       ).then(providerAccount => {

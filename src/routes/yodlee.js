@@ -3,6 +3,7 @@
 // import AlgoliaSearch from 'algoliasearch';
 
 import express from 'express';
+import invariant from 'invariant';
 
 import { checkAuth } from '../middleware';
 import { createJob, genCreateJob } from 'common/lib/models/Job';
@@ -14,17 +15,17 @@ import {
   isInProgress,
   isPendingStatus,
   updateRefreshInfo,
-} from 'common/lib/models/YodleeRefreshInfo';
-import { DEBUG, ERROR, INFO } from '../log-utils';
-import { genFetchProvider } from 'common/lib/models/YodleeProvider';
+} from 'common/lib/models/RefreshInfo';
+import { DEBUG, INFO } from '../log-utils';
+import { genFetchProvider } from 'common/lib/models/Provider';
 import { getYodleeClient, performYodleeUserLogin } from '../yodlee-manager';
 import { handleError } from '../route-utils';
 
 import type { ID } from 'common/types/core';
 import type { RouteHandler } from '../middleware';
-import type { Provider as YodleeProvider } from 'common/lib/models/YodleeProvider';
-import type { ProviderFull as RawYodleeProvider } from 'common/types/yodlee';
-import type { YodleeRefreshInfo } from 'common/lib/models/YodleeRefreshInfo';
+import type { Provider } from 'common/lib/models/Provider';
+import type { ProviderFull as YodleeProvider } from 'common/types/yodlee';
+import type { RefreshInfo } from 'common/lib/models/RefreshInfo';
 
 const router = express.Router();
 
@@ -109,7 +110,7 @@ router.get('/providers/search', performProviderSearch());
 function validateProviderLogin(): RouteHandler {
   return handleError(async (req, res, next) => {
     DEBUG('YODLEE', 'Validating json body of provider payload');
-    const provider: RawYodleeProvider = req.body.provider;
+    const provider: YodleeProvider = req.body.provider;
     const userID: ID = req.decodedIDToken.uid;
     const refreshInfo = await genFetchRefreshInfoForProvider(
       userID,
@@ -134,26 +135,32 @@ function validateProviderLogin(): RouteHandler {
 function performProviderLogin(): RouteHandler {
   return handleError(async (req, res) => {
     DEBUG('YODLEE', 'Attempting to login with provider');
-    const provider: YodleeProvider = req.body.provider;
+    const provider: Provider = req.body.provider;
     const yodleeClient = getYodleeClient();
     const yodleeUserSession: string = req.yodleeUserSession;
     DEBUG('YODLEE', 'Sending login to yodlee service');
+    const providerSourceOfTruth = provider.sourceOfTruth;
+    invariant(
+      providerSourceOfTruth.type === 'YODLEE',
+      'Expecting provider to come from YODLEE',
+    );
+    const yodleeProvider = providerSourceOfTruth.value;
     const loginPayload = await yodleeClient.genProviderLogin(
       yodleeUserSession,
-      provider.raw,
+      yodleeProvider,
     );
-    const rawRefreshInfo = loginPayload.refreshInfo;
+    const yodleeRefreshInfo = loginPayload.refreshInfo;
     const userID: ID = req.decodedIDToken.uid;
     const providerID = String(provider.id);
     const providerAccountID = String(loginPayload.providerAccountId);
-    const refreshInfo: YodleeRefreshInfo = req.refreshInfo
-      ? updateRefreshInfo(req.refreshInfo, rawRefreshInfo)
-      : createRefreshInfo(
-          rawRefreshInfo,
-          userID,
-          providerID,
-          providerAccountID,
-        );
+    const refreshInfoSourceOfTruth = {
+      providerAccountID,
+      type: 'YODLEE',
+      value: yodleeRefreshInfo,
+    };
+    const refreshInfo: RefreshInfo = req.refreshInfo
+      ? updateRefreshInfo(req.refreshInfo, refreshInfoSourceOfTruth)
+      : createRefreshInfo(refreshInfoSourceOfTruth, userID, providerID);
 
     DEBUG('YODLEE', 'Creating / Updating refresh info');
     await genCreateRefreshInfo(refreshInfo);

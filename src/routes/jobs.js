@@ -7,7 +7,7 @@ import { createJob, genCreateJob } from 'common/lib/models/Job';
 import {
   createRefreshSchedule,
   genFetchRefreshInfoForUser,
-} from 'common/lib/models/YodleeRefreshInfo';
+} from 'common/lib/models/RefreshInfo';
 import { DEBUG, INFO } from '../log-utils';
 import {
   genCheckAndRefreshYodleeUserSession,

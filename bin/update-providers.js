@@ -10,7 +10,7 @@
 const Common = require('common');
 const FirebaseAdmin = require('firebase-admin');
 const YodleeClient = require('../build/YodleeClient').default;
-const YodleeProvider = require('common/lib/models/YodleeProvider');
+const Provider = require('common/lib/models/Provider');
 
 const chalk = require('chalk');
 const dotenv = require('dotenv');
@@ -48,10 +48,13 @@ Common.initializeAsAdmin(FirebaseAdmin);
 console.log(chalk.blue('Authenticating with yodlee...'));
 const yodlee = new YodleeClient();
 
+let yodleeUserSession = null;
+
 Promise.resolve()
   .then(() => yodlee.genCobrandAuth(COBRAND_LOGIN, COBRAND_PASSWORD, COBRAND_LOCALE))
   .then(() => console.log(chalk.blue('Logged in with cobrand...')))
   .then(() => yodlee.genLoginUser(LOGIN_NAME, LOGIN_PASSWORD))
+  .then(_session => yodleeUserSession = _session)
   .then(() => console.log(chalk.blue('Logged in user...')))
   .then(() => console.log(chalk.blue('Fetching providers. This can take a few minutes...')))
   .then(() => fetchAndSyncProviders(9000))
@@ -66,7 +69,7 @@ Promise.resolve()
 
 function fetchAndSyncProviders(offset) {
   const limit = Math.min(PROVIDER_FETCH_PAGING, PROVIDER_FETCH_LIMIT - offset);
-  return yodlee.genProviders(offset, limit)
+  return yodlee.genProviders(yodleeUserSession, offset, limit)
     .then(rawProviders => {
       console.log(offset, rawProviders.length);
       const shouldFetchMore =
@@ -75,8 +78,11 @@ function fetchAndSyncProviders(offset) {
       const fetchFull = Promise.all(rawProviders.map(p => fetchFullProvider(p)));
       return fetchFull
         .then(fullProviders => {
-          const providers = fullProviders.map(raw => YodleeProvider.createProvider(raw));
-          return YodleeProvider.genUpsertProviders(providers);
+          const providers = fullProviders.map(yodleeProvider => {
+            const sourceOfTruth = {type: 'YODLEE', value: yodleeProvider};
+            return Provider.createProvider(sourceOfTruth);
+          });
+          return Provider.genUpsertProviders(providers);
         })
         .then(() => shouldFetchMore);
     })
@@ -92,7 +98,7 @@ function fetchFullProvider(provider) {
   return requestSemaphore()
     .then((_requestID) => {
       requestID = _requestID;
-      return yodlee.genProviderFull(provider.id);
+      return yodlee.genProviderFull(yodleeUserSession, provider.id);
     })
     .catch(error => {
       console.log(`Failed on provider ${provider.id}: ${error.toString()}`);
