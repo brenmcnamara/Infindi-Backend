@@ -8,7 +8,6 @@
  */
 
 const Common = require('common');
-const CommonBackend = require('common-backend');
 const FirebaseAdmin = require('firebase-admin');
 const YodleeClient = require('../build/YodleeClient').default;
 const YodleeOperations = require('../build/operations/yodlee');
@@ -45,7 +44,6 @@ FirebaseAdmin.initializeApp({
   databaseURL: process.env.FIREBASE_DB_URL,
 });
 
-CommonBackend.initialize(FirebaseAdmin);
 Common.initializeAsAdmin(FirebaseAdmin);
 
 const yodleeClient = new YodleeClient();

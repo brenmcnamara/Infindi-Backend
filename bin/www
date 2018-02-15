@@ -8,7 +8,6 @@
  */
 
 const Common = require('common');
-const BackendAPI = require('common-backend');
 const FirebaseAdmin = require('firebase-admin');
 
 const appModule = require('../build/app');
@@ -38,7 +37,6 @@ FirebaseAdmin.initializeApp({
 });
 
 Common.initializeAsAdmin(FirebaseAdmin);
-BackendAPI.initialize(FirebaseAdmin);
 
 const port = normalizePort(process.env.PORT || process.env.PORT_FALLBACK);
 
