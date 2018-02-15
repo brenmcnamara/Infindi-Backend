@@ -57,7 +57,7 @@ Promise.resolve()
   .then(_session => yodleeUserSession = _session)
   .then(() => console.log(chalk.blue('Logged in user...')))
   .then(() => console.log(chalk.blue('Fetching providers. This can take a few minutes...')))
-  .then(() => fetchAndSyncProviders(9000))
+  .then(() => fetchAndSyncProviders(0))
   .then(() => {
     console.log(chalk.green('Done updating!'));
     process.exit(0);
