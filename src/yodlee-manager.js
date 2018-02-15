@@ -58,7 +58,7 @@ export async function genCheckAndRefreshYodleeUserSession(
     const session = userToYodleeSession[userID];
     const isActiveSession = await yodleeClient.genIsActiveSession(session);
     if (isActiveSession) {
-      INFO('YODLEE', 'User session has expired. Creating new session');
+      INFO('YODLEE', 'Found valid yodlee session');
       return session;
     }
     delete userToYodleeSession[userID];
