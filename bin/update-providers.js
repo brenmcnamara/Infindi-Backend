@@ -57,7 +57,7 @@ Promise.resolve()
   .then(_session => yodleeUserSession = _session)
   .then(() => console.log(chalk.blue('Logged in user...')))
   .then(() => console.log(chalk.blue('Fetching providers. This can take a few minutes...')))
-  .then(() => fetchAndSyncProviders(0))
+  .then(() => fetchAndSyncProviders(7000))
   .then(() => {
     console.log(chalk.green('Done updating!'));
     process.exit(0);
@@ -80,7 +80,8 @@ function fetchAndSyncProviders(offset) {
         .then(fullProviders => {
           const providers = fullProviders.map(yodleeProvider => {
             const sourceOfTruth = {type: 'YODLEE', value: yodleeProvider};
-            return Provider.createProvider(sourceOfTruth);
+            const quirks = getProviderQuirks(yodleeProvider);
+            return Provider.createProvider(sourceOfTruth, quirks);
           });
           return Provider.genUpsertProviders(providers);
         })
@@ -142,4 +143,40 @@ function releaseSemaphore(requestID) {
     payload.resolve(payload.requestID);
   }
   return Promise.resolve();
+}
+
+function getProviderQuirks(yodleeProvider) {
+  if (!yodleeProvider.loginForm) {
+    return ['NO_LOGIN_FORM'];
+  }
+
+  const {loginForm} = yodleeProvider;
+
+  if (!loginForm.row || loginForm.row.length === 0) {
+    return ['EMPTY_LOGIN_FORM'];
+  }
+
+  const quirks = [];
+
+  const rows = loginForm.row;
+  const fieldCounts = rows.map(entry => entry.field ? entry.field.length : 0);
+  if (fieldCounts.some(count => count > 1)) {
+    quirks.push('ROW_CONTAINS_MULTIPLE_FIELDS');
+  }
+
+  if (fieldCounts.some(count => count === 0)) {
+    quirks.push('ROW_CONTAINS_NO_FIELDS');
+  }
+
+  const allFields = rows.reduce(
+    (memo, entry) => entry.field ? memo.concat(entry.field) : memo,
+    [],
+  );
+
+  const TEXT_FIELD_TYPES = ['text', 'password'];
+  if (allFields.some(field => !TEXT_FIELD_TYPES.includes(field.type))) {
+    quirks.push('ROW_CONTAINS_NON_TEXT_FIELD');
+  }
+
+  return quirks;
 }
