@@ -7,6 +7,7 @@ import invariant from 'invariant';
 
 import { checkAuth } from '../middleware';
 import { createJob, genCreateJob } from 'common/lib/models/Job';
+import { createPointer } from 'common/lib/db-utils';
 import {
   createRefreshInfo,
   createRefreshSchedule,
@@ -172,11 +173,7 @@ function performProviderLogin(): RouteHandler {
 
     DEBUG('YODLEE', 'Sending response');
     res.send({
-      data: {
-        pointerType: 'YodleeRefreshInfo',
-        type: 'POINTER',
-        refID: refreshInfo.id,
-      },
+      data: createPointer('RefreshInfo', refreshInfo.id),
     });
   }, true);
 }
