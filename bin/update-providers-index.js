@@ -37,12 +37,14 @@ const algolia = AlgoliaSearch(
   process.env.ALGOLIA_API_KEY,
 );
 
-const index = algolia.initIndex('YodleeProviders');
+const index = algolia.initIndex('Providers');
 
 console.log(chalk.blue('Fetching providers from firebase'));
 
 FirebaseAdmin.firestore()
-  .collection('YodleeProviders')
+  .collection('Providers')
+  .where('quirkCount', '==', 0)
+  .where('sourceOfTruth.value.authType', '==', 'CREDENTIALS')
   .get()
   .then(snapshot => {
     console.log(chalk.blue('Uploading data to algolia...'));
