@@ -1,6 +1,6 @@
 /* @flow */
 
-// import AlgoliaSearch from 'algoliasearch';
+import AlgoliaSearch from 'algoliasearch';
 
 import express from 'express';
 import invariant from 'invariant';
@@ -18,7 +18,6 @@ import {
   updateRefreshInfo,
 } from 'common/lib/models/RefreshInfo';
 import { DEBUG, INFO } from '../log-utils';
-import { genFetchProvider } from 'common/lib/models/Provider';
 import { getYodleeClient, performYodleeUserLogin } from '../yodlee-manager';
 import { handleError } from '../route-utils';
 
@@ -32,15 +31,15 @@ const router = express.Router();
 
 export default router;
 
-// let providerIndex: Object | null = null;
+let providerIndex: Object | null = null;
 
 export function initialize(): void {
-  // INFO('YODLEE', 'Initializing algolia search');
-  // const algolia = AlgoliaSearch(
-  //   process.env.ALGOLIA_APP_ID,
-  //   process.env.ALGOLIA_API_KEY,
-  // );
-  // providerIndex = algolia.initIndex('YodleeProviders');
+  INFO('YODLEE', 'Initializing algolia search');
+  const algolia = AlgoliaSearch(
+    process.env.ALGOLIA_APP_ID,
+    process.env.ALGOLIA_API_KEY,
+  );
+  providerIndex = algolia.initIndex('Providers');
 }
 
 // -----------------------------------------------------------------------------
@@ -79,22 +78,17 @@ function validateProviderSearch(): RouteHandler {
 
 function performProviderSearch(): RouteHandler {
   return handleError(async (req, res) => {
-    // const index = getProviderIndex();
-    const chase = await genFetchProvider('643');
-    res.json({
-      data: [chase],
+    const index = getProviderIndex();
+    const result = await index.search({
+      hitsPerPage: req.query.limit,
+      page: req.query.page,
+      query: req.query.query,
     });
-    // TODO: I hit a quota. Need to come down from the quota.
-    // const result = await index.search({
-    //   hitsPerPage: req.query.limit,
-    //   page: req.query.page,
-    //   query: req.query.query,
-    // });
-    // res.json({
-    //   data: result.hits,
-    //   limit: req.query.limit,
-    //   page: req.query.offset,
-    // });
+    res.json({
+      data: result.hits,
+      limit: req.query.limit,
+      page: req.query.offset,
+    });
   }, true);
 }
 
@@ -189,10 +183,10 @@ router.post('/providers/login', performProviderLogin());
 //
 // -----------------------------------------------------------------------------
 
-// function getProviderIndex(): Object {
-//   invariant(
-//     providerIndex,
-//     'Trying to access providerIndex before routes have been initialized',
-//   );
-//   return providerIndex;
-// }
+function getProviderIndex(): Object {
+  invariant(
+    providerIndex,
+    'Trying to access providerIndex before routes have been initialized',
+  );
+  return providerIndex;
+}
