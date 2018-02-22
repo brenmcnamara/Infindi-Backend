@@ -18,6 +18,7 @@ import {
   updateRefreshInfo,
 } from 'common/lib/models/RefreshInfo';
 import { DEBUG, INFO } from '../log-utils';
+import { genFetchProvider } from 'common/lib/models/Provider';
 import { getYodleeClient, performYodleeUserLogin } from '../yodlee-manager';
 import { handleError } from '../route-utils';
 
@@ -30,6 +31,11 @@ import type { RefreshInfo } from 'common/lib/models/RefreshInfo';
 const router = express.Router();
 
 export default router;
+
+const NULL_STATE_PROVIDER_IDS = [
+  '643', // CHASE
+  '2852', // BANK OF AMERICA
+];
 
 let providerIndex: Object | null = null;
 
@@ -78,16 +84,33 @@ function validateProviderSearch(): RouteHandler {
 
 function performProviderSearch(): RouteHandler {
   return handleError(async (req, res) => {
+    const { limit, page, query } = req.query;
+
+    if (query.trim().length === 0) {
+      // Perform null query.
+      const providers = await Promise.all(
+        NULL_STATE_PROVIDER_IDS.slice(page * limit, limit).map(id =>
+          genFetchProvider(id),
+        ),
+      );
+      res.json({
+        data: providers,
+        page,
+        query,
+      });
+      return;
+    }
+
     const index = getProviderIndex();
     const result = await index.search({
       hitsPerPage: req.query.limit,
-      page: req.query.page,
-      query: req.query.query,
+      page,
+      query,
     });
     res.json({
       data: result.hits,
-      limit: req.query.limit,
-      page: req.query.offset,
+      limit,
+      page,
     });
   }, true);
 }
