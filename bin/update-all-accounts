@@ -10,6 +10,7 @@
 const Common = require('common');
 const FirebaseAdmin = require('firebase-admin');
 const YodleeClient = require('../build/YodleeClient').default;
+const YodleeCredentials = require('common/lib/models/YodleeCredentials');
 const YodleeOperations = require('../build/operations/yodlee');
 
 const chalk = require('chalk');
@@ -23,8 +24,6 @@ const USER_ID = 'hHAvgFX13ZXNwdpT3fAgArHBfGG2';
 const COBRAND_LOGIN = 'sbCobbrenmcnamara';
 const COBRAND_PASSWORD = 'd19ced89-5e46-43da-9b4f-cd5ba339d9ce';
 const COBRAND_LOCALE = 'en_US';
-const LOGIN_NAME = 'sbMembrenmcnamara1';
-const LOGIN_PASSWORD = 'sbMembrenmcnamara1#123';
 
 const argv = minimist(process.argv.slice(2));
 
@@ -52,7 +51,8 @@ console.log(chalk.blue('Configuring yodlee'));
 
 yodleeClient
   .genCobrandAuth(COBRAND_LOGIN, COBRAND_PASSWORD, COBRAND_LOCALE)
-  .then(() => yodleeClient.genLoginUser(LOGIN_NAME, LOGIN_PASSWORD))
+  .then(() => YodleeCredentials.genFetchYodleeCredentials(USER_ID))
+  .then(creds => yodleeClient.genLoginUser(creds.loginName, creds.password))
   .then(userSession => {
     console.log(chalk.blue('Updating accounts...'));
     return argv.force
