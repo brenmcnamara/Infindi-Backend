@@ -16,16 +16,14 @@ const YodleeOperations = require('../build/operations/yodlee');
 const chalk = require('chalk');
 const dotenv = require('dotenv');
 const fs = require('fs');
-const minimist = require('minimist');
 const path = require('path');
 
 // Should eventually abstract this.
-const USER_ID = 'KuCy57n2EXWJnUQgU5d8KgdJkYq1';
+const USER_ID = 'q8L3tDxSSeOVNpPfdazpcCGW3PI2';
 const COBRAND_LOGIN = 'sbCobbrenmcnamara';
 const COBRAND_PASSWORD = 'd19ced89-5e46-43da-9b4f-cd5ba339d9ce';
 const COBRAND_LOCALE = 'en_US';
 
-const argv = minimist(process.argv.slice(2));
 
 console.log('Configuring environment variables...');
 dotenv.config();
@@ -53,17 +51,4 @@ yodleeClient
   .genCobrandAuth(COBRAND_LOGIN, COBRAND_PASSWORD, COBRAND_LOCALE)
   .then(() => YodleeCredentials.genFetchYodleeCredentials(USER_ID))
   .then(creds => yodleeClient.genLoginUser(creds.loginName, creds.password))
-  .then(userSession => {
-    console.log(chalk.blue('Updating accounts...'));
-    return argv.force
-      ? YodleeOperations.genForceUpdateAccounts(userSession, yodleeClient, USER_ID)
-      : YodleeOperations.genUpdateAccounts(userSession, yodleeClient, USER_ID);
-  })
-  .then(() => {
-    console.log(chalk.green('Done!'));
-    process.exit(0);
-  })
-  .catch(error => {
-    console.log(chalk.red(error.toString()));
-    process.exit(1);
-  });
+  .then(userSession => YodleeOperations.genUpdateRefreshInfo(userSession, yodleeClient, USER_ID));

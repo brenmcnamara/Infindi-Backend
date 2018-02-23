@@ -3,17 +3,21 @@
 import * as FirebaseAdmin from 'firebase-admin';
 
 import invariant from 'invariant';
+import nullthrows from 'nullthrows';
 
 import {
   createSemaphore,
   wrapInSemaphoreRequest,
 } from '../SingleThreadSemaphore';
+import { ERROR, INFO } from '../log-utils';
 import { genUpsertAccountFromYodleeAccount } from 'common/lib/models/Account';
-import { INFO } from '../log-utils';
 
 import {
+  createRefreshInfo,
+  genCreateRefreshInfo as genCreateRefreshInfoModel,
   genFetchRefreshInfoForUser,
   getRefreshInfoCollection,
+  genUpdateRefreshInfo as genUpdateRefreshInfoModel,
   isComplete,
   updateRefreshInfo,
 } from 'common/lib/models/RefreshInfo';
@@ -26,6 +30,83 @@ import type { RefreshInfo } from 'common/lib/models/RefreshInfo';
 
 // Only 1 yodlee operation allowed at a time.
 const yodleeSemaphore = createSemaphore(1);
+
+/**
+ * Update the refresh info for a user and fetch any refresh info that is missing
+ * for the user.
+ */
+export async function genUpdateRefreshInfo(
+  yodleeUserSession: string,
+  client: YodleeClient,
+  userID: ID,
+): Promise<void> {
+  INFO('YODLEE', 'Updating refresh info');
+  const refreshes = await genFetchRefreshInfoForUser(userID);
+  const providerAccounts = await client.genProviderAccounts(yodleeUserSession);
+
+  const existingProviderAccounts = providerAccounts.filter(pAccount =>
+    refreshes.some(info => {
+      const { sourceOfTruth } = info;
+      return (
+        sourceOfTruth.type === 'YODLEE' &&
+        sourceOfTruth.providerAccountID === String(pAccount.id)
+      );
+    }),
+  );
+  const newProviderAccounts = providerAccounts.filter(
+    pAccount => !existingProviderAccounts.includes(pAccount),
+  );
+
+  INFO(
+    'YODLEE',
+    `Updating ${existingProviderAccounts.length} refresh(es) and creating ${
+      newProviderAccounts.length
+    } refresh(es)`,
+  );
+
+  const promises = [];
+
+  for (const pAccount of existingProviderAccounts) {
+    let refreshInfo = nullthrows(
+      refreshes.find(info => {
+        const { sourceOfTruth } = info;
+        return (
+          sourceOfTruth.type === 'YODLEE' &&
+          sourceOfTruth.providerAccountID === String(pAccount.id)
+        );
+      }),
+    );
+    const sourceOfTruth = {
+      providerAccountID: String(pAccount.id),
+      type: 'YODLEE',
+      value: pAccount.refreshInfo,
+    };
+    refreshInfo = updateRefreshInfo(refreshInfo, sourceOfTruth);
+    promises.push(genUpdateRefreshInfoModel(refreshInfo));
+  }
+
+  for (const pAccount of newProviderAccounts) {
+    const sourceOfTruth = {
+      providerAccountID: String(pAccount.id),
+      type: 'YODLEE',
+      value: pAccount.refreshInfo,
+    };
+    const refreshInfo = createRefreshInfo(
+      sourceOfTruth,
+      userID,
+      String(pAccount.providerId),
+    );
+    promises.push(genCreateRefreshInfoModel(refreshInfo));
+  }
+
+  try {
+    await Promise.all(promises);
+  } catch (error) {
+    ERROR('YODLEE', 'Failed to update refresh info');
+    throw error;
+  }
+  INFO('YODLEE', 'Update is complete');
+}
 
 /**
  * Update the refresh info of all accounts for a particular user. Once the
