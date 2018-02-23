@@ -15,6 +15,7 @@ import { genUpsertAccountFromYodleeAccount } from 'common/lib/models/Account';
 import {
   createRefreshInfo,
   genCreateRefreshInfo as genCreateRefreshInfoModel,
+  genDeleteRefreshInfo as genDeleteRefreshInfoModel,
   genFetchRefreshInfoForUser,
   getRefreshInfoCollection,
   genUpdateRefreshInfo as genUpdateRefreshInfoModel,
@@ -182,6 +183,55 @@ export async function genForceUpdateAccounts(
   );
 
   await Promise.all(updates);
+}
+
+export async function genCleanupRefreshInfo(userID: ID): Promise<void> {
+  // If the user has multiple login attempts with the same provider, we can
+  // end up having multiple refresh infos open for the same provider account.
+  // Will delete extra refresh info models if found.
+  INFO('YODLEE', 'Cleaning up refresh info');
+  const refreshes = await genFetchRefreshInfoForUser(userID);
+
+  const extraRefreshes = refreshes.filter(info => {
+    const { sourceOfTruth } = info;
+    if (sourceOfTruth.type !== 'YODLEE') {
+      return false;
+    }
+    const providerID = info.providerRef.refID;
+    const lastRefreshAttemptMillis = Date.parse(
+      sourceOfTruth.value.lastRefreshAttempt,
+    );
+    const isMostRecentRefresh = refreshes.every(info2 => {
+      if (info === info2) {
+        return true;
+      } else if (info2.sourceOfTruth.type !== 'YODLEE') {
+        return true;
+      } else if (info2.providerRef.refID !== providerID) {
+        return true;
+      }
+      const lastRefreshAttempMillis2 = Date.parse(
+        info2.sourceOfTruth.value.lastRefreshAttempt,
+      );
+      // NOTE: Making a possibly naive assumption that the last refresh attempts
+      // of different refresh infos are never the same. If they are the same,
+      // we will end up with the case where we can have no refresh that is most
+      // recent, and accidentally delete a refresh we do not want to delete.
+      return lastRefreshAttemptMillis > lastRefreshAttempMillis2;
+    });
+    return !isMostRecentRefresh;
+  });
+
+  INFO('YODLEE', `Deleting ${extraRefreshes.length} refresh info docs`);
+
+  try {
+    await Promise.all(
+      extraRefreshes.map(info => genDeleteRefreshInfoModel(info.id)),
+    );
+  } catch (error) {
+    ERROR('YODLEE', 'Failed to cleanup extra refreshes');
+    throw error;
+  }
+  INFO('YODLEE', 'Finished cleaning up extra refreshes');
 }
 
 // -----------------------------------------------------------------------------

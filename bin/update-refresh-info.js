@@ -51,4 +51,5 @@ yodleeClient
   .genCobrandAuth(COBRAND_LOGIN, COBRAND_PASSWORD, COBRAND_LOCALE)
   .then(() => YodleeCredentials.genFetchYodleeCredentials(USER_ID))
   .then(creds => yodleeClient.genLoginUser(creds.loginName, creds.password))
-  .then(userSession => YodleeOperations.genUpdateRefreshInfo(userSession, yodleeClient, USER_ID));
+  .then(userSession => YodleeOperations.genUpdateRefreshInfo(userSession, yodleeClient, USER_ID))
+  .then(() => YodleeOperations.genCleanupRefreshInfo(USER_ID));
