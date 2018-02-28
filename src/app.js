@@ -51,6 +51,8 @@ export function initialize(): void {
   });
 
   initializeRoutes();
-  initializeListenForJobs();
+  if (process.env.IS_LISTENING_FOR_JOBS === 'true') {
+    initializeListenForJobs();
+  }
   initializeYodleeManager();
 }
