@@ -20,6 +20,7 @@
     "babel-register": "^6.26.0",
     "body-parser": "~1.18.2",
     "cookie-parser": "~1.4.3",
+    "common": "git+https://86f8b449cd778036c88467e637378b2e328bf08a@github.com/brenmcnamara/infindi-common.git",
     "debug": "~2.6.9",
     "dotenv": "^4.0.0",
     "ejs": "~2.5.7",

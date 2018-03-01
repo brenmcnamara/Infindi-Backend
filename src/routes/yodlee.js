@@ -6,27 +6,19 @@ import express from 'express';
 import invariant from 'invariant';
 
 import { checkAuth } from '../middleware';
-import { createJob, genCreateJob } from 'common/lib/models/Job';
 import { createPointer } from 'common/lib/db-utils';
-import {
-  createRefreshInfo,
-  createRefreshSchedule,
-  genCreateRefreshInfo,
-  genFetchRefreshInfoForProvider,
-  isInProgress,
-  isPendingStatus,
-  updateRefreshInfo,
-} from 'common/lib/models/RefreshInfo';
 import { DEBUG, INFO } from '../log-utils';
 import { genFetchProvider } from 'common/lib/models/Provider';
+import {
+  genYodleeProviderLink,
+  genYodleeProviderLogin,
+} from '../operations/provider-link';
 import { getYodleeClient, performYodleeUserLogin } from '../yodlee-manager';
 import { handleError } from '../route-utils';
 
 import type { ID } from 'common/types/core';
 import type { RouteHandler } from '../middleware';
 import type { Provider } from 'common/lib/models/Provider';
-import type { ProviderFull as YodleeProvider } from 'common/types/yodlee';
-import type { RefreshInfo } from 'common/lib/models/RefreshInfo';
 
 const router = express.Router();
 
@@ -125,79 +117,42 @@ router.get('/providers/search', performProviderSearch());
 //
 // -----------------------------------------------------------------------------
 
-function validateProviderLogin(): RouteHandler {
-  return handleError(async (req, res, next) => {
-    DEBUG('YODLEE', 'Validating json body of provider payload');
-    const provider: YodleeProvider = req.body.provider;
-    const userID: ID = req.decodedIDToken.uid;
-    const refreshInfo = await genFetchRefreshInfoForProvider(
-      userID,
-      String(provider.id),
-    );
-    if (
-      refreshInfo &&
-      (isPendingStatus(refreshInfo) || isInProgress(refreshInfo))
-    ) {
-      throw {
-        errorCode: 'infindi/bad-request',
-        errorMessage: 'Provider is already being logged in',
-      };
-    }
-    req.refreshInfo = refreshInfo;
-    // TODO: Throw error if trying to login with a provider that is in the
-    // middle of a login.
-    next();
-  }, true);
-}
-
 function performProviderLogin(): RouteHandler {
   return handleError(async (req, res) => {
     DEBUG('YODLEE', 'Attempting to login with provider');
     const provider: Provider = req.body.provider;
     const yodleeClient = getYodleeClient();
     const yodleeUserSession: string = req.yodleeUserSession;
+
     DEBUG('YODLEE', 'Sending login to yodlee service');
     const providerSourceOfTruth = provider.sourceOfTruth;
     invariant(
       providerSourceOfTruth.type === 'YODLEE',
       'Expecting provider to come from YODLEE',
     );
-    const yodleeProvider = providerSourceOfTruth.value;
-    const loginPayload = await yodleeClient.genProviderLogin(
-      yodleeUserSession,
-      yodleeProvider,
-    );
-    const yodleeRefreshInfo = loginPayload.refreshInfo;
+    const yodleeProvider = provider.sourceOfTruth.value;
     const userID: ID = req.decodedIDToken.uid;
-    const providerID = String(provider.id);
-    const providerAccountID = String(loginPayload.providerAccountId);
-    const refreshInfoSourceOfTruth = {
-      providerAccountID,
-      type: 'YODLEE',
-      value: yodleeRefreshInfo,
-    };
-    const refreshInfo: RefreshInfo = req.refreshInfo
-      ? updateRefreshInfo(req.refreshInfo, refreshInfoSourceOfTruth)
-      : createRefreshInfo(refreshInfoSourceOfTruth, userID, providerID);
 
-    DEBUG('YODLEE', 'Creating / Updating refresh info');
-    await genCreateRefreshInfo(refreshInfo);
-
-    INFO('YODLEE', 'Sending refresh job');
-    const schedule = createRefreshSchedule(refreshInfo);
-    const job = createJob('/update-accounts', { userID }, schedule);
-    await genCreateJob(job);
-
-    DEBUG('YODLEE', 'Sending response');
+    const refreshInfo = await genYodleeProviderLogin(
+      yodleeUserSession,
+      yodleeClient,
+      yodleeProvider,
+      userID,
+    );
     res.send({
       data: createPointer('RefreshInfo', refreshInfo.id),
     });
+
+    INFO(
+      'YODLEE',
+      'Refresh info has been sent. Starting post-response linking',
+    );
+    genYodleeProviderLink(yodleeUserSession, yodleeClient, refreshInfo.id);
   }, true);
 }
 
 router.post('/providers/login', checkAuth());
 router.post('/providers/login', performYodleeUserLogin());
-router.post('/providers/login', validateProviderLogin());
 router.post('/providers/login', performProviderLogin());
 
 // -----------------------------------------------------------------------------

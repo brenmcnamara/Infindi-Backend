@@ -9,7 +9,6 @@ import path from 'path';
 import routes, { initialize as initializeRoutes } from './routes';
 import serveFavicon from 'serve-favicon';
 
-import { initialize as initializeListenForJobs } from './listen-for-jobs';
 import { initialize as initializeYodleeManager } from './yodlee-manager';
 
 const { ErrorUtils } = Common;
@@ -51,8 +50,5 @@ export function initialize(): void {
   });
 
   initializeRoutes();
-  if (process.env.IS_LISTENING_FOR_JOBS === 'true') {
-    initializeListenForJobs();
-  }
   initializeYodleeManager();
 }

@@ -302,9 +302,7 @@ export default class YodleeClient {
       .then(() =>
         this._genGetRequest(userSession, `${BASE_URI}/providerAccounts/${id}`),
       )
-      .then((response: ProviderAccountResponse) => {
-        return response.providerAccount;
-      })
+      .then((response: ProviderAccountResponse) => response.providerAccount)
       .catch(error => {
         if (error.errorCode === 'Y807') {
           return null;
