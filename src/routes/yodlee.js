@@ -10,9 +10,9 @@ import { createPointer } from 'common/lib/db-utils';
 import { DEBUG, INFO } from '../log-utils';
 import { genFetchProvider } from 'common/lib/models/Provider';
 import {
-  genYodleeProviderLink,
+  genYodleePerformLink,
   genYodleeProviderLogin,
-} from '../operations/provider-link';
+} from '../operations/account-link-create';
 import { getYodleeClient, performYodleeUserLogin } from '../yodlee-manager';
 import { handleError } from '../route-utils';
 
@@ -147,7 +147,7 @@ function performProviderLogin(): RouteHandler {
       'YODLEE',
       'Refresh info has been sent. Starting post-response linking',
     );
-    genYodleeProviderLink(yodleeUserSession, yodleeClient, refreshInfo.id);
+    genYodleePerformLink(yodleeUserSession, yodleeClient, refreshInfo.id);
   }, true);
 }
 

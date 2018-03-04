@@ -7,23 +7,30 @@
  * syntax this works with the runnning version of node.
  */
 
+const AccountLinkUpdateOperations = require('../build/operations/account-link-update');
 const Common = require('common');
 const FirebaseAdmin = require('firebase-admin');
 const YodleeClient = require('../build/YodleeClient').default;
 const YodleeCredentials = require('common/lib/models/YodleeCredentials');
-const YodleeOperations = require('../build/operations/yodlee');
 
 const chalk = require('chalk');
 const dotenv = require('dotenv');
 const fs = require('fs');
+const minimist = require('minimist');
 const path = require('path');
 
 // Should eventually abstract this.
-const USER_ID = 'q8L3tDxSSeOVNpPfdazpcCGW3PI2';
 const COBRAND_LOGIN = 'sbCobbrenmcnamara';
 const COBRAND_PASSWORD = 'd19ced89-5e46-43da-9b4f-cd5ba339d9ce';
 const COBRAND_LOCALE = 'en_US';
 
+const argv = minimist(process.argv.slice(2));
+const userID = argv['user-id'];
+
+if (!userID) {
+  console.log(chalk.red('You must provide argument --user-id=<userID>'));
+  process.exit(1);
+}
 
 console.log('Configuring environment variables...');
 dotenv.config();
@@ -49,7 +56,21 @@ console.log(chalk.blue('Configuring yodlee'));
 
 yodleeClient
   .genCobrandAuth(COBRAND_LOGIN, COBRAND_PASSWORD, COBRAND_LOCALE)
-  .then(() => YodleeCredentials.genFetchYodleeCredentials(USER_ID))
+  .then(() => YodleeCredentials.genFetchYodleeCredentials(userID))
   .then(creds => yodleeClient.genLoginUser(creds.loginName, creds.password))
-  .then(userSession => YodleeOperations.genUpdateRefreshInfo(userSession, yodleeClient, USER_ID))
-  .then(() => YodleeOperations.genCleanupRefreshInfo(USER_ID));
+  .then(userSession => {
+    console.log(chalk.blue('Updating account links...'));
+    return AccountLinkUpdateOperations.genUpdateLinksForUser(
+      userSession,
+      yodleeClient,
+      userID,
+    );
+  })
+  .then(() => {
+    console.log(chalk.green('Done!'));
+    process.exit(0);
+  })
+  .catch(error => {
+    console.log(chalk.red(error.toString()));
+    process.exit(1);
+  });
