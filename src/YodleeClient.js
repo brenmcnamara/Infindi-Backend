@@ -330,7 +330,7 @@ export default class YodleeClient {
           `${BASE_URI}/accounts?providerAccountId=${id}`,
         ),
       )
-      .then((response: AccountsResponse) => response.account);
+      .then((response: AccountsResponse) => response.account || []);
   }
 
   // ---------------------------------------------------------------------------
