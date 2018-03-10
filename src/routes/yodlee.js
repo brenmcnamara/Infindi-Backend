@@ -1,14 +1,12 @@
 /* @flow */
 
-import AlgoliaSearch from 'algoliasearch';
-
 import express from 'express';
 import invariant from 'invariant';
 
 import { checkAuth } from '../middleware';
 import { createPointer } from 'common/lib/db-utils';
 import { DEBUG, INFO } from '../log-utils';
-import { genFetchProvider } from 'common/lib/models/Provider';
+import { genFetchProvider, getProviderName } from 'common/lib/models/Provider';
 import {
   genYodleePerformLink,
   genYodleeProviderLogin,
@@ -24,20 +22,40 @@ const router = express.Router();
 
 export default router;
 
-const NULL_STATE_PROVIDER_IDS = [
+const PROVIDER_IDS = [
   '643', // CHASE
-  '2852', // BANK OF AMERICA
+  '5', // WELLS FARGO
+  '12938', // CITI CARDS
+  '17781', // CITI BANKING
+  '7000', // CAPITAL ONE
+  '20719', // MORGAN STANLEY
+  '10710', // DISCOVER
+  '12171', // LENDING CLUB
+  '12', // AMERICAN EXPRESS
+  '10017', // BARCLAYCARD US
+  '21080', // Vanguard
+  '2852', // Bank of America
+  '21', // Charles Schwab
+  '15052', // Technology Credit Union
+  '13843', // Optum Bank
+  '2162', // PNC Bank
+  '3278', // USAA
+  '492', // FIDELITY
+  '291', // TD Ameritrade
+  '18061', // GS Bank / Marcus
+  '9565', // Ally Bank
+  '2383', // SunTrust Bank
+  '4132', // TD BANK
+  '19632', // Navient
+  '3589', // Sallie Mae
+  '9749', // Prosper
+  '12944', // LightStream
+  '13960', // HSBC USA
+  '3531', // Paypal
 ];
 
-let providerIndex: Object | null = null;
-
 export function initialize(): void {
-  INFO('YODLEE', 'Initializing algolia search');
-  const algolia = AlgoliaSearch(
-    process.env.ALGOLIA_APP_ID,
-    process.env.ALGOLIA_API_KEY,
-  );
-  providerIndex = algolia.initIndex('Providers');
+  genSetupProviders();
 }
 
 // -----------------------------------------------------------------------------
@@ -79,12 +97,7 @@ function performProviderSearch(): RouteHandler {
     const { limit, page, query } = req.query;
 
     if (query.trim().length === 0) {
-      // Perform null query.
-      const providers = await Promise.all(
-        NULL_STATE_PROVIDER_IDS.slice(page * limit, limit).map(id =>
-          genFetchProvider(id),
-        ),
-      );
+      const providers = getProviders().slice(page * limit, limit);
       res.json({
         data: providers,
         page,
@@ -93,14 +106,12 @@ function performProviderSearch(): RouteHandler {
       return;
     }
 
-    const index = getProviderIndex();
-    const result = await index.search({
-      hitsPerPage: req.query.limit,
-      page,
-      query,
-    });
+    const searchRegExp = new RegExp(query, 'i');
+    const providers = getProviders()
+      .filter(p => searchRegExp.test(getProviderName(p)))
+      .slice(page * limit, limit);
     res.json({
-      data: result.hits,
+      data: providers,
       limit,
       page,
     });
@@ -161,10 +172,27 @@ router.post('/providers/login', performProviderLogin());
 //
 // -----------------------------------------------------------------------------
 
-function getProviderIndex(): Object {
-  invariant(
-    providerIndex,
-    'Trying to access providerIndex before routes have been initialized',
+let _providers: Array<Provider> = [];
+
+async function genSetupProviders(): Promise<void> {
+  INFO('YODLEE', 'Setting up providers');
+  const allProviders: Array<Provider | null> = await Promise.all(
+    PROVIDER_IDS.map(id => genFetchProvider(id)),
   );
-  return providerIndex;
+  // $FlowFixMe - This is correct.
+  _providers = allProviders.filter(p => p && isProviderSupported(p));
+}
+
+function getProviders(): Array<Provider> {
+  return _providers;
+}
+
+function isProviderSupported(provider: Provider): bool {
+  if (provider.quirkCount > 0) {
+    return false;
+  }
+  return (
+    provider.sourceOfTruth.type !== 'YODLEE' ||
+    provider.sourceOfTruth.value.authType === 'CREDENTIALS'
+  );
 }
