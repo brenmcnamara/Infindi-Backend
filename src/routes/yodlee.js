@@ -33,7 +33,7 @@ const PROVIDER_IDS = [
   '12171', // LENDING CLUB
   '12', // AMERICAN EXPRESS
   '10017', // BARCLAYCARD US
-  '21080', // Vanguard
+  '98', // Vanguard
   '2852', // Bank of America
   '21', // Charles Schwab
   '15052', // Technology Credit Union
