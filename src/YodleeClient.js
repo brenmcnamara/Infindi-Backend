@@ -13,6 +13,7 @@ import type {
   ProviderFull,
   ProviderAccount,
   RefreshInfo,
+  Transaction,
   User,
 } from 'common/types/yodlee';
 import type { ID } from 'common/types/core';
@@ -331,6 +332,21 @@ export default class YodleeClient {
         ),
       )
       .then((response: AccountsResponse) => response.account || []);
+  }
+
+  genTransactions(
+    userSession: string,
+    accountID: ID,
+  ): Promise<Array<Transaction>> {
+    return this._genValidateCobrandLogin()
+      .then(() => this._genValidateUserLogin(userSession))
+      .then(() =>
+        this._genGetRequest(
+          userSession,
+          `${BASE_URI}/transactions?accountId=${accountID}`,
+        ),
+      )
+      .then(response => response.transaction);
   }
 
   // ---------------------------------------------------------------------------
