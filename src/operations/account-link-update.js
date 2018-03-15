@@ -48,7 +48,7 @@ export async function genUpdateLinksForUser(
   yodleeClient: YodleeClient,
   userID: ID,
 ): Promise<void> {
-  INFO('PROVIDER-LINK', `Updating all account links for user ${userID}`);
+  INFO('ACCOUNT-LINK', `Updating all account links for user ${userID}`);
 
   const accountLinks = await genFetchAccountLinksForUser(userID);
   await Promise.all(

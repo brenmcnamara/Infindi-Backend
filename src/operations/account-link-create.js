@@ -102,7 +102,7 @@ export async function genYodleePerformLink(
     client,
     accountLinkID,
   );
-  let sleepTime = 5000;
+  const sleepTime = 3000;
   while (!isDoneProcessing) {
     INFO('ACCOUNT-LINK', 'Account linking is not complete, trying again');
     await sleepForMillis(sleepTime);
@@ -113,7 +113,6 @@ export async function genYodleePerformLink(
       client,
       accountLinkID,
     );
-    sleepTime = Math.min(15000, sleepTime + 1000);
   }
 
   INFO('ACCOUNT-LINK', 'Yodlee has completed linking attempt');
