@@ -334,16 +334,48 @@ export default class YodleeClient {
       .then((response: AccountsResponse) => response.account || []);
   }
 
+  /**
+   * Returns undefined if it does not make sense for the give account to have
+   * transactions. (i.e. Rewards accounts)
+   */
   genTransactions(
     userSession: string,
     accountID: ID,
-  ): Promise<Array<Transaction>> {
+  ): Promise<Array<Transaction> | undefined> {
     return this._genValidateCobrandLogin()
       .then(() => this._genValidateUserLogin(userSession))
       .then(() =>
         this._genGetRequest(
           userSession,
           `${BASE_URI}/transactions?accountId=${accountID}`,
+        ),
+      )
+      .then(response => response.transaction);
+  }
+
+  genTransactionsFromDate(
+    userSession: string,
+    accountID: ID,
+    date: Date,
+  ): Promise<Array<Transaction>> {
+    const yearString = date.getUTCFullYear().toString();
+    const monthString =
+      date.getUTCMonth() < 9
+        ? `0${date.getUTCMonth() + 1}`
+        : (date.getUTCMonth() + 1).toString();
+    const dayString =
+      date.getUTCDate() < 10
+        ? `0${date.getUTCDate()}`
+        : date.getUTCDate().toString();
+    const fromDateString = `${yearString}-${monthString}-${dayString}`;
+    return this._genValidateCobrandLogin()
+      .then(() => this._genValidateUserLogin(userSession))
+      .then(() =>
+        this._genGetRequest(
+          userSession,
+          `${BASE_URI}/transactions?accountId=${accountID}&fromDate=${
+            fromDateString
+          }`,
         ),
       )
       .then(response => response.transaction);

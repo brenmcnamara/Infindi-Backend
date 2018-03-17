@@ -125,7 +125,9 @@ export async function genYodleePerformLink(
   if (isLinkFailure(accountLink)) {
     INFO(
       'ACCOUNT-LINK',
-      `Yodlee linking failed. Check refresh for more info: ${accountLink.id}`,
+      `Yodlee linking failed. Check account link for more info: ${
+        accountLink.id
+      }`,
     );
     return;
   }
