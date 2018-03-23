@@ -312,6 +312,21 @@ export default class YodleeClient {
       });
   }
 
+  genProviderAccountRefresh(
+    userSession: string,
+    providerAccountID: ID,
+  ): Promise<ProviderAccount> {
+    return this._genValidateCobrandLogin()
+      .then(() => this._genValidateUserLogin(userSession))
+      .then(() =>
+        this._genPutRequest(
+          userSession,
+          `${BASE_URI}/providerAccounts?providerAccountIds=${providerAccountID}`,
+        ),
+      )
+      .then(response => response.providerAccount[0]);
+  }
+
   genAccounts(userSession: string): Promise<Array<Account>> {
     return this._genValidateCobrandLogin()
       .then(() => this._genValidateUserLogin(userSession))
@@ -479,6 +494,44 @@ export default class YodleeClient {
         resolve((payload: TResponse));
       };
 
+      request(options, onComplete);
+    });
+  }
+
+  _genPutRequest<TResponse: Object>(
+    userSession: string | null,
+    uri: string,
+  ): Promise<TResponse> {
+    return new Promise((resolve, reject) => {
+      const options = {
+        headers: this._getHeaders(userSession),
+        method: 'PUT',
+        uri,
+      };
+
+      const onComplete = (
+        error: Error,
+        response: Object,
+        serialized: string,
+      ) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        let payload;
+        try {
+          payload = JSON.parse(serialized);
+        } catch (error) {
+          reject(error);
+          return;
+        }
+
+        if (payload.errorCode) {
+          reject((payload: ErrorResponse));
+          return;
+        }
+        resolve((payload: TResponse));
+      };
       request(options, onComplete);
     });
   }
