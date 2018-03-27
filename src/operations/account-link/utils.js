@@ -12,10 +12,6 @@ import {
   updateAccountYodlee,
 } from 'common/lib/models/Account';
 import {
-  createSemaphore,
-  wrapInSemaphoreRequest,
-} from '../SingleThreadSemaphore';
-import {
   createTransactionYodlee,
   genCreateTransaction,
   genDoesYodleeTransactionExist,
@@ -24,20 +20,24 @@ import {
 } from 'common/lib/models/Transaction';
 import {
   genAccountsForProviderAccount,
+  genProviderAccount,
   genTransactions,
   genTransactionsFromDate,
-} from '../yodlee-manager';
-import { genFetchAccountLinksForUser } from 'common/lib/models/AccountLink';
-import { INFO } from '../log-utils';
+} from '../../yodlee-manager';
+import {
+  genCreateAccountLink,
+  genFetchAccountLink,
+  genFetchAccountLinksForUser,
+  isLinking,
+  updateAccountLinkYodlee,
+} from 'common/lib/models/AccountLink';
+import { INFO } from '../../log-utils';
 
 import type { Account } from 'common/lib/models/Account';
 import type { AccountLink } from 'common/lib/models/AccountLink';
 import type { ID } from 'common/types/core';
 import type { ProviderAccount as YodleeProviderAccount } from 'common/types/yodlee';
 import type { Transaction } from 'common/lib/models/Transaction';
-
-// Only 1 yodlee operation allowed at a time.
-const yodleeSemaphore = createSemaphore(1);
 
 export async function genUpdateLink(accountLink: AccountLink): Promise<void> {
   INFO('ACCOUNT-LINK', 'Updating account link');
@@ -59,11 +59,43 @@ export async function genUpdateLinksForUser(userID: ID): Promise<void> {
   );
 }
 
-// -----------------------------------------------------------------------------
-//
-// UTILITIES
-//
-// -----------------------------------------------------------------------------
+export async function genYodleeLinkPass(
+  userID: ID,
+  accountLinkID: ID,
+): Promise<bool> {
+  INFO('ACCOUNT-LINK', 'Attempting provider link');
+
+  const accountLink = await genFetchAccountLink(accountLinkID);
+  invariant(
+    accountLink,
+    'No refresh info found while attempting provider link',
+  );
+
+  const { sourceOfTruth } = accountLink;
+  invariant(
+    sourceOfTruth.type === 'YODLEE',
+    'Expecting account link to come from Yodlee',
+  );
+  const yodleeProviderAccountID = String(sourceOfTruth.providerAccount.id);
+
+  const yodleeProviderAccount = await genProviderAccount(
+    userID,
+    yodleeProviderAccountID,
+  );
+
+  invariant(
+    yodleeProviderAccount,
+    'Expecting yodlee provider account to exist if an account link exists for it',
+  );
+
+  INFO('ACCOUNT-LINK', 'Updating account link');
+  const newAccountLink = updateAccountLinkYodlee(
+    accountLink,
+    yodleeProviderAccount,
+  );
+  await genCreateAccountLink(newAccountLink);
+  return !isLinking(accountLink);
+}
 
 export async function genYodleeUpdateLink(
   accountLink: AccountLink,
@@ -71,8 +103,9 @@ export async function genYodleeUpdateLink(
   const userID = accountLink.userRef.refID;
   const providerAccount = getYodleeProviderAccount(accountLink);
   // Fetch the yodlee accounts.
-  const yodleeAccounts = await wrapInSemaphoreRequest(yodleeSemaphore, () =>
-    genAccountsForProviderAccount(userID, String(providerAccount.id)),
+  const yodleeAccounts = await genAccountsForProviderAccount(
+    userID,
+    String(providerAccount.id),
   );
 
   // Update existing accounts, create new accounts, delete old accounts.

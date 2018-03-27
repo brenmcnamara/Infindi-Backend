@@ -10,7 +10,7 @@ import { genFetchProvider, getProviderName } from 'common/lib/models/Provider';
 import {
   genYodleePerformLink,
   genYodleeProviderLogin,
-} from '../operations/account-link-create';
+} from '../operations/account-link/create';
 import { handleError } from '../route-utils';
 
 import type { ID } from 'common/types/core';

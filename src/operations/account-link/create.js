@@ -12,9 +12,9 @@ import {
   isLinkSuccess,
   updateAccountLinkYodlee,
 } from 'common/lib/models/AccountLink';
-import { genProviderAccount, genProviderLogin } from '../yodlee-manager';
-import { genUpdateLink } from './account-link-update';
-import { INFO } from '../log-utils';
+import { genProviderAccount, genProviderLogin } from '../../yodlee-manager';
+import { genUpdateLink, genYodleeLinkPass } from './utils';
+import { INFO } from '../../log-utils';
 
 import type { AccountLink } from 'common/lib/models/AccountLink';
 import type { ID } from 'common/types/core';
@@ -128,44 +128,6 @@ export async function genYodleePerformLink(accountLinkID: ID): Promise<void> {
 // UTILITIES
 //
 // -----------------------------------------------------------------------------
-
-async function genYodleeLinkPass(
-  userID: ID,
-  accountLinkID: ID,
-): Promise<bool> {
-  INFO('ACCOUNT-LINK', 'Attempting provider link');
-
-  const accountLink = await genFetchAccountLink(accountLinkID);
-  invariant(
-    accountLink,
-    'No refresh info found while attempting provider link',
-  );
-
-  const { sourceOfTruth } = accountLink;
-  invariant(
-    sourceOfTruth.type === 'YODLEE',
-    'Expecting account link to come from Yodlee',
-  );
-  const yodleeProviderAccountID = String(sourceOfTruth.providerAccount.id);
-
-  const yodleeProviderAccount = await genProviderAccount(
-    userID,
-    yodleeProviderAccountID,
-  );
-
-  invariant(
-    yodleeProviderAccount,
-    'Expecting yodlee provider account to exist if an account link exists for it',
-  );
-
-  INFO('ACCOUNT-LINK', 'Updating account link');
-  const newAccountLink = updateAccountLinkYodlee(
-    accountLink,
-    yodleeProviderAccount,
-  );
-  await genCreateAccountLink(newAccountLink);
-  return !isLinking(accountLink);
-}
 
 function sleepForMillis(millis: number): Promise<void> {
   return new Promise(resolve => {

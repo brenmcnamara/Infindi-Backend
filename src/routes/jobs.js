@@ -4,7 +4,6 @@ import * as FirebaseAdmin from 'firebase-admin';
 
 import express from 'express';
 
-import { genUpdateLinksForUser } from '../operations/account-link-update';
 import { handleError } from '../route-utils';
 
 import type { RouteHandler } from '../middleware';
@@ -24,9 +23,14 @@ export function initialize(): void {}
 
 function performUpdateAllLinks(): RouteHandler {
   return handleError(async (req, res) => {
-    const users = await genFetchUsers();
-    await Promise.all(users.map(user => genUpdateLinksForUser(user.id)));
-    res.json({ status: 'DONE' });
+    // const users = await genFetchUsers();
+    // TODO: Refresh the link when this is called.
+    res
+      .status(500)
+      .json({
+        errorCode: 'infindi/implement-me',
+        errorMessage: 'IMPLEMENT ME!!',
+      });
   }, true);
 }
 
@@ -38,11 +42,11 @@ router.get('/updateAllLinks', performUpdateAllLinks());
 //
 // -----------------------------------------------------------------------------
 
-function genFetchUsers(): Promise<Array<UserInfo>> {
-  return FirebaseAdmin.firestore()
-    .collection('UserInfo')
-    .get()
-    .then(snapshot =>
-      snapshot.docs.filter(doc => doc.exists).map(doc => doc.data()),
-    );
-}
+// function genFetchUsers(): Promise<Array<UserInfo>> {
+//   return FirebaseAdmin.firestore()
+//     .collection('UserInfo')
+//     .get()
+//     .then(snapshot =>
+//       snapshot.docs.filter(doc => doc.exists).map(doc => doc.data()),
+//     );
+// }
