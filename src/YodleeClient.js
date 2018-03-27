@@ -78,7 +78,7 @@ type ProviderResponse = {|
   +provider?: Array<ProviderFull>,
 |};
 
-type ProviderLoginResponse = {|
+export type ProviderLoginResponse = {|
   +providerAccountId: Long,
   +refreshInfo: RefreshInfo,
 |};
@@ -356,7 +356,7 @@ export default class YodleeClient {
   genTransactions(
     userSession: string,
     accountID: ID,
-  ): Promise<Array<Transaction> | undefined> {
+  ): Promise<?Array<Transaction>> {
     return this._genValidateCobrandLogin()
       .then(() => this._genValidateUserLogin(userSession))
       .then(() =>

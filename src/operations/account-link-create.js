@@ -12,32 +12,25 @@ import {
   isLinkSuccess,
   updateAccountLinkYodlee,
 } from 'common/lib/models/AccountLink';
-import { genCheckAndRefreshYodleeUserSession } from '../yodlee-manager';
+import { genProviderAccount, genProviderLogin } from '../yodlee-manager';
 import { genUpdateLink } from './account-link-update';
 import { INFO } from '../log-utils';
-
-import type YodleeClient from '../YodleeClient';
 
 import type { AccountLink } from 'common/lib/models/AccountLink';
 import type { ID } from 'common/types/core';
 import type { ProviderFull as YodleeProvider } from 'common/types/yodlee';
 
 export async function genYodleeProviderLogin(
-  yodleeUserSession: string,
-  yodleeClient: YodleeClient,
-  yodleeProvider: YodleeProvider,
   userID: ID,
+  yodleeProvider: YodleeProvider,
 ): Promise<AccountLink> {
   INFO('ACCOUNT-LINK', 'Linking yodlee account');
 
-  const loginPayload = await yodleeClient.genProviderLogin(
-    yodleeUserSession,
-    yodleeProvider,
-  );
+  const loginPayload = await genProviderLogin(userID, yodleeProvider);
   const providerID = String(yodleeProvider.id);
   const providerAccountID = String(loginPayload.providerAccountId);
-  const yodleeProviderAccount = await yodleeClient.genProviderAccount(
-    yodleeUserSession,
+  const yodleeProviderAccount = await genProviderAccount(
+    userID,
     providerAccountID,
   );
   invariant(
@@ -76,11 +69,7 @@ export async function genYodleeProviderLogin(
   return refreshInfo;
 }
 
-export async function genYodleePerformLink(
-  yodleeUserSession: string,
-  client: YodleeClient,
-  accountLinkID: ID,
-): Promise<void> {
+export async function genYodleePerformLink(accountLinkID: ID): Promise<void> {
   INFO('ACCOUNT-LINK', `Performing link with account link ${accountLinkID}`);
   let accountLink = await genFetchAccountLink(accountLinkID);
   if (!accountLink) {
@@ -97,22 +86,13 @@ export async function genYodleePerformLink(
     'ACCOUNT-LINK',
     'Checking yodlee provider for completed linking attempt',
   );
-  let isDoneProcessing = await genYodleeLinkPass(
-    yodleeUserSession,
-    client,
-    accountLinkID,
-  );
+  let isDoneProcessing = await genYodleeLinkPass(userID, accountLinkID);
   const sleepTime = 3000;
   while (!isDoneProcessing) {
     INFO('ACCOUNT-LINK', 'Account linking is not complete, trying again');
     await sleepForMillis(sleepTime);
-    yodleeUserSession = await genCheckAndRefreshYodleeUserSession(userID);
     INFO('ACCOUNT-LINK', 'Checking if account has finished linking');
-    isDoneProcessing = await genYodleeLinkPass(
-      yodleeUserSession,
-      client,
-      accountLinkID,
-    );
+    isDoneProcessing = await genYodleeLinkPass(userID, accountLinkID);
   }
 
   INFO('ACCOUNT-LINK', 'Yodlee has completed linking attempt');
@@ -139,7 +119,7 @@ export async function genYodleePerformLink(
   );
 
   // Perform the linking + update here.
-  await genUpdateLink(yodleeUserSession, client, accountLink);
+  await genUpdateLink(accountLink);
   INFO('ACCOUNT-LINK', 'Finished downloading account link data');
 }
 
@@ -150,8 +130,7 @@ export async function genYodleePerformLink(
 // -----------------------------------------------------------------------------
 
 async function genYodleeLinkPass(
-  yodleeUserSession: string,
-  yodleeClient: YodleeClient,
+  userID: ID,
   accountLinkID: ID,
 ): Promise<bool> {
   INFO('ACCOUNT-LINK', 'Attempting provider link');
@@ -169,8 +148,8 @@ async function genYodleeLinkPass(
   );
   const yodleeProviderAccountID = String(sourceOfTruth.providerAccount.id);
 
-  const yodleeProviderAccount = await yodleeClient.genProviderAccount(
-    yodleeUserSession,
+  const yodleeProviderAccount = await genProviderAccount(
+    userID,
     yodleeProviderAccountID,
   );
 

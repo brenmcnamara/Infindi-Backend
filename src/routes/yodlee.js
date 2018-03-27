@@ -11,7 +11,6 @@ import {
   genYodleePerformLink,
   genYodleeProviderLogin,
 } from '../operations/account-link-create';
-import { getYodleeClient, performYodleeUserLogin } from '../yodlee-manager';
 import { handleError } from '../route-utils';
 
 import type { ID } from 'common/types/core';
@@ -132,8 +131,6 @@ function performProviderLogin(): RouteHandler {
   return handleError(async (req, res) => {
     DEBUG('YODLEE', 'Attempting to login with provider');
     const provider: Provider = req.body.provider;
-    const yodleeClient = getYodleeClient();
-    const yodleeUserSession: string = req.yodleeUserSession;
 
     DEBUG('YODLEE', 'Sending login to yodlee service');
     const providerSourceOfTruth = provider.sourceOfTruth;
@@ -144,26 +141,20 @@ function performProviderLogin(): RouteHandler {
     const yodleeProvider = provider.sourceOfTruth.value;
     const userID: ID = req.decodedIDToken.uid;
 
-    const refreshInfo = await genYodleeProviderLogin(
-      yodleeUserSession,
-      yodleeClient,
-      yodleeProvider,
-      userID,
-    );
+    const accountLink = await genYodleeProviderLogin(userID, yodleeProvider);
     res.send({
-      data: createPointer('RefreshInfo', refreshInfo.id),
+      data: createPointer('AccountLink', accountLink.id),
     });
 
     INFO(
       'YODLEE',
       'Refresh info has been sent. Starting post-response linking',
     );
-    genYodleePerformLink(yodleeUserSession, yodleeClient, refreshInfo.id);
+    genYodleePerformLink(accountLink.id);
   }, true);
 }
 
 router.post('/providers/login', checkAuth());
-router.post('/providers/login', performYodleeUserLogin());
 router.post('/providers/login', performProviderLogin());
 
 // -----------------------------------------------------------------------------

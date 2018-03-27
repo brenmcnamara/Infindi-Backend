@@ -22,6 +22,11 @@ import {
   genFetchTransactionsForAccount,
   getTransactionCollection,
 } from 'common/lib/models/Transaction';
+import {
+  genAccountsForProviderAccount,
+  genTransactions,
+  genTransactionsFromDate,
+} from '../yodlee-manager';
 import { genFetchAccountLinksForUser } from 'common/lib/models/AccountLink';
 import { INFO } from '../log-utils';
 
@@ -31,16 +36,10 @@ import type { ID } from 'common/types/core';
 import type { ProviderAccount as YodleeProviderAccount } from 'common/types/yodlee';
 import type { Transaction } from 'common/lib/models/Transaction';
 
-import type YodleeClient from '../YodleeClient';
-
 // Only 1 yodlee operation allowed at a time.
 const yodleeSemaphore = createSemaphore(1);
 
-export async function genUpdateLink(
-  yodleeUserSession: string,
-  yodleeClient: YodleeClient,
-  accountLink: AccountLink,
-): Promise<void> {
+export async function genUpdateLink(accountLink: AccountLink): Promise<void> {
   INFO('ACCOUNT-LINK', 'Updating account link');
 
   const { sourceOfTruth } = accountLink;
@@ -48,21 +47,15 @@ export async function genUpdateLink(
     sourceOfTruth.type === 'YODLEE',
     'Expecting account link to come from Yodlee',
   );
-  await genYodleeUpdateLink(yodleeUserSession, yodleeClient, accountLink);
+  await genYodleeUpdateLink(accountLink);
 }
 
-export async function genUpdateLinksForUser(
-  yodleeUserSession: string,
-  yodleeClient: YodleeClient,
-  userID: ID,
-): Promise<void> {
+export async function genUpdateLinksForUser(userID: ID): Promise<void> {
   INFO('ACCOUNT-LINK', `Updating all account links for user ${userID}`);
 
   const accountLinks = await genFetchAccountLinksForUser(userID);
   await Promise.all(
-    accountLinks.map(accountLink =>
-      genUpdateLink(yodleeUserSession, yodleeClient, accountLink),
-    ),
+    accountLinks.map(accountLink => genUpdateLink(accountLink)),
   );
 }
 
@@ -73,18 +66,13 @@ export async function genUpdateLinksForUser(
 // -----------------------------------------------------------------------------
 
 export async function genYodleeUpdateLink(
-  yodleeUserSession: string,
-  yodleeClient: YodleeClient,
   accountLink: AccountLink,
 ): Promise<void> {
   const userID = accountLink.userRef.refID;
   const providerAccount = getYodleeProviderAccount(accountLink);
   // Fetch the yodlee accounts.
   const yodleeAccounts = await wrapInSemaphoreRequest(yodleeSemaphore, () =>
-    yodleeClient.genAccountsForProviderAccount(
-      yodleeUserSession,
-      String(providerAccount.id),
-    ),
+    genAccountsForProviderAccount(userID, String(providerAccount.id)),
   );
 
   // Update existing accounts, create new accounts, delete old accounts.
@@ -186,24 +174,12 @@ export async function genYodleeUpdateLink(
   );
   await batch.commit();
   await Promise.all([
-    genYodleeCreateTransactions(
-      yodleeUserSession,
-      yodleeClient,
-      accountLink,
-      createdOrUpdatedAccounts,
-    ),
-    genYodleeDeleteTransactions(
-      yodleeUserSession,
-      yodleeClient,
-      accountLink,
-      deletedAccounts,
-    ),
+    genYodleeCreateTransactions(accountLink, createdOrUpdatedAccounts),
+    genYodleeDeleteTransactions(accountLink, deletedAccounts),
   ]);
 }
 
 async function genYodleeDeleteTransactions(
-  yodleeUserSession: string,
-  yodleeClient: YodleeClient,
   accountLink: AccountLink,
   accounts: Array<Account>,
 ): Promise<void> {
@@ -247,11 +223,10 @@ async function genYodleeDeleteTransactions(
 }
 
 async function genYodleeCreateTransactions(
-  yodleeUserSession: string,
-  yodleeClient: YodleeClient,
   accountLink: AccountLink,
   accounts: Array<Account>,
 ): Promise<void> {
+  const userID = accountLink.userRef.refID;
   // NOTE: In this function, we are making the assumption that transactions
   // are immutable. Once one is created, it will never be modified. We are also
   // assuming that transactions are added chronologically, so a transaction that
@@ -293,12 +268,12 @@ async function genYodleeCreateTransactions(
     const account = nullthrows(accounts.find(a => a.id === accountID));
     const yodleeAccountID = getYodleeAccountID(account);
     let newYodleeTransactions = lastTransaction
-      ? await yodleeClient.genTransactionsFromDate(
-          yodleeUserSession,
+      ? await genTransactionsFromDate(
+          userID,
           yodleeAccountID,
           lastTransaction.transactionDate,
         )
-      : await yodleeClient.genTransactions(yodleeUserSession, yodleeAccountID);
+      : await genTransactions(userID, yodleeAccountID);
 
     if (!newYodleeTransactions || newYodleeTransactions.length === 0) {
       continue;
@@ -314,7 +289,6 @@ async function genYodleeCreateTransactions(
       (yt, i) => !doesTransactionExist[i],
     );
 
-    const userID = accountLink.userRef.refID;
     const newTransactions = newYodleeTransactions.map(yodleeTransaction =>
       createTransactionYodlee(yodleeTransaction, userID, accountID),
     );
