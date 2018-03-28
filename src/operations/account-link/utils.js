@@ -7,7 +7,7 @@ import nullthrows from 'nullthrows';
 
 import {
   createAccountYodlee,
-  getAccountsCollection,
+  getAccountCollection,
   genFetchAccountsForAccountLink,
   updateAccountYodlee,
 } from 'common/lib/models/Account';
@@ -154,7 +154,7 @@ export async function genYodleeUpdateLink(
         const yodleeAccount = nullthrows(
           yodleeAccounts.find(ya => String(ya.id) === yodleeAccountID),
         );
-        const ref = getAccountsCollection().doc(account.id);
+        const ref = getAccountCollection().doc(account.id);
         const newAccount = updateAccountYodlee(account, yodleeAccount);
         batch.update(ref, newAccount);
 
@@ -169,7 +169,7 @@ export async function genYodleeUpdateLink(
             doesAccountMatchYodleeAccountID(a, yodleeAccountID),
           ),
         );
-        const ref = getAccountsCollection().doc(account.id);
+        const ref = getAccountCollection().doc(account.id);
         batch.delete(ref);
 
         deletedAccounts.push(account);
@@ -186,7 +186,7 @@ export async function genYodleeUpdateLink(
           accountLink.id,
           userID,
         );
-        const ref = getAccountsCollection().doc(newAccount.id);
+        const ref = getAccountCollection().doc(newAccount.id);
         batch.set(ref, newAccount);
 
         createdOrUpdatedAccounts.push(newAccount);
