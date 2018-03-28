@@ -12,7 +12,8 @@ const invariant = require('invariant');
 const minimist = require('minimist');
 
 const argv = minimist(process.argv.slice(2));
-const accountLinkID = argv['id'];
+const accountLinkID = argv.id;
+const force = argv.force;
 
 if (!accountLinkID) {
   console.log(chalk.red('You must provide argument --id=<accountLinkID>'));
@@ -28,7 +29,7 @@ AccountLink.genFetchAccountLink(accountLinkID)
     );
     return AccountLinkRefreshOperations.genYodleeRefreshAccountLink(
       accountLink,
-      true
+      force === 'true'
     );
   })
   .then(() => {
