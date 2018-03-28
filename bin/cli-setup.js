@@ -7,6 +7,7 @@
 
 const Common = require('common');
 const FirebaseAdmin = require('firebase-admin');
+const YodleeManager = require('../build/yodlee-manager');
 
 const dotenv = require('dotenv');
 const fs = require('fs');
@@ -28,3 +29,4 @@ FirebaseAdmin.initializeApp({
 });
 
 Common.initializeAsAdmin(FirebaseAdmin);
+YodleeManager.initialize();

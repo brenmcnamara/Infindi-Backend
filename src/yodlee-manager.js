@@ -115,6 +115,11 @@ export const genTransactionsFromDate: GenTransactionsFromDate = overrideClientAs
   'genTransactionsFromDate',
 );
 
+type GenProviderAccountRefresh = (ID, ID) => Promise<ProviderAccount | null>;
+export const genProviderAccountRefresh: GenProviderAccountRefresh = overrideClientAsyncMethod(
+  'genProviderAccountRefresh',
+);
+
 // -----------------------------------------------------------------------------
 //
 // UTILITIES

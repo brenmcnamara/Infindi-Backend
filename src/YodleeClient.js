@@ -315,7 +315,7 @@ export default class YodleeClient {
   genProviderAccountRefresh(
     userSession: string,
     providerAccountID: ID,
-  ): Promise<ProviderAccount> {
+  ): Promise<ProviderAccount | null> {
     return this._genValidateCobrandLogin()
       .then(() => this._genValidateUserLogin(userSession))
       .then(() =>
@@ -324,7 +324,7 @@ export default class YodleeClient {
           `${BASE_URI}/providerAccounts?providerAccountIds=${providerAccountID}`,
         ),
       )
-      .then(response => response.providerAccount[0]);
+      .then(response => response.providerAccount[0] || null);
   }
 
   genAccounts(userSession: string): Promise<Array<Account>> {
