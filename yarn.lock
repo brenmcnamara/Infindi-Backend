@@ -1281,7 +1281,7 @@ commander@^2.11.0, commander@^2.9.0:
 
 "common@git+https://86f8b449cd778036c88467e637378b2e328bf08a@github.com/brenmcnamara/infindi-common.git":
   version "1.0.0"
-  resolved "git+https://86f8b449cd778036c88467e637378b2e328bf08a@github.com/brenmcnamara/infindi-common.git#2d8ec5948713aa869760fce5d530bb4cec123a2b"
+  resolved "git+https://86f8b449cd778036c88467e637378b2e328bf08a@github.com/brenmcnamara/infindi-common.git#55f4b10d8cabe826268ed000a33cc755cad2e75c"
   dependencies:
     uuid "^3.1.0"
 
