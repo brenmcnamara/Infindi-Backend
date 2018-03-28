@@ -13,7 +13,7 @@ import {
   updateAccountLinkYodlee,
 } from 'common/lib/models/AccountLink';
 import { genProviderAccount, genProviderLogin } from '../../yodlee-manager';
-import { genUpdateLink, genYodleeLinkPass } from './utils';
+import { genUpdateLink, genYodleeLinkPass, handleLinkingError } from './utils';
 import { INFO } from '../../log-utils';
 
 import type { AccountLink } from 'common/lib/models/AccountLink';
@@ -60,16 +60,22 @@ export async function genYodleeProviderLogin(
       ? `Found existing account link for provider ${providerID}`
       : `No account link found for provider ${providerID}`,
   );
-  const refreshInfo: AccountLink = existingAccountLink
+  const accountLink: AccountLink = existingAccountLink
     ? updateAccountLinkYodlee(existingAccountLink, yodleeProviderAccount)
     : createAccountLinkYodlee(yodleeProviderAccount, userID, providerID);
 
   INFO('ACCOUNT-LINK', 'Creating / Updating refresh info');
-  await genCreateAccountLink(refreshInfo);
-  return refreshInfo;
+  await genCreateAccountLink(accountLink);
+  return accountLink;
 }
 
-export async function genYodleePerformLink(accountLinkID: ID): Promise<void> {
+export async function genYodleePerformLink(accountLinkID): Promise<void> {
+  await handleLinkingError(accountLinkID, () =>
+    genYodleePerformLinkImpl(accountLinkID),
+  );
+}
+
+async function genYodleePerformLinkImpl(accountLinkID: ID): Promise<void> {
   INFO('ACCOUNT-LINK', `Performing link with account link ${accountLinkID}`);
   let accountLink = await genFetchAccountLink(accountLinkID);
   if (!accountLink) {
@@ -89,9 +95,7 @@ export async function genYodleePerformLink(accountLinkID: ID): Promise<void> {
   let isDoneProcessing = await genYodleeLinkPass(userID, accountLinkID);
   const sleepTime = 3000;
   while (!isDoneProcessing) {
-    INFO('ACCOUNT-LINK', 'Account linking is not complete, trying again');
     await sleepForMillis(sleepTime);
-    INFO('ACCOUNT-LINK', 'Checking if account has finished linking');
     isDoneProcessing = await genYodleeLinkPass(userID, accountLinkID);
   }
 

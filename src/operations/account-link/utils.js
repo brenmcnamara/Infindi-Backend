@@ -18,6 +18,7 @@ import {
   genFetchTransactionsForAccount,
   getTransactionCollection,
 } from 'common/lib/models/Transaction';
+import { ERROR, INFO } from '../../log-utils';
 import {
   genAccountsForProviderAccount,
   genProviderAccount,
@@ -29,15 +30,58 @@ import {
   genFetchAccountLink,
   genFetchAccountLinksForUser,
   isLinking,
+  updateAccountLinkStatus,
   updateAccountLinkYodlee,
 } from 'common/lib/models/AccountLink';
-import { INFO } from '../../log-utils';
 
 import type { Account } from 'common/lib/models/Account';
 import type { AccountLink } from 'common/lib/models/AccountLink';
 import type { ID } from 'common/types/core';
 import type { ProviderAccount as YodleeProviderAccount } from 'common/types/yodlee';
 import type { Transaction } from 'common/lib/models/Transaction';
+
+export function handleLinkingError(
+  accountLinkID: ID,
+  cb: () => Promise<*>,
+): Promise<*> {
+  return cb().catch(error => {
+    const errorMessage =
+      error.errorMessage ||
+      error.error_message ||
+      error.message ||
+      error.toString();
+    ERROR(
+      'ACCOUNT-LINK',
+      `Error while linking account: [${accountLinkID}] ${errorMessage}`,
+    );
+    genFetchAccountLink(accountLinkID)
+      .then(accountLink => {
+        invariant(
+          accountLink,
+          'Failed to fetch account link in error handler',
+        );
+        return genCreateAccountLink(
+          updateAccountLinkStatus(
+            accountLink,
+            'FAILURE / INTERNAL_SERVICE_FAILURE',
+          ),
+        );
+      })
+      .catch(error => {
+        const errorMessage =
+          error.errorMessage ||
+          error.error_message ||
+          error.message ||
+          error.toString();
+        ERROR(
+          'ACCOUNT-LINK',
+          `Double Error!! Failed to update account link status to error status: [${
+            accountLinkID
+          }] ${errorMessage}`,
+        );
+      });
+  });
+}
 
 export async function genUpdateLink(accountLink: AccountLink): Promise<void> {
   INFO('ACCOUNT-LINK', 'Updating account link');

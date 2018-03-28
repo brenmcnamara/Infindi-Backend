@@ -10,7 +10,11 @@ import {
   isLinkSuccess,
 } from 'common/lib/models/AccountLink';
 import { genProviderAccountRefresh } from '../../yodlee-manager';
-import { genYodleeLinkPass, genYodleeUpdateLink } from './utils';
+import {
+  genYodleeLinkPass,
+  genYodleeUpdateLink,
+  handleLinkingError,
+} from './utils';
 
 import type { AccountLink } from 'common/lib/models/AccountLink';
 import type { ID } from 'common/types/core';
@@ -29,6 +33,15 @@ export async function genYodleeRefreshAccountLink(
   accountLink: AccountLink,
   force: bool = false,
 ): Promise<void> {
+  await handleLinkingError(accountLink.id, () =>
+    genYodleeRefreshAccountLinkImpl(accountLink, force),
+  );
+}
+
+async function genYodleeRefreshAccountLinkImpl(
+  accountLink: AccountLink,
+  force: bool,
+): Promise<void> {
   invariant(
     force || !isLinking(accountLink),
     'Trying to link account link that is already linking: %s',
@@ -39,7 +52,7 @@ export async function genYodleeRefreshAccountLink(
   await genProviderAccountRefresh(userID, String(yodleeProviderAccount.id));
   let isDoneLinking = await genYodleeLinkPass(userID, accountLink.id);
   while (!isDoneLinking) {
-    await sleepFor(5000);
+    await sleepForMillis(5000);
     isDoneLinking = await genYodleeLinkPass(userID, accountLink.id);
   }
   // Fetch the new account link after the linking is done.
@@ -74,7 +87,7 @@ function getYodleeProviderAccount(
   return accountLink.sourceOfTruth.providerAccount;
 }
 
-async function sleepFor(millis: number): Promise<void> {
+async function sleepForMillis(millis: number): Promise<void> {
   return new Promise(resolve => {
     setTimeout(resolve, millis);
   });
