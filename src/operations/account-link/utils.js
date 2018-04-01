@@ -29,8 +29,8 @@ import {
   genCreateAccountLink,
   genFetchAccountLink,
   genFetchAccountLinksForUser,
+  isInMFA,
   isLinking,
-  isPendingUserInput,
   updateAccountLinkStatus,
   updateAccountLinkYodlee,
 } from 'common/lib/models/AccountLink';
@@ -142,7 +142,7 @@ export async function genYodleeLinkPass(
   // NOTE: If we are pending user input, then assume that the client will take
   // care of this asyncronously. This pass fails until the user input is
   // provided successfully.
-  return !isLinking(accountLink) && !isPendingUserInput(accountLink);
+  return !isLinking(accountLink) && !isInMFA(accountLink);
 }
 
 export async function genYodleeUpdateLink(
