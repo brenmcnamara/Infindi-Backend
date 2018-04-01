@@ -30,6 +30,7 @@ import {
   genFetchAccountLink,
   genFetchAccountLinksForUser,
   isLinking,
+  isPendingUserInput,
   updateAccountLinkStatus,
   updateAccountLinkYodlee,
 } from 'common/lib/models/AccountLink';
@@ -138,7 +139,10 @@ export async function genYodleeLinkPass(
     yodleeProviderAccount,
   );
   await genCreateAccountLink(newAccountLink);
-  return !isLinking(accountLink);
+  // NOTE: If we are pending user input, then assume that the client will take
+  // care of this asyncronously. This pass fails until the user input is
+  // provided successfully.
+  return !isLinking(accountLink) && !isPendingUserInput(accountLink);
 }
 
 export async function genYodleeUpdateLink(

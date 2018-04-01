@@ -14,6 +14,7 @@ import {
 import { handleError } from '../route-utils';
 
 import type { ID } from 'common/types/core';
+import type { LoginForm as YodleeLoginForm } from 'common/types/yodlee';
 import type { RouteHandler } from '../middleware';
 import type { Provider } from 'common/lib/models/Provider';
 
@@ -123,39 +124,73 @@ router.get('/providers/search', performProviderSearch());
 
 // -----------------------------------------------------------------------------
 //
-// POST yodlee/providers/login
+// POST yodlee/providers/:providerID/loginForm
 //
 // -----------------------------------------------------------------------------
 
 function performProviderLogin(): RouteHandler {
   return handleError(async (req, res) => {
     DEBUG('YODLEE', 'Attempting to login with provider');
-    const provider: Provider = req.body.provider;
+    const providerID: ID = req.params.providerID;
 
-    DEBUG('YODLEE', 'Sending login to yodlee service');
-    const providerSourceOfTruth = provider.sourceOfTruth;
-    invariant(
-      providerSourceOfTruth.type === 'YODLEE',
-      'Expecting provider to come from YODLEE',
-    );
+    const provider = await genFetchProvider(providerID);
+    if (!provider) {
+      const errorCode = 'infindi/bad-request';
+      const errorMessage = `Provider ${providerID} does not exist`;
+      const toString = () => `[${errorCode}]: ${errorMessage}`;
+      throw { errorCode, errorMessage, toString };
+    }
+
+    if (provider.sourceOfTruth.type !== 'YODLEE') {
+      const errorCode = 'infindi/bad-request';
+      const errorMessage = `Provider ${providerID} must come from YODLEE`;
+      const toString = () => `[${errorCode}]: ${errorMessage}`;
+      throw { errorCode, errorMessage, toString };
+    }
     const yodleeProvider = provider.sourceOfTruth.value;
-    const userID: ID = req.decodedIDToken.uid;
 
-    const accountLink = await genYodleeProviderLogin(userID, yodleeProvider);
-    res.send({
-      data: createPointer('AccountLink', accountLink.id),
-    });
+    const loginForm: YodleeLoginForm = req.body.loginForm;
 
-    INFO(
-      'YODLEE',
-      'Refresh info has been sent. Starting post-response linking',
-    );
-    genYodleePerformLink(accountLink.id);
+    if (!loginForm) {
+      const errorCode = 'infindi/bad-request';
+      const errorMessage = '"loginForm" missing';
+      const toString = () => `[${errorCode}]: ${errorMessage}`;
+      throw { errorCode, errorMessage, toString };
+    }
+
+    switch (loginForm.formType) {
+      case 'login': {
+        const userID: ID = req.decodedIDToken.uid;
+        const accountLink = await genYodleeProviderLogin(userID, {
+          ...yodleeProvider,
+          loginForm,
+        });
+        res.send({ data: createPointer('AccountLink', accountLink.id) });
+
+        INFO(
+          'YODLEE',
+          'Refresh info has been sent. Starting post-response linking',
+        );
+        genYodleePerformLink(accountLink.id);
+        break;
+      }
+
+      default: {
+        const errorCode = 'infindi/server-error';
+        const errorMessage = `Cannot handle login forms of type ${
+          loginForm.formType
+        }`;
+        const toString = () => `[${errorCode}]: ${errorMessage}`;
+        throw { errorCode, errorMessage, toString };
+      }
+    }
+
+
   }, true);
 }
 
-router.post('/providers/login', checkAuth());
-router.post('/providers/login', performProviderLogin());
+router.post('/providers/:providerID/loginForm', checkAuth());
+router.post('/providers/:providerID/loginForm', performProviderLogin());
 
 // -----------------------------------------------------------------------------
 //
@@ -184,6 +219,7 @@ function isProviderSupported(provider: Provider): bool {
   }
   return (
     provider.sourceOfTruth.type !== 'YODLEE' ||
-    provider.sourceOfTruth.value.authType === 'CREDENTIALS'
+    provider.sourceOfTruth.value.authType === 'CREDENTIALS' ||
+    provider.sourceOfTruth.value.authType === 'MFA_CREDENTIALS'
   );
 }

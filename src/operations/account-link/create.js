@@ -69,7 +69,7 @@ export async function genYodleeProviderLogin(
   return accountLink;
 }
 
-export async function genYodleePerformLink(accountLinkID): Promise<void> {
+export async function genYodleePerformLink(accountLinkID: ID): Promise<void> {
   await handleLinkingError(accountLinkID, () =>
     genYodleePerformLinkImpl(accountLinkID),
   );
