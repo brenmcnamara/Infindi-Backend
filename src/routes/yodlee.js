@@ -1,7 +1,6 @@
 /* @flow */
 
 import express from 'express';
-import invariant from 'invariant';
 
 import { checkAuth } from '../middleware';
 import { createPointer } from 'common/lib/db-utils';
