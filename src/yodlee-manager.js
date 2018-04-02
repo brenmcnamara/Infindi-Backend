@@ -14,6 +14,7 @@ import { INFO } from './log-utils';
 import type { ID } from 'common/types/core';
 import type {
   Account as YodleeAccount,
+  LoginForm,
   Provider,
   ProviderAccount,
   ProviderFull,
@@ -118,6 +119,11 @@ export const genTransactionsFromDate: GenTransactionsFromDate = overrideClientAs
 type GenProviderAccountRefresh = (ID, ID) => Promise<ProviderAccount | null>;
 export const genProviderAccountRefresh: GenProviderAccountRefresh = overrideClientAsyncMethod(
   'genProviderAccountRefresh',
+);
+
+type GenProviderAccountMFALogin = (ID, ID, LoginForm) => Promise<*>;
+export const genProviderAccountMFALogin: GenProviderAccountMFALogin = overrideClientAsyncMethod(
+  'genProviderAccountMFALogin',
 );
 
 // -----------------------------------------------------------------------------

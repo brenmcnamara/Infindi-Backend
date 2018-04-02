@@ -1,19 +1,30 @@
 /* @flow */
 
 import express from 'express';
+import invariant from 'invariant';
 
 import { checkAuth } from '../middleware';
 import { createPointer } from 'common/lib/db-utils';
 import { DEBUG, INFO } from '../log-utils';
+import {
+  genCreateAccountLink,
+  genFetchAccountLinkForProvider,
+  updateAccountLinkStatus,
+} from 'common/lib/models/AccountLink';
 import { genFetchProvider, getProviderName } from 'common/lib/models/Provider';
+import { genProviderAccountMFALogin } from '../yodlee-manager';
 import {
   genYodleePerformLink,
   genYodleeProviderLogin,
 } from '../operations/account-link/create';
 import { handleError } from '../route-utils';
 
+import type { AccountLink } from 'common/lib/models/AccountLink';
 import type { ID } from 'common/types/core';
-import type { LoginForm as YodleeLoginForm } from 'common/types/yodlee';
+import type {
+  LoginForm as YodleeLoginForm,
+  ProviderAccount as YodleeProviderAccount,
+} from 'common/types/yodlee';
 import type { RouteHandler } from '../middleware';
 import type { Provider } from 'common/lib/models/Provider';
 
@@ -174,6 +185,42 @@ function performProviderLogin(): RouteHandler {
         break;
       }
 
+      case 'questionAndAnswer':
+      case 'token': {
+        const userID: ID = req.decodedIDToken.uid;
+        const accountLink = await genFetchAccountLinkForProvider(
+          userID,
+          providerID,
+        );
+        if (!accountLink) {
+          const errorCode = 'infindi/bad-request';
+          const errorMessage = `Expecting account link to exist for provider ${
+            providerID
+          }`;
+          const toString = () => `[${errorCode}]: ${errorMessage}`;
+          throw { errorCode, errorMessage, toString };
+        }
+        const providerAccount = getYodleeProviderAccount(accountLink);
+        const response = await genProviderAccountMFALogin(
+          userID,
+          String(providerAccount.id),
+          loginForm,
+        );
+        // Once we have successfully submitted MFA login form, we need to
+        // remove the currently cached login form from the account link.
+        // NOTE: There is a race condition here. At the time this is called,
+        // we are polling for the provider account in the background. It could
+        // be the case that in between submitting the MFA login and when this
+        // method is called, we get the new MFA login form, in which case, we
+        // would then overwrite it with this call, which is very bad. Should
+        // find a way around this.
+        await genCreateAccountLink(
+          updateAccountLinkStatus(accountLink, 'MFA / WAITING_FOR_LOGIN_FORM'),
+        );
+        res.send({ data: response });
+        break;
+      }
+
       default: {
         const errorCode = 'infindi/server-error';
         const errorMessage = `Cannot handle login forms of type ${
@@ -183,8 +230,6 @@ function performProviderLogin(): RouteHandler {
         throw { errorCode, errorMessage, toString };
       }
     }
-
-
   }, true);
 }
 
@@ -221,4 +266,14 @@ function isProviderSupported(provider: Provider): bool {
     provider.sourceOfTruth.value.authType === 'CREDENTIALS' ||
     provider.sourceOfTruth.value.authType === 'MFA_CREDENTIALS'
   );
+}
+
+function getYodleeProviderAccount(
+  accountLink: AccountLink,
+): YodleeProviderAccount {
+  invariant(
+    accountLink.sourceOfTruth.type === 'YODLEE',
+    'Expecting account link to come from YODLEE',
+  );
+  return accountLink.sourceOfTruth.providerAccount;
 }

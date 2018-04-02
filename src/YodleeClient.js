@@ -8,6 +8,7 @@ import type {
   Account,
   AccessToken,
   Locale,
+  LoginForm,
   Long,
   Provider,
   ProviderFull,
@@ -321,10 +322,31 @@ export default class YodleeClient {
       .then(() =>
         this._genPutRequest(
           userSession,
-          `${BASE_URI}/providerAccounts?providerAccountIds=${providerAccountID}`,
+          `${BASE_URI}/providerAccounts?providerAccountIds=${
+            providerAccountID
+          }`,
         ),
       )
       .then(response => response.providerAccount[0] || null);
+  }
+
+  genProviderAccountMFALogin(
+    userSession: string,
+    providerAccountID: ID,
+    loginForm: LoginForm,
+  ): Promise<*> {
+    return this._genValidateCobrandLogin()
+      .then(() => this._genValidateUserLogin(userSession))
+      .then(() => {
+        const request = { loginForm };
+        return this._genPutRequest(
+          userSession,
+          `${BASE_URI}/providerAccounts?providerAccountIds=${
+            providerAccountID
+          }`,
+          request,
+        );
+      });
   }
 
   genAccounts(userSession: string): Promise<Array<Account>> {
@@ -427,9 +449,9 @@ export default class YodleeClient {
   ): Promise<TResponse> {
     return new Promise((resolve, reject) => {
       const options = {
+        body: JSON.stringify(body),
         headers: this._getHeaders(userSession),
         method: 'POST',
-        body: JSON.stringify(body),
         uri,
       };
 
@@ -501,9 +523,11 @@ export default class YodleeClient {
   _genPutRequest<TResponse: Object>(
     userSession: string | null,
     uri: string,
+    body: Object = {},
   ): Promise<TResponse> {
     return new Promise((resolve, reject) => {
       const options = {
+        body: JSON.stringify(body),
         headers: this._getHeaders(userSession),
         method: 'PUT',
         uri,
