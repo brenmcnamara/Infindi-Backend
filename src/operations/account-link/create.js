@@ -7,6 +7,7 @@ import {
   genCreateAccountLink,
   genFetchAccountLink,
   genFetchAccountLinkForProvider,
+  isInMFA,
   isLinking,
   isLinkFailure,
   isLinkSuccess,
@@ -92,15 +93,14 @@ async function genYodleePerformLinkImpl(accountLinkID: ID): Promise<void> {
     'ACCOUNT-LINK',
     'Checking yodlee provider for completed linking attempt',
   );
-  let isDoneProcessing = await genYodleeLinkPass(userID, accountLinkID);
+  let newAccountLink = await genYodleeLinkPass(userID, accountLinkID);
   const sleepTime = 3000;
-  while (!isDoneProcessing) {
+  while (isLinking(newAccountLink) || isInMFA(newAccountLink)) {
     await sleepForMillis(sleepTime);
-    isDoneProcessing = await genYodleeLinkPass(userID, accountLinkID);
+    newAccountLink = await genYodleeLinkPass(userID, accountLinkID);
   }
 
   INFO('ACCOUNT-LINK', 'Yodlee has completed linking attempt');
-  accountLink = await genFetchAccountLink(accountLinkID);
   invariant(
     accountLink && !isLinking(accountLink),
     'Expecting account link to exist after linking is complete',

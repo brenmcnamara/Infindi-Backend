@@ -4,10 +4,12 @@ import invariant from 'invariant';
 
 import { ERROR, INFO } from '../../log-utils';
 import {
-  genFetchAccountLink,
+  genCreateAccountLink,
   genFetchAccountLinksForUser,
+  isInMFA,
   isLinking,
   isLinkSuccess,
+  updateAccountLinkStatus,
 } from 'common/lib/models/AccountLink';
 import { genProviderAccountRefresh } from '../../yodlee-manager';
 import {
@@ -31,7 +33,7 @@ export async function genYodleeRefreshAccountLinksForUser(
 
 export async function genYodleeRefreshAccountLink(
   accountLink: AccountLink,
-  force: bool = false,
+  force: boolean = false,
 ): Promise<void> {
   await handleLinkingError(accountLink.id, () =>
     genYodleeRefreshAccountLinkImpl(accountLink, force),
@@ -40,30 +42,51 @@ export async function genYodleeRefreshAccountLink(
 
 async function genYodleeRefreshAccountLinkImpl(
   accountLink: AccountLink,
-  force: bool,
+  force: boolean,
 ): Promise<void> {
-  invariant(
-    force || !isLinking(accountLink),
-    'Trying to link account link that is already linking: %s',
-    accountLink.id,
-  );
+  if (
+    accountLink.status === 'FAILURE / USER_INPUT_REQUEST_IN_BACKGROUND' ||
+    isInMFA(accountLink) ||
+    (isLinking(accountLink) && !force)
+  ) {
+    INFO(
+      'ACCOUNT-LINK',
+      `Skipping refresh for account link: ${accountLink.id} with status: ${
+        accountLink.status
+      }`,
+    );
+    return;
+  }
   const userID = accountLink.userRef.refID;
   const yodleeProviderAccount = getYodleeProviderAccount(accountLink);
   await genProviderAccountRefresh(userID, String(yodleeProviderAccount.id));
-  let isDoneLinking = await genYodleeLinkPass(userID, accountLink.id);
-  while (!isDoneLinking) {
+  let newAccountLink = await genYodleeLinkPass(userID, accountLink.id);
+  while (isLinking(newAccountLink)) {
     await sleepForMillis(5000);
-    isDoneLinking = await genYodleeLinkPass(userID, accountLink.id);
+    newAccountLink = await genYodleeLinkPass(userID, accountLink.id);
   }
   // Fetch the new account link after the linking is done.
-  const newAccountLink = await genFetchAccountLink(accountLink.id);
   invariant(
     newAccountLink,
     'Could not find account link while refreshing: %s',
     accountLink.id,
   );
+  if (isInMFA(newAccountLink)) {
+    INFO('ACCOUNT-LINK', 'Making an MFA request during a background refresh');
+    newAccountLink = updateAccountLinkStatus(
+      newAccountLink,
+      'FAILURE / USER_INPUT_REQUEST_IN_BACKGROUND',
+    );
+    await genCreateAccountLink(newAccountLink);
+    return;
+  }
   if (!isLinkSuccess(newAccountLink)) {
-    ERROR('ACCOUNT-LINK', `Refresh failed for account link ${accountLink.id}`);
+    ERROR(
+      'ACCOUNT-LINK',
+      `Refresh failed for account link ${
+        accountLink.id
+      }. Account link status: ${newAccountLink.status}`,
+    );
     return;
   }
   INFO('ACCOUNT-LINK', `Refresh completed for account link ${accountLink.id}`);

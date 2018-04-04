@@ -9,6 +9,7 @@ import path from 'path';
 import routes, { initialize as initializeRoutes } from './routes';
 import serveFavicon from 'serve-favicon';
 
+import { initialize as initializeJobRunner } from './job-runner';
 import { initialize as initializeYodleeManager } from './yodlee-manager';
 
 const { ErrorUtils } = Common;
@@ -50,5 +51,6 @@ export function initialize(): void {
   });
 
   initializeRoutes();
+  initializeJobRunner();
   initializeYodleeManager();
 }

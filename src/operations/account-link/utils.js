@@ -29,8 +29,6 @@ import {
   genCreateAccountLink,
   genFetchAccountLink,
   genFetchAccountLinksForUser,
-  isInMFA,
-  isLinking,
   updateAccountLinkStatus,
   updateAccountLinkYodlee,
 } from 'common/lib/models/AccountLink';
@@ -57,10 +55,7 @@ export function handleLinkingError(
     );
     genFetchAccountLink(accountLinkID)
       .then(accountLink => {
-        invariant(
-          accountLink,
-          'Failed to fetch account link in error handler',
-        );
+        invariant(accountLink, 'Failed to fetch account link in error handler');
         return genCreateAccountLink(
           updateAccountLinkStatus(
             accountLink,
@@ -76,9 +71,8 @@ export function handleLinkingError(
           error.toString();
         ERROR(
           'ACCOUNT-LINK',
-          `Double Error!! Failed to update account link status to error status: [${
-            accountLinkID
-          }] ${errorMessage}`,
+          // eslint-disable-next-line max-len
+          `Double Error!! Failed to update account link status to error status: [${accountLinkID}] ${errorMessage}`,
         );
       });
   });
@@ -107,7 +101,7 @@ export async function genUpdateLinksForUser(userID: ID): Promise<void> {
 export async function genYodleeLinkPass(
   userID: ID,
   accountLinkID: ID,
-): Promise<bool> {
+): Promise<AccountLink> {
   INFO('ACCOUNT-LINK', 'Attempting provider link');
 
   const accountLink = await genFetchAccountLink(accountLinkID);
@@ -142,7 +136,7 @@ export async function genYodleeLinkPass(
   // NOTE: If we are pending user input, then assume that the client will take
   // care of this asyncronously. This pass fails until the user input is
   // provided successfully.
-  return !isLinking(accountLink) && !isInMFA(accountLink);
+  return newAccountLink;
 }
 
 export async function genYodleeUpdateLink(
@@ -249,9 +243,8 @@ export async function genYodleeUpdateLink(
 
   INFO(
     'ACCOUNT-LINK',
-    `${updateCount} account(s) updated. ${deleteCount} account(s) deleted. ${
-      createCount
-    } account(s) created.`,
+    //eslint-disable-next-line max-len
+    `${updateCount} account(s) updated. ${deleteCount} account(s) deleted. ${createCount} account(s) created.`,
   );
   await batch.commit();
   await Promise.all([
@@ -388,7 +381,7 @@ async function genYodleeCreateTransactions(
 function doesAccountMatchYodleeAccountID(
   account: Account,
   yodleeAccountID: ID,
-): bool {
+): boolean {
   const { sourceOfTruth } = account;
   if (sourceOfTruth.type !== 'YODLEE') {
     return false;

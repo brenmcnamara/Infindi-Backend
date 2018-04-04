@@ -28,6 +28,8 @@ const yodleeSemaphore = createSemaphore(1);
 
 let yodleeClient: YodleeClient | null = null;
 let genWaitForCobrandLogin: Promise<void> | null = null;
+// Keep track of sessions that are being created at the moment.
+const userToYodleeSessionGenerator: { [userID: ID]: Promise<any> } = {};
 const userToYodleeSession: { [userID: ID]: string } = {};
 // Keep track of when the sessions were created, for caching purposes.
 const userToYodleeSessionMillis: { [userID: ID]: number } = {};
@@ -165,6 +167,7 @@ async function genCheckAndRefreshYodleeUserSession(userID: ID): Promise<void> {
   const credentials = await genFetchYodleeCredentials(userID);
   await genWaitForCobrandLogin;
   const yodleeClient = getYodleeClient();
+  await (userToYodleeSessionGenerator[userID] || Promise.resolve());
   if (userToYodleeSession[userID]) {
     const session = userToYodleeSession[userID];
     const sessionCreatedAtMillis = userToYodleeSessionMillis[userID];
@@ -189,10 +192,18 @@ async function genCheckAndRefreshYodleeUserSession(userID: ID): Promise<void> {
     delete userToYodleeSession[userID];
     delete userToYodleeSessionMillis[userID];
   }
+
   INFO('YODLEE', 'No user session exists. Creating new session');
-  const session = await wrapInSemaphoreRequest(yodleeSemaphore, () =>
+
+  // Block on session generator so we do not have multiple calls trying to login
+  // with the same user.
+  const sessionGenerator = wrapInSemaphoreRequest(yodleeSemaphore, () =>
     yodleeClient.genLoginUser(credentials.loginName, credentials.password),
   );
+  userToYodleeSessionGenerator[userID] = sessionGenerator;
+  const session = await sessionGenerator;
+  delete userToYodleeSessionGenerator[userID];
+
   userToYodleeSession[userID] = session;
   userToYodleeSessionMillis[userID] = Date.now();
 }
