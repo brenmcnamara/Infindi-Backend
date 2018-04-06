@@ -11,15 +11,22 @@ import {
   isLinking,
   isLinkFailure,
   isLinkSuccess,
+  updateAccountLinkStatus,
   updateAccountLinkYodlee,
 } from 'common/lib/models/AccountLink';
 import { genProviderAccount, genProviderLogin } from '../../yodlee-manager';
 import { genUpdateLink, genYodleeLinkPass, handleLinkingError } from './utils';
 import { INFO } from '../../log-utils';
 
-import type { AccountLink } from 'common/lib/models/AccountLink';
+import type {
+  AccountLink,
+  AccountLinkStatus,
+} from 'common/lib/models/AccountLink';
 import type { ID } from 'common/types/core';
-import type { ProviderFull as YodleeProvider } from 'common/types/yodlee';
+import type {
+  ProviderAccount as YodleeProviderAccount,
+  ProviderFull as YodleeProvider,
+} from 'common/types/yodlee';
 
 export async function genYodleeProviderLogin(
   userID: ID,
@@ -127,11 +134,109 @@ async function genYodleePerformLinkImpl(accountLinkID: ID): Promise<void> {
   INFO('ACCOUNT-LINK', 'Finished downloading account link data');
 }
 
+export async function genTestYodleeProviderLogin(
+  userID: ID,
+  yodleeProvider: YodleeProvider,
+): Promise<AccountLink> {
+  await sleepForMillis(3000);
+
+  // STEP 1: IN_PROGRESS / VERIFYING_CREDENTIALS
+
+  let accountLink = await genFetchAccountLinkForProvider(
+    userID,
+    String(yodleeProvider.id),
+  );
+
+  accountLink = accountLink
+    ? updateAccountLinkStatus(
+        accountLink,
+        'IN_PROGRESS / VERIFYING_CREDENTIALS',
+      )
+    : createAccountLinkYodlee(
+        createTestYodleeProviderAccount(yodleeProvider),
+        userID,
+        String(yodleeProvider.id),
+      );
+
+  await genCreateAccountLink(accountLink);
+  return accountLink;
+}
+
+export async function genTestYodleePerformLink(
+  accountLinkID: ID,
+  desiredStatus: AccountLinkStatus,
+  shouldUseMFA: boolean,
+): Promise<void> {
+  let accountLink = await genFetchAccountLink(accountLinkID);
+
+  if (!accountLink) {
+    const errorCode = 'infindi/server-error';
+    const errorMessage = 'Trying to get test account link that does not exist';
+    const toString = `[${errorCode}]: ${errorMessage}`;
+    throw { errorCode, errorMessage, toString };
+  }
+
+  await sleepForMillis(3000);
+
+  // STEP 2: FAILURE / BAD_CREDENTIALS
+  if (desiredStatus === 'FAILURE / BAD_CREDENTIALS') {
+    accountLink = updateAccountLinkStatus(
+      accountLink,
+      'FAILURE / BAD_CREDENTIALS',
+    );
+    await genCreateAccountLink(accountLink);
+    return;
+  }
+
+  // STEP 3: MFA
+  if (shouldUseMFA) {
+    // MFA is not yet supported.
+    accountLink = updateAccountLinkStatus(accountLink, 'FAILURE / MFA_FAILURE');
+    await genCreateAccountLink(accountLink);
+    return;
+  }
+
+  // STEP 4: IN_PROGRESS / DOWNLOAD_DATA
+  accountLink = updateAccountLinkStatus(
+    accountLink,
+    'IN_PROGRESS / DOWNLOADING_DATA',
+  );
+  await genCreateAccountLink(accountLink);
+  await sleepForMillis(8000);
+
+  // STEP 5: desired status.
+  accountLink = updateAccountLinkStatus(accountLink, desiredStatus);
+  await genCreateAccountLink(accountLink);
+}
+
 // -----------------------------------------------------------------------------
 //
 // UTILITIES
 //
 // -----------------------------------------------------------------------------
+
+// Creates a test yodlee provider account that has a status indicating it is
+// currently logging in.
+function createTestYodleeProviderAccount(
+  yodleeProvider: YodleeProvider,
+): YodleeProviderAccount {
+  return {
+    aggregationSource: 'SYSTEM',
+    createdDate: '2018-04-01',
+    id: 0,
+    isManual: false,
+    lastUpdated: '2018-04-01T00:00:00Z',
+    providerId: yodleeProvider.id,
+    refreshInfo: {
+      additionalStatus: 'LOGIN_IN_PROGRESS',
+      lastRefreshed: '2018-04-01T00:00:00Z',
+      lastRefreshAttempt: '2018-04-01T00:00:00Z',
+      statusCode: 0,
+      status: 'IN_PROGRESS',
+      statusMessage: 'blah',
+    },
+  };
+}
 
 function sleepForMillis(millis: number): Promise<void> {
   return new Promise(resolve => {
