@@ -18,6 +18,7 @@ import { genProviderAccountMFALogin } from '../yodlee-manager';
 import {
   genTestYodleePerformLink,
   genTestYodleeProviderLogin,
+  genTestYodleeSubmitMFALoginForm,
   genYodleePerformLink,
   genYodleeProviderLogin,
 } from '../operations/account-link/create';
@@ -179,6 +180,23 @@ function performTestProviderLogin(): RouteHandler {
 
     const userID: ID = req.decodedIDToken.uid;
 
+    let accountLink: AccountLink | null = await genFetchAccountLinkForProvider(
+      userID,
+      TEST_YODLEE_PROVIDER_ID,
+    );
+
+    if (accountLink && isInMFA(accountLink)) {
+      res.json({data: createPointer('AccountLink', accountLink.id)});
+      await genTestYodleeSubmitMFALoginForm(accountLink.id, loginForm);
+      return;
+    }
+
+    const provider = createTestYodleeProvider();
+    invariant(
+      provider.sourceOfTruth.type === 'YODLEE',
+      'Expecting test yodlee provider to come from YODLEE',
+    );
+
     // $FlowFixMe - This is correct
     const desiredStatus: AccountLinkStatus = loginForm.row[0].field[0].value;
     const shouldUseMFA = loginForm.row[1].field[0].value === 'YES';
@@ -190,23 +208,6 @@ function performTestProviderLogin(): RouteHandler {
       throw { errorCode, errorMessage, toString };
     }
 
-    let accountLink: AccountLink | null = await genFetchAccountLinkForProvider(
-      userID,
-      TEST_YODLEE_PROVIDER_ID,
-    );
-
-    if (accountLink && isInMFA(accountLink)) {
-      const errorCode = 'infindi/bad-request';
-      const errorMessage = 'Does not support MFA yet';
-      const toString = () => `[${errorCode}]: ${errorMessage}`;
-      throw { errorCode, errorMessage, toString };
-    }
-
-    const provider = createTestYodleeProvider();
-    invariant(
-      provider.sourceOfTruth.type === 'YODLEE',
-      'Expecting test yodlee provider to come from YODLEE',
-    );
 
     accountLink = await genTestYodleeProviderLogin(userID, {
       ...provider.sourceOfTruth.value,

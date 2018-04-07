@@ -24,6 +24,7 @@ import type {
 } from 'common/lib/models/AccountLink';
 import type { ID } from 'common/types/core';
 import type {
+  LoginForm as YodleeLoginForm,
   ProviderAccount as YodleeProviderAccount,
   ProviderFull as YodleeProvider,
 } from 'common/types/yodlee';
@@ -153,13 +154,62 @@ export async function genTestYodleeProviderLogin(
         'IN_PROGRESS / VERIFYING_CREDENTIALS',
       )
     : createAccountLinkYodlee(
-        createTestYodleeProviderAccount(yodleeProvider),
+        createTestYodleeProviderAccount(yodleeProvider.id),
         userID,
         String(yodleeProvider.id),
       );
 
   await genCreateAccountLink(accountLink);
   return accountLink;
+}
+
+export async function genTestYodleeSubmitMFALoginForm(
+  accountLinkID: ID,
+  loginForm: YodleeLoginForm,
+): Promise<void> {
+  let accountLink = await genFetchAccountLink(accountLinkID);
+  const isCorrect = loginForm.row[0].field[0].value === '4';
+
+  if (!accountLink) {
+    const errorCode = 'infindi/server-error';
+    const errorMessage = 'Trying to get test account link that does not exist';
+    const toString = `[${errorCode}]: ${errorMessage}`;
+    throw { errorCode, errorMessage, toString };
+  }
+
+  const yodleeProviderIDAsLong = parseInt(accountLink.providerRef.refID, 10);
+  invariant(
+    !Number.isNaN(yodleeProviderIDAsLong),
+    'Expecting yodlee provider id to be a long in string form',
+  );
+
+  await sleepForMillis(4000);
+
+  if (!isCorrect) {
+    accountLink = updateAccountLinkStatus(
+      accountLink,
+      'FAILURE / BAD_CREDENTIALS',
+    );
+    await genCreateAccountLink(accountLink);
+    return;
+  }
+
+  const yodleeProviderAccount = {
+    ...createTestYodleeProviderAccount(yodleeProviderIDAsLong),
+    refreshInfo: {
+      lastRefreshed: '2018-04-01T00:00:00Z',
+      lastRefreshAttempt: '2018-04-01T00:00:00Z',
+      statusCode: 0,
+      status: 'IN_PROGRESS',
+      statusMessage: 'blah',
+    },
+  };
+  accountLink = updateAccountLinkYodlee(accountLink, yodleeProviderAccount);
+  await genCreateAccountLink(accountLink);
+
+  await sleepForMillis(6000);
+  accountLink = updateAccountLinkStatus(accountLink, 'SUCCESS');
+  await genCreateAccountLink(accountLink);
 }
 
 export async function genTestYodleePerformLink(
@@ -190,8 +240,21 @@ export async function genTestYodleePerformLink(
 
   // STEP 3: MFA
   if (shouldUseMFA) {
+    invariant(
+      accountLink.sourceOfTruth.type === 'YODLEE',
+      'Expecting account link to come from YODLEE',
+    );
+    const prevProviderAccount = accountLink.sourceOfTruth.providerAccount;
     // MFA is not yet supported.
-    accountLink = updateAccountLinkStatus(accountLink, 'FAILURE / MFA_FAILURE');
+    const providerAccount = {
+      ...prevProviderAccount,
+      loginForm: createTestYodleeMFALoginForm(),
+      refreshInfo: {
+        ...prevProviderAccount.refreshInfo,
+        additionalStatus: 'USER_INPUT_REQUIRED',
+      },
+    };
+    accountLink = updateAccountLinkYodlee(accountLink, providerAccount);
     await genCreateAccountLink(accountLink);
     return;
   }
@@ -215,10 +278,49 @@ export async function genTestYodleePerformLink(
 //
 // -----------------------------------------------------------------------------
 
+function createTestYodleeMFALoginForm(): YodleeLoginForm {
+  return {
+    formType: 'questionAndAnswer',
+    mfaInfoText: 'Quick MFA Login Test',
+    mfaInfoTitle: 'Test Properties',
+    mfaTimeout: 90000,
+    row: [
+      {
+        id: 'Row 1',
+        label: 'What is 2 + 2?',
+        fieldRowChoice: '',
+        form: '',
+        field: [
+          {
+            id: 'field 1',
+            isOptional: false,
+            name: 'testCondition',
+            option: [
+              {
+                displayText: '4',
+                isSelected: 'false',
+                optionValue: '4',
+              },
+              {
+                displayText: 'Not 4',
+                isSelected: 'false',
+                optionValue: 'Not 4',
+              },
+            ],
+            type: 'option',
+            value: '',
+            valueEditable: 'true',
+          },
+        ],
+      },
+    ],
+  };
+}
+
 // Creates a test yodlee provider account that has a status indicating it is
 // currently logging in.
 function createTestYodleeProviderAccount(
-  yodleeProvider: YodleeProvider,
+  yodleeProviderIDAsLong: number,
 ): YodleeProviderAccount {
   return {
     aggregationSource: 'SYSTEM',
@@ -226,7 +328,7 @@ function createTestYodleeProviderAccount(
     id: 0,
     isManual: false,
     lastUpdated: '2018-04-01T00:00:00Z',
-    providerId: yodleeProvider.id,
+    providerId: yodleeProviderIDAsLong,
     refreshInfo: {
       additionalStatus: 'LOGIN_IN_PROGRESS',
       lastRefreshed: '2018-04-01T00:00:00Z',
