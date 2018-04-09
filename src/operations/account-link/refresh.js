@@ -35,6 +35,10 @@ export async function genYodleeRefreshAccountLink(
   accountLink: AccountLink,
   force: boolean = false,
 ): Promise<void> {
+  if (accountLink.providerRef.refID === '0') {
+    // Do not try to refresh test account.
+    return;
+  }
   await handleLinkingError(accountLink.id, () =>
     genYodleeRefreshAccountLinkImpl(accountLink, force),
   );

@@ -206,10 +206,6 @@ export async function genTestYodleeSubmitMFALoginForm(
   };
   accountLink = updateAccountLinkYodlee(accountLink, yodleeProviderAccount);
   await genCreateAccountLink(accountLink);
-
-  await sleepForMillis(6000);
-  accountLink = updateAccountLinkStatus(accountLink, 'SUCCESS');
-  await genCreateAccountLink(accountLink);
 }
 
 export async function genTestYodleePerformLink(
@@ -256,15 +252,46 @@ export async function genTestYodleePerformLink(
     };
     accountLink = updateAccountLinkYodlee(accountLink, providerAccount);
     await genCreateAccountLink(accountLink);
-    return;
+
+    // Loop until we are no longer in MFA login, or if there is no feedback
+    // for a long enough time.
+    let remainingLoops = 5;
+
+    while (
+      remainingLoops > 0 &&
+      accountLink.status !== 'IN_PROGRESS / DOWNLOADING_DATA'
+    ) {
+      await sleepForMillis(3000);
+
+      accountLink = await genFetchAccountLink(accountLinkID);
+      invariant(
+        accountLink,
+        'Expecting account link to exist: %s',
+        accountLinkID,
+      );
+      --remainingLoops;
+    }
+
+    if (accountLink.status !== 'IN_PROGRESS / DOWNLOADING_DATA') {
+      // Never completed MFA. Force fail.
+      accountLink = updateAccountLinkStatus(
+        accountLink,
+        'FAILURE / MFA_FAILURE',
+      );
+      await genCreateAccountLink(accountLink);
+      return;
+    }
   }
 
-  // STEP 4: IN_PROGRESS / DOWNLOAD_DATA
-  accountLink = updateAccountLinkStatus(
-    accountLink,
-    'IN_PROGRESS / DOWNLOADING_DATA',
-  );
-  await genCreateAccountLink(accountLink);
+  // STEP 4: IN_PROGRESS / DOWNLOADING_DATA
+  if (!shouldUseMFA) {
+    // The MFA login will enter this state for us.
+    accountLink = updateAccountLinkStatus(
+      accountLink,
+      'IN_PROGRESS / DOWNLOADING_DATA',
+    );
+    await genCreateAccountLink(accountLink);
+  }
   await sleepForMillis(8000);
 
   // STEP 5: desired status.

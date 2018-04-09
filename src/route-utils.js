@@ -6,7 +6,7 @@ import type { RouteHandler } from './middleware';
 
 export function handleError(
   routeHandler: RouteHandler,
-  isAsync: bool = false,
+  isAsync: boolean = false,
 ): RouteHandler {
   return (req, res, next) => {
     if (isAsync) {
