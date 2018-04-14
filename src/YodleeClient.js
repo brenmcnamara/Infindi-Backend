@@ -200,7 +200,7 @@ export default class YodleeClient {
       });
   }
 
-  genIsActiveSession(userSession: string): Promise<bool> {
+  genIsActiveSession(userSession: string): Promise<boolean> {
     return this._genValidateCobrandLogin()
       .then(() => this._genValidateUserLogin(userSession))
       .then(() => {
@@ -322,9 +322,7 @@ export default class YodleeClient {
       .then(() =>
         this._genPutRequest(
           userSession,
-          `${BASE_URI}/providerAccounts?providerAccountIds=${
-            providerAccountID
-          }`,
+          `${BASE_URI}/providerAccounts?providerAccountIds=${providerAccountID}`,
         ),
       )
       .then(response => response.providerAccount[0] || null);
@@ -341,9 +339,7 @@ export default class YodleeClient {
         const request = { loginForm };
         return this._genPutRequest(
           userSession,
-          `${BASE_URI}/providerAccounts?providerAccountIds=${
-            providerAccountID
-          }`,
+          `${BASE_URI}/providerAccounts?providerAccountIds=${providerAccountID}`,
           request,
         );
       });
@@ -410,9 +406,7 @@ export default class YodleeClient {
       .then(() =>
         this._genGetRequest(
           userSession,
-          `${BASE_URI}/transactions?accountId=${accountID}&fromDate=${
-            fromDateString
-          }`,
+          `${BASE_URI}/transactions?accountId=${accountID}&fromDate=${fromDateString}`,
         ),
       )
       .then(response => response.transaction);

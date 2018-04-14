@@ -186,7 +186,7 @@ function performTestProviderLogin(): RouteHandler {
     );
 
     if (accountLink && isInMFA(accountLink)) {
-      res.json({data: createPointer('AccountLink', accountLink.id)});
+      res.json({ data: createPointer('AccountLink', accountLink.id) });
       await genTestYodleeSubmitMFALoginForm(accountLink.id, loginForm);
       return;
     }
@@ -199,7 +199,8 @@ function performTestProviderLogin(): RouteHandler {
 
     // $FlowFixMe - This is correct
     const desiredStatus: AccountLinkStatus = loginForm.row[0].field[0].value;
-    const shouldUseMFA = loginForm.row[1].field[0].value === 'YES';
+    // $FlowFixMe - This is correct
+    const mfaFormCount: '0' | '1' | '2' = loginForm.row[1].field[0].value;
 
     if (!SUPPORTED_TEST_ACCOUNT_LINK_STATUSES.includes(desiredStatus)) {
       const errorCode = 'infindi/bad-request';
@@ -208,7 +209,6 @@ function performTestProviderLogin(): RouteHandler {
       throw { errorCode, errorMessage, toString };
     }
 
-
     accountLink = await genTestYodleeProviderLogin(userID, {
       ...provider.sourceOfTruth.value,
       loginForm,
@@ -216,7 +216,7 @@ function performTestProviderLogin(): RouteHandler {
 
     res.json({ data: createPointer('AccountLink', accountLink.id) });
 
-    await genTestYodleePerformLink(accountLink.id, desiredStatus, shouldUseMFA);
+    await genTestYodleePerformLink(accountLink.id, desiredStatus, mfaFormCount);
   });
 }
 
@@ -398,7 +398,7 @@ function createTestYodleeProvider(): Provider {
       },
       {
         id: 'Row 2',
-        label: 'Are you testing MFA?',
+        label: 'How many MFA steps should there be?',
         fieldRowChoice: '',
         form: '',
         field: [
@@ -408,14 +408,19 @@ function createTestYodleeProvider(): Provider {
             name: 'includeMFA',
             option: [
               {
-                displayText: 'Yes',
+                displayText: '0',
                 isSelected: 'false',
-                optionValue: 'YES',
+                optionValue: '0',
               },
               {
-                displayText: 'No',
+                displayText: '1',
                 isSelected: 'false',
-                optionValue: 'NO',
+                optionValue: '1',
+              },
+              {
+                displayText: '2',
+                isSelected: 'false',
+                optionValue: '2',
               },
             ],
             type: 'option',

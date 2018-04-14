@@ -110,11 +110,15 @@ async function genYodleePerformLinkImpl(accountLinkID: ID): Promise<void> {
 
   INFO('ACCOUNT-LINK', 'Yodlee has completed linking attempt');
   invariant(
-    accountLink && !isLinking(accountLink),
+    accountLink,
     'Expecting account link to exist after linking is complete',
   );
+  invariant(
+    !isLinking(newAccountLink),
+    'Expecting account link to be finished linking',
+  );
 
-  if (isLinkFailure(accountLink)) {
+  if (isLinkFailure(newAccountLink)) {
     INFO(
       'ACCOUNT-LINK',
       `Yodlee linking failed. Check account link for more info: ${
@@ -125,13 +129,13 @@ async function genYodleePerformLinkImpl(accountLinkID: ID): Promise<void> {
   }
 
   invariant(
-    isLinkSuccess(accountLink),
+    isLinkSuccess(newAccountLink),
     'Refresh info is in unknown state. Please check refresh for more info: %s',
     accountLink.id,
   );
 
   // Perform the linking + update here.
-  await genUpdateLink(accountLink);
+  await genUpdateLink(newAccountLink);
   INFO('ACCOUNT-LINK', 'Finished downloading account link data');
 }
 
@@ -168,7 +172,9 @@ export async function genTestYodleeSubmitMFALoginForm(
   loginForm: YodleeLoginForm,
 ): Promise<void> {
   let accountLink = await genFetchAccountLink(accountLinkID);
-  const isCorrect = loginForm.row[0].field[0].value === '4';
+  const isCorrect =
+    loginForm.row[0].field[0].value === '4' ||
+    loginForm.row[0].field[0].value === '8';
 
   if (!accountLink) {
     const errorCode = 'infindi/server-error';
@@ -211,7 +217,7 @@ export async function genTestYodleeSubmitMFALoginForm(
 export async function genTestYodleePerformLink(
   accountLinkID: ID,
   desiredStatus: AccountLinkStatus,
-  shouldUseMFA: boolean,
+  loginFormCount: '0' | '1' | '2',
 ): Promise<void> {
   let accountLink = await genFetchAccountLink(accountLinkID);
 
@@ -235,16 +241,17 @@ export async function genTestYodleePerformLink(
   }
 
   // STEP 3: MFA
-  if (shouldUseMFA) {
+  if (loginFormCount !== '0') {
     invariant(
       accountLink.sourceOfTruth.type === 'YODLEE',
       'Expecting account link to come from YODLEE',
     );
     const prevProviderAccount = accountLink.sourceOfTruth.providerAccount;
-    // MFA is not yet supported.
-    const providerAccount = {
+
+    // FORM 1
+    let providerAccount = {
       ...prevProviderAccount,
-      loginForm: createTestYodleeMFALoginForm(),
+      loginForm: createTestYodleeMFALoginForm('1'),
       refreshInfo: {
         ...prevProviderAccount.refreshInfo,
         additionalStatus: 'USER_INPUT_REQUIRED',
@@ -259,7 +266,7 @@ export async function genTestYodleePerformLink(
 
     while (
       remainingLoops > 0 &&
-      accountLink.status !== 'IN_PROGRESS / DOWNLOADING_DATA'
+      accountLink.status === 'MFA / PENDING_USER_INPUT'
     ) {
       await sleepForMillis(3000);
 
@@ -272,7 +279,7 @@ export async function genTestYodleePerformLink(
       --remainingLoops;
     }
 
-    if (accountLink.status !== 'IN_PROGRESS / DOWNLOADING_DATA') {
+    if (accountLink.status === 'MFA / PENDING_USER_INPUT') {
       // Never completed MFA. Force fail.
       accountLink = updateAccountLinkStatus(
         accountLink,
@@ -281,10 +288,40 @@ export async function genTestYodleePerformLink(
       await genCreateAccountLink(accountLink);
       return;
     }
+
+    // FORM 2
+    if (loginFormCount === '2') {
+      providerAccount = {
+        ...providerAccount,
+        loginForm: createTestYodleeMFALoginForm('2'),
+        refreshInfo: {
+          ...providerAccount.refreshInfo,
+          additionalStatus: 'USER_INPUT_REQUIRED',
+        },
+      };
+      accountLink = updateAccountLinkYodlee(accountLink, providerAccount);
+      await genCreateAccountLink(accountLink);
+
+      remainingLoops = 5;
+      while (
+        remainingLoops > 0 &&
+        accountLink.status === 'MFA / PENDING_USER_INPUT'
+      ) {
+        await sleepForMillis(3000);
+
+        accountLink = await genFetchAccountLink(accountLinkID);
+        invariant(
+          accountLink,
+          'Expecting account link to exist: %s',
+          accountLinkID,
+        );
+        --remainingLoops;
+      }
+    }
   }
 
   // STEP 4: IN_PROGRESS / DOWNLOADING_DATA
-  if (!shouldUseMFA) {
+  if (loginFormCount === '0') {
     // The MFA login will enter this state for us.
     accountLink = updateAccountLinkStatus(
       accountLink,
@@ -305,16 +342,16 @@ export async function genTestYodleePerformLink(
 //
 // -----------------------------------------------------------------------------
 
-function createTestYodleeMFALoginForm(): YodleeLoginForm {
+function createTestYodleeMFALoginForm(formVersion: '1' | '2'): YodleeLoginForm {
   return {
     formType: 'questionAndAnswer',
-    mfaInfoText: 'Quick MFA Login Test',
+    mfaInfoText: formVersion === '1' ? 'Quick MFA Login Test' : 'Follow Up',
     mfaInfoTitle: 'Test Properties',
     mfaTimeout: 90000,
     row: [
       {
         id: 'Row 1',
-        label: 'What is 2 + 2?',
+        label: formVersion === '1' ? 'What is 2 + 2?' : 'What is 4 + 4?',
         fieldRowChoice: '',
         form: '',
         field: [
@@ -324,14 +361,14 @@ function createTestYodleeMFALoginForm(): YodleeLoginForm {
             name: 'testCondition',
             option: [
               {
-                displayText: '4',
+                displayText: formVersion === '1' ? '4' : '8',
                 isSelected: 'false',
-                optionValue: '4',
+                optionValue: formVersion === '1' ? '4' : '8',
               },
               {
-                displayText: 'Not 4',
+                displayText: formVersion === '1' ? 'Not 4' : 'Not 8',
                 isSelected: 'false',
-                optionValue: 'Not 4',
+                optionValue: formVersion === '1' ? 'Not 4' : 'Not 8',
               },
             ],
             type: 'option',

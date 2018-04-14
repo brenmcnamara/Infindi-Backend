@@ -9,7 +9,7 @@ import {
   wrapInSemaphoreRequest,
 } from './SingleThreadSemaphore';
 import { genFetchYodleeCredentials } from 'common/lib/models/YodleeCredentials';
-import { INFO } from './log-utils';
+import { DEBUG, INFO } from './log-utils';
 
 import type { ID } from 'common/types/core';
 import type {
@@ -186,14 +186,14 @@ async function genCheckAndRefreshYodleeUserSession(userID: ID): Promise<void> {
       yodleeClient.genIsActiveSession(session),
     );
     if (isActiveSession) {
-      INFO('YODLEE', 'Found valid yodlee session');
+      DEBUG('YODLEE', 'Found valid yodlee session');
       return;
     }
     delete userToYodleeSession[userID];
     delete userToYodleeSessionMillis[userID];
   }
 
-  INFO('YODLEE', 'No user session exists. Creating new session');
+  DEBUG('YODLEE', 'No user session exists. Creating new session');
 
   // Block on session generator so we do not have multiple calls trying to login
   // with the same user.
