@@ -16,8 +16,16 @@ const chalk = require('chalk');
 const dotenv = require('dotenv');
 const fs = require('fs');
 const invariant = require('invariant');
+const minimist = require('minimist');
 const path = require('path');
 const uuid = require('uuid/v4');
+
+const argv = minimist(process.argv.slice(2));
+const serializedOffset = argv['offset'];
+
+const offset = !serializedOffset || !parseInt(serializedOffset, 10)
+  ? 0
+  : parseInt(serializedOffset, 10);
 
 const COBRAND_LOGIN = 'sbCobbrenmcnamara';
 const COBRAND_PASSWORD = 'd19ced89-5e46-43da-9b4f-cd5ba339d9ce';
@@ -57,7 +65,7 @@ Promise.resolve()
   .then(_session => yodleeUserSession = _session)
   .then(() => console.log(chalk.blue('Logged in user...')))
   .then(() => console.log(chalk.blue('Fetching providers. This can take a few minutes...')))
-  .then(() => fetchAndSyncProviders(7000))
+  .then(() => fetchAndSyncProviders(offset))
   .then(() => {
     console.log(chalk.green('Done updating!'));
     process.exit(0);
@@ -124,7 +132,10 @@ function requestSemaphore() {
   const requestID = uuid();
   if (runningRequests.length < MAX_AVAILABLE_SEMAPHORES) {
     runningRequests.push(requestID);
-    console.log('Count:', ++count);
+    ++count;
+    if (count % 10 === 0) {
+      console.log('Count:', count);
+    }
     return Promise.resolve(requestID);
   }
   return new Promise(resolve => {
@@ -139,7 +150,10 @@ function releaseSemaphore(requestID) {
   runningRequests.splice(index, 1);
   if (payload) {
     runningRequests.push(payload.requestID);
-    console.log('Count:', ++count);
+    ++count;
+    if (count % 10 === 0) {
+      console.log('Count:', count);
+    }
     payload.resolve(payload.requestID);
   }
   return Promise.resolve();
