@@ -37,6 +37,7 @@ export async function genYodleeProviderLogin(
 
   const loginPayload = await genProviderLogin(userID, yodleeProvider);
   const providerID = String(yodleeProvider.id);
+  const providerName = yodleeProvider.name;
   const providerAccountID = String(loginPayload.providerAccountId);
   const yodleeProviderAccount = await genProviderAccount(
     userID,
@@ -71,7 +72,12 @@ export async function genYodleeProviderLogin(
   );
   const accountLink: AccountLink = existingAccountLink
     ? updateAccountLinkYodlee(existingAccountLink, yodleeProviderAccount)
-    : createAccountLinkYodlee(yodleeProviderAccount, userID, providerID);
+    : createAccountLinkYodlee(
+        yodleeProviderAccount,
+        userID,
+        providerID,
+        providerName,
+      );
 
   INFO('ACCOUNT-LINK', 'Creating / Updating refresh info');
   await genCreateAccountLink(accountLink);
@@ -146,11 +152,10 @@ export async function genTestYodleeProviderLogin(
   await sleepForMillis(3000);
 
   // STEP 1: IN_PROGRESS / VERIFYING_CREDENTIALS
+  const providerID = String(yodleeProvider.id);
+  const providerName = yodleeProvider.name;
 
-  let accountLink = await genFetchAccountLinkForProvider(
-    userID,
-    String(yodleeProvider.id),
-  );
+  let accountLink = await genFetchAccountLinkForProvider(userID, providerID);
 
   accountLink = accountLink
     ? updateAccountLinkStatus(
@@ -160,7 +165,8 @@ export async function genTestYodleeProviderLogin(
     : createAccountLinkYodlee(
         createTestYodleeProviderAccount(yodleeProvider.id),
         userID,
-        String(yodleeProvider.id),
+        providerID,
+        providerName,
       );
 
   await genCreateAccountLink(accountLink);
