@@ -1,5 +1,7 @@
 /* @flow */
 
+import Logger from './logger';
+
 import invariant from 'invariant';
 
 import { ERROR, INFO } from '../../log-utils';
@@ -61,6 +63,8 @@ async function genYodleeRefreshAccountLinkImpl(
     );
     return;
   }
+  Logger.genStart(accountLink, 'AUTO');
+
   const userID = accountLink.userRef.refID;
   const yodleeProviderAccount = getYodleeProviderAccount(accountLink);
   await genProviderAccountRefresh(userID, String(yodleeProviderAccount.id));

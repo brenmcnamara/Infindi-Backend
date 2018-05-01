@@ -1,5 +1,7 @@
 /* @flow */
 
+import Logger from './logger';
+
 import invariant from 'invariant';
 
 import {
@@ -93,6 +95,7 @@ export async function genYodleePerformLink(accountLinkID: ID): Promise<void> {
 async function genYodleePerformLinkImpl(accountLinkID: ID): Promise<void> {
   INFO('ACCOUNT-LINK', `Performing link with account link ${accountLinkID}`);
   let accountLink = await genFetchAccountLink(accountLinkID);
+
   if (!accountLink) {
     // TODO: Move these types of errors to the request logic. This should be
     // agnostic to the caller.
@@ -101,6 +104,7 @@ async function genYodleePerformLinkImpl(accountLinkID: ID): Promise<void> {
       errorMessage: 'Trying to wait for non-existent account link',
     };
   }
+  Logger.genStart(accountLink, 'MANUAL');
 
   const userID = accountLink.userRef.refID;
   INFO(
@@ -112,6 +116,7 @@ async function genYodleePerformLinkImpl(accountLinkID: ID): Promise<void> {
   while (isLinking(newAccountLink) || isInMFA(newAccountLink)) {
     await sleepForMillis(sleepTime);
     newAccountLink = await genYodleeLinkPass(userID, accountLinkID);
+    Logger.genUpdate(newAccountLink);
   }
 
   INFO('ACCOUNT-LINK', 'Yodlee has completed linking attempt');
@@ -142,6 +147,7 @@ async function genYodleePerformLinkImpl(accountLinkID: ID): Promise<void> {
 
   // Perform the linking + update here.
   await genUpdateLink(newAccountLink);
+  Logger.genStop(newAccountLink);
   INFO('ACCOUNT-LINK', 'Finished downloading account link data');
 }
 

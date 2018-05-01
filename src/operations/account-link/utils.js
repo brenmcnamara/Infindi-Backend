@@ -1,6 +1,7 @@
 /* @flow */
 
 import * as FirebaseAdmin from 'firebase-admin';
+import Logger from './logger';
 
 import invariant from 'invariant';
 import nullthrows from 'nullthrows';
@@ -56,12 +57,12 @@ export function handleLinkingError(
     genFetchAccountLink(accountLinkID)
       .then(accountLink => {
         invariant(accountLink, 'Failed to fetch account link in error handler');
-        return genCreateAccountLink(
-          updateAccountLinkStatus(
-            accountLink,
-            'FAILURE / INTERNAL_SERVICE_FAILURE',
-          ),
+        const newAccountLink = updateAccountLinkStatus(
+          accountLink,
+          'FAILURE / INTERNAL_SERVICE_FAILURE',
         );
+        Logger.genStop(newAccountLink);
+        return genCreateAccountLink(newAccountLink);
       })
       .catch(error => {
         const errorMessage =
