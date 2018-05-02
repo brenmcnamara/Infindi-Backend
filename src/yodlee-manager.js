@@ -35,6 +35,8 @@ const userToYodleeSession: { [userID: ID]: string } = {};
 const userToYodleeSessionMillis: { [userID: ID]: number } = {};
 
 const USER_SESSION_REFRESH_CHECK_TIMEOUT = 5 * 60 * 1000;
+const RETRY_COUNT = 1;
+const RETRY_TIMEOUT = 500;
 
 // -----------------------------------------------------------------------------
 //
@@ -147,9 +149,22 @@ function overrideClientAsyncMethod(methodName: string) {
       method,
     );
     const allArgs = [userSession].concat(args);
-    return await wrapInSemaphoreRequest(yodleeSemaphore, () =>
-      method.apply(client, allArgs),
-    );
+    let result;
+    let error;
+
+    for (let i = 0; i < RETRY_COUNT; ++i) {
+      try {
+        result = await wrapInSemaphoreRequest(yodleeSemaphore, () =>
+          method.apply(client, allArgs),
+        );
+        return result;
+      } catch (_error) {
+        DEBUG('YODLEE', `Caught yodlee error: ${_error.toString()}`);
+        error = _error;
+      }
+      await genSleepForMS(RETRY_TIMEOUT);
+    }
+    throw error;
   };
 }
 
@@ -167,6 +182,7 @@ async function genCheckAndRefreshYodleeUserSession(userID: ID): Promise<void> {
   const credentials = await genFetchYodleeCredentials(userID);
   await genWaitForCobrandLogin;
   const yodleeClient = getYodleeClient();
+
   await (userToYodleeSessionGenerator[userID] || Promise.resolve());
   if (userToYodleeSession[userID]) {
     const session = userToYodleeSession[userID];
@@ -214,4 +230,12 @@ function getYodleeClient(): YodleeClient {
     'Yodlee Manager must be initialized before being used',
   );
   return yodleeClient;
+}
+
+function genSleepForMS(millis: number): Promise<void> {
+  return new Promise(resolve => {
+    setTimeout(() => {
+      resolve();
+    }, millis);
+  });
 }

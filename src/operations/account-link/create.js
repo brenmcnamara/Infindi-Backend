@@ -112,7 +112,7 @@ async function genYodleePerformLinkImpl(accountLinkID: ID): Promise<void> {
     'Checking yodlee provider for completed linking attempt',
   );
   let newAccountLink = await genYodleeLinkPass(userID, accountLinkID);
-  const sleepTime = 3000;
+  const sleepTime = 4000;
   while (isLinking(newAccountLink) || isInMFA(newAccountLink)) {
     await sleepForMillis(sleepTime);
     newAccountLink = await genYodleeLinkPass(userID, accountLinkID);

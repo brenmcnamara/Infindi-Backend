@@ -28,9 +28,7 @@ export async function genYodleeRefreshAccountLinksForUser(
   userID: ID,
 ): Promise<void> {
   const accountLinks = await genFetchAccountLinksForUser(userID);
-  await Promise.all(
-    accountLinks.map(link => genYodleeRefreshAccountLink(link)),
-  );
+  await accountLinks.map(link => genYodleeRefreshAccountLink(link));
 }
 
 export async function genYodleeRefreshAccountLink(
@@ -70,7 +68,7 @@ async function genYodleeRefreshAccountLinkImpl(
   await genProviderAccountRefresh(userID, String(yodleeProviderAccount.id));
   let newAccountLink = await genYodleeLinkPass(userID, accountLink.id);
   while (isLinking(newAccountLink)) {
-    await sleepForMillis(5000);
+    await sleepForMillis(8000);
     newAccountLink = await genYodleeLinkPass(userID, accountLink.id);
   }
   // Fetch the new account link after the linking is done.
@@ -86,6 +84,7 @@ async function genYodleeRefreshAccountLinkImpl(
       'FAILURE / USER_INPUT_REQUEST_IN_BACKGROUND',
     );
     await genCreateAccountLink(newAccountLink);
+    Logger.genStop(newAccountLink);
     return;
   }
   if (!isLinkSuccess(newAccountLink)) {
@@ -95,10 +94,12 @@ async function genYodleeRefreshAccountLinkImpl(
         accountLink.id
       }. Account link status: ${newAccountLink.status}`,
     );
+    Logger.genStop(newAccountLink);
     return;
   }
   INFO('ACCOUNT-LINK', `Refresh completed for account link ${accountLink.id}`);
   await genYodleeUpdateLink(newAccountLink);
+  Logger.genStop(newAccountLink);
 }
 
 // -----------------------------------------------------------------------------
