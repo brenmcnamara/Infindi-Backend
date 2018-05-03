@@ -1,15 +1,15 @@
 /* @flow */
 
-import YodleeClient from './YodleeClient';
+import YodleeClient from './YodleeClient-V1.0';
 
 import invariant from 'invariant';
 
 import {
   createSemaphore,
   wrapInSemaphoreRequest,
-} from './SingleThreadSemaphore';
+} from '../SingleThreadSemaphore';
 import { genFetchYodleeCredentials } from 'common/lib/models/YodleeCredentials';
-import { DEBUG, INFO } from './log-utils';
+import { DEBUG, INFO } from '../log-utils';
 
 import type { ID } from 'common/types/core';
 import type {
@@ -19,8 +19,8 @@ import type {
   ProviderAccount,
   ProviderFull,
   Transaction as YodleeTransaction,
-} from 'common/types/yodlee';
-import type { ProviderLoginResponse } from './YodleeClient';
+} from 'common/types/yodlee-v1.0';
+import type { ProviderLoginResponse } from './YodleeClient-V1.0';
 
 // Only 1 yodlee operation allowed at a time. Yodlee does not like concurrent
 // requests.

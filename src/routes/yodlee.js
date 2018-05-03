@@ -14,7 +14,7 @@ import {
 } from 'common/lib/models/AccountLink';
 import { genFetchProvider, getProviderName } from 'common/lib/models/Provider';
 import { genFetchUserInfo } from 'common/lib/models/UserInfo';
-import { genProviderAccountMFALogin } from '../yodlee-manager';
+import { genProviderAccountMFALogin } from '../yodlee/yodlee-manager';
 import {
   genTestYodleePerformLink,
   genTestYodleeProviderLogin,
@@ -30,7 +30,7 @@ import type {
   LoginForm as YodleeLoginForm,
   ProviderAccount as YodleeProviderAccount,
   ProviderFull as YodleeProvider,
-} from 'common/types/yodlee';
+} from 'common/types/yodlee-v1.0';
 import type { RouteHandler } from '../middleware';
 import type { Provider } from 'common/lib/models/Provider';
 

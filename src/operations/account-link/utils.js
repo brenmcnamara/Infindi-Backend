@@ -25,7 +25,7 @@ import {
   genProviderAccount,
   genTransactions,
   genTransactionsFromDate,
-} from '../../yodlee-manager';
+} from '../../yodlee/yodlee-manager';
 import {
   genCreateAccountLink,
   genFetchAccountLink,
@@ -37,7 +37,7 @@ import {
 import type { Account } from 'common/lib/models/Account';
 import type { AccountLink } from 'common/lib/models/AccountLink';
 import type { ID } from 'common/types/core';
-import type { ProviderAccount as YodleeProviderAccount } from 'common/types/yodlee';
+import type { ProviderAccount as YodleeProviderAccount } from 'common/types/yodlee-v1.0';
 import type { Transaction } from 'common/lib/models/Transaction';
 
 export function handleLinkingError(

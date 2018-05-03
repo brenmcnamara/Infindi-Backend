@@ -13,7 +13,7 @@ import {
   isLinkSuccess,
   updateAccountLinkStatus,
 } from 'common/lib/models/AccountLink';
-import { genProviderAccountRefresh } from '../../yodlee-manager';
+import { genProviderAccountRefresh } from '../../yodlee/yodlee-manager';
 import {
   genYodleeLinkPass,
   genYodleeUpdateLink,
@@ -22,7 +22,7 @@ import {
 
 import type { AccountLink } from 'common/lib/models/AccountLink';
 import type { ID } from 'common/types/core';
-import type { ProviderAccount as YodleeProviderAccount } from 'common/types/yodlee';
+import type { ProviderAccount as YodleeProviderAccount } from 'common/types/yodlee-v1.0';
 
 export async function genYodleeRefreshAccountLinksForUser(
   userID: ID,

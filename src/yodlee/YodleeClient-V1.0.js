@@ -16,7 +16,7 @@ import type {
   RefreshInfo,
   Transaction,
   User,
-} from 'common/types/yodlee';
+} from 'common/types/yodlee-v1.0';
 import type { ID } from 'common/types/core';
 
 const BASE_URI = 'https://developer.api.yodlee.com/ysl/restserver/v1';
