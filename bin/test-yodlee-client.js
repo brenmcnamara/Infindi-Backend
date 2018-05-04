@@ -15,6 +15,7 @@ const chalk = require('chalk');
 
 // eslint-disable-next-line no-unused-vars
 let promise = Promise.resolve();
+let isFailure = false;
 
 promise = promise
   .then(() => {
@@ -25,6 +26,7 @@ promise = promise
   })
   .then(() => {
     console.log(chalk.red('Expected cobrand login failure to throw'));
+    isFailure = true;
   })
   .catch(error => {
     console.log(chalk.green('Cobrand auth failure detection was successful'));
@@ -41,5 +43,10 @@ promise = promise
   })
   .catch(error => {
     console.log(chalk.red('Cobrand login failed'));
+    isFailure = true;
     process.exit(1);
+  })
+
+  .then(() => {
+    process.exit(isFailure ? 1 : 0);
   });
