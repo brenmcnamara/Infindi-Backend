@@ -8,10 +8,14 @@ const COBRAND_LOCALE = 'en_US';
 const COBRAND_LOGIN_NAME_BAD = 'blah';
 const COBRAND_PASSWORD_BAD = 'blah';
 
+const USER_LOGIN_NAME = 'sbMembrenmcnamara3';
+const USER_PASSWORD = 'sbMembrenmcnamara3#123';
+
 const YodleeClient = require('../build/yodlee/YodleeClient-V1.1').default;
 
 const chalk = require('chalk');
 
+let cobrandAuth;
 
 // eslint-disable-next-line no-unused-vars
 let promise = Promise.resolve();
@@ -40,9 +44,25 @@ promise = promise
   })
   .then(auth => {
     console.log(chalk.green('Cobrand auth was successful'));
+    cobrandAuth = auth;
   })
   .catch(error => {
     console.log(chalk.red('Cobrand login failed'));
+    isFailure = true;
+    process.exit(1);
+  })
+
+  .then(() => {
+    console.log('\n--- TESTING USER LOGIN ---');
+  })
+  .then(() => {
+    return YodleeClient.genUserAuth(cobrandAuth, USER_LOGIN_NAME, USER_PASSWORD);
+  })
+  .then(() => {
+    console.log(chalk.green('User login successful'));
+  })
+  .catch(error => {
+    console.log(chalk.red('User login failed', error.toString()));
     isFailure = true;
     process.exit(1);
   })

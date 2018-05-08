@@ -45,8 +45,36 @@ async function genCobrandAuth(
   };
 }
 
+async function genUserAuth(
+  auth: AuthPayload$Cobrand,
+  login: string,
+  password: string,
+  locale: string,
+): Promise<AuthPayload$CobrandAndUser> {
+  const payload = {
+    user: {
+      loginName: login,
+      password,
+      locale,
+    },
+  };
+
+  const response = await genPostRequest(
+    auth,
+    `${BASE_URI}/user/login`,
+    payload,
+  );
+
+  return {
+    cobrandSession: auth.cobrandSession,
+    type: 'COBRAND_AND_USER',
+    userSession: response.user.session.userSession,
+  };
+}
+
 export default {
   genCobrandAuth,
+  genUserAuth,
 };
 
 // -----------------------------------------------------------------------------
