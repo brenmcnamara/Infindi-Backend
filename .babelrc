@@ -1,6 +1,7 @@
 {
   "plugins": [
-    "babel-plugin-transform-object-rest-spread"
+    "babel-plugin-transform-object-rest-spread",
+    "transform-class-properties"
   ],
   "presets": [["env", { "targets": { "node": "6.10" } }], "flow"]
 }

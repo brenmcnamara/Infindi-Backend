@@ -26,6 +26,7 @@ export function initialize(): void {
   jobs.forEach(job => {
     scheduleJob(job);
   });
+  jobs[0].genRun();
 }
 
 const jobs: Array<Job> = [

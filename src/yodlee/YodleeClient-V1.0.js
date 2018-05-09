@@ -96,7 +96,6 @@ export default class YodleeClient {
   _cobrandSession: string | null;
   _currentUser: User | null;
   _locale: Locale | null;
-  _userSessions: { [session: string]: User };
 
   constructor() {
     this._applicationID = null;
@@ -104,7 +103,6 @@ export default class YodleeClient {
     this._cobrandSession = null;
     this._currentUser = null;
     this._locale = null;
-    this._userSessions = {};
   }
   // ---------------------------------------------------------------------------
   //
@@ -181,28 +179,11 @@ export default class YodleeClient {
         };
         return this._genPostRequest(null, `${BASE_URI}/user/login`, request);
       })
-      .then((response: UserLoginResponse) => {
-        const user = response.user;
-        const session = user.session.userSession;
-        // Check if there is any session with this user already. If so,
-        // delete it.
-        for (const session in this._userSessions) {
-          if (
-            this._userSessions.hasOwnProperty(session) &&
-            user.id === this._userSessions[session].id
-          ) {
-            delete this._userSessions[session];
-          }
-        }
-
-        this._userSessions[session] = user;
-        return session;
-      });
+      .then((response: UserLoginResponse) => response.user.session.userSession);
   }
 
   genIsActiveSession(userSession: string): Promise<boolean> {
     return this._genValidateCobrandLogin()
-      .then(() => this._genValidateUserLogin(userSession))
       .then(() => {
         const uri = `${BASE_URI}/user`;
         return this._genGetRequest(userSession, uri)
@@ -212,18 +193,11 @@ export default class YodleeClient {
   }
 
   genLogoutUser(userSession: string): Promise<void> {
-    return this._genValidateUserLogin(userSession)
-      .then(() =>
-        this._genPostRequest(userSession, `${BASE_URI}/user/logout`, {}),
-      )
-      .then(() => {
-        delete this._userSessions[userSession];
-      });
+    return this._genPostRequest(userSession, `${BASE_URI}/user/logout`, {});
   }
 
   genFastLinkToken(userSession: string): Promise<AccessToken> {
     return this._genValidateCobrandLogin()
-      .then(() => this._genValidateUserLogin(userSession))
       .then(() =>
         this._genGetRequest(
           userSession,
@@ -241,7 +215,6 @@ export default class YodleeClient {
     limit: number = 500,
   ): Promise<Array<Provider>> {
     return this._genValidateCobrandLogin()
-      .then(() => this._genValidateUserLogin(userSession))
       .then(() => {
         const uri =
           offset === 0
@@ -257,7 +230,6 @@ export default class YodleeClient {
     id: number,
   ): Promise<ProviderFull | null> {
     return this._genValidateCobrandLogin()
-      .then(() => this._genValidateUserLogin(userSession))
       .then(() =>
         this._genGetRequest(userSession, `${BASE_URI}/providers/${id}`),
       )
@@ -271,22 +243,19 @@ export default class YodleeClient {
     userSession: string,
     providerFull: ProviderFull,
   ): Promise<ProviderLoginResponse> {
-    return this._genValidateCobrandLogin()
-      .then(() => this._genValidateUserLogin(userSession))
-      .then(() =>
-        this._genPostRequest(
-          userSession,
-          `${BASE_URI}/providers/${providerFull.id}`,
-          {
-            provider: [providerFull],
-          },
-        ),
-      );
+    return this._genValidateCobrandLogin().then(() =>
+      this._genPostRequest(
+        userSession,
+        `${BASE_URI}/providers/${providerFull.id}`,
+        {
+          provider: [providerFull],
+        },
+      ),
+    );
   }
 
   genProviderAccounts(userSession: string): Promise<Array<ProviderAccount>> {
     return this._genValidateCobrandLogin()
-      .then(() => this._genValidateUserLogin(userSession))
       .then(() =>
         this._genGetRequest(userSession, `${BASE_URI}/providerAccounts`),
       )
@@ -300,7 +269,6 @@ export default class YodleeClient {
     id: ID,
   ): Promise<ProviderAccount | null> {
     return this._genValidateCobrandLogin()
-      .then(() => this._genValidateUserLogin(userSession))
       .then(() =>
         this._genGetRequest(userSession, `${BASE_URI}/providerAccounts/${id}`),
       )
@@ -318,7 +286,6 @@ export default class YodleeClient {
     providerAccountID: ID,
   ): Promise<ProviderAccount | null> {
     return this._genValidateCobrandLogin()
-      .then(() => this._genValidateUserLogin(userSession))
       .then(() =>
         this._genPutRequest(
           userSession,
@@ -333,21 +300,18 @@ export default class YodleeClient {
     providerAccountID: ID,
     loginForm: LoginForm,
   ): Promise<*> {
-    return this._genValidateCobrandLogin()
-      .then(() => this._genValidateUserLogin(userSession))
-      .then(() => {
-        const request = { loginForm };
-        return this._genPutRequest(
-          userSession,
-          `${BASE_URI}/providerAccounts?providerAccountIds=${providerAccountID}`,
-          request,
-        );
-      });
+    return this._genValidateCobrandLogin().then(() => {
+      const request = { loginForm };
+      return this._genPutRequest(
+        userSession,
+        `${BASE_URI}/providerAccounts?providerAccountIds=${providerAccountID}`,
+        request,
+      );
+    });
   }
 
   genAccounts(userSession: string): Promise<Array<Account>> {
     return this._genValidateCobrandLogin()
-      .then(() => this._genValidateUserLogin(userSession))
       .then(() => this._genGetRequest(userSession, `${BASE_URI}/accounts`))
       .then((response: AccountsResponse) => response.account);
   }
@@ -357,7 +321,6 @@ export default class YodleeClient {
     id: ID,
   ): Promise<Array<Account>> {
     return this._genValidateCobrandLogin()
-      .then(() => this._genValidateUserLogin(userSession))
       .then(() =>
         this._genGetRequest(
           userSession,
@@ -376,7 +339,6 @@ export default class YodleeClient {
     accountID: ID,
   ): Promise<?Array<Transaction>> {
     return this._genValidateCobrandLogin()
-      .then(() => this._genValidateUserLogin(userSession))
       .then(() =>
         this._genGetRequest(
           userSession,
@@ -402,7 +364,6 @@ export default class YodleeClient {
         : date.getUTCDate().toString();
     const fromDateString = `${yearString}-${monthString}-${dayString}`;
     return this._genValidateCobrandLogin()
-      .then(() => this._genValidateUserLogin(userSession))
       .then(() =>
         this._genGetRequest(
           userSession,
@@ -422,15 +383,6 @@ export default class YodleeClient {
     return new Promise(resolve => {
       if (!this._cobrandSession) {
         throw Error('Must be logged in with cobrand');
-      }
-      resolve();
-    });
-  }
-
-  _genValidateUserLogin(session: string): Promise<void> {
-    return new Promise(resolve => {
-      if (!this._userSessions[session]) {
-        throw Error('User must be logged in');
       }
       resolve();
     });

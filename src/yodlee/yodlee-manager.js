@@ -152,7 +152,10 @@ function overrideClientAsyncMethod(methodName: string) {
     let result;
     let error;
 
-    for (let i = 0; i < RETRY_COUNT; ++i) {
+    for (let i = 0; i < RETRY_COUNT + 1; ++i) {
+      if (i > 0) {
+        DEBUG('YODLEE', 'Retrying yodlee request');
+      }
       try {
         result = await wrapInSemaphoreRequest(yodleeSemaphore, () =>
           method.apply(client, allArgs),
@@ -202,14 +205,17 @@ async function genCheckAndRefreshYodleeUserSession(userID: ID): Promise<void> {
       yodleeClient.genIsActiveSession(session),
     );
     if (isActiveSession) {
-      DEBUG('YODLEE', 'Found valid yodlee session');
+      DEBUG('YODLEE', `Found valid yodlee session for user ${userID}`);
       return;
     }
     delete userToYodleeSession[userID];
     delete userToYodleeSessionMillis[userID];
   }
 
-  DEBUG('YODLEE', 'No user session exists. Creating new session');
+  DEBUG(
+    'YODLEE',
+    `No user session exists for user: ${userID}. Creating new session`,
+  );
 
   // Block on session generator so we do not have multiple calls trying to login
   // with the same user.

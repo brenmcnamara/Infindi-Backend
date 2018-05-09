@@ -28,7 +28,9 @@ export async function genYodleeRefreshAccountLinksForUser(
   userID: ID,
 ): Promise<void> {
   const accountLinks = await genFetchAccountLinksForUser(userID);
-  await accountLinks.map(link => genYodleeRefreshAccountLink(link));
+  await Promise.all(
+    accountLinks.map(link => genYodleeRefreshAccountLink(link)),
+  );
 }
 
 export async function genYodleeRefreshAccountLink(
