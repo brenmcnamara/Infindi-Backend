@@ -11,6 +11,9 @@ const COBRAND_PASSWORD_BAD = 'blah';
 const USER_LOGIN_NAME = 'sbMembrenmcnamara3';
 const USER_PASSWORD = 'sbMembrenmcnamara3#123';
 
+const USER_LOGIN_NAME_BAD = 'blah';
+const USER_PASSWORD_BAD = 'blah';
+
 const YodleeClient = require('../build/yodlee/YodleeClient-V1.1').default;
 
 const chalk = require('chalk');
@@ -19,7 +22,7 @@ let cobrandAuth;
 
 // eslint-disable-next-line no-unused-vars
 let promise = Promise.resolve();
-let isFailure = false;
+let didPassAllTests = false;
 
 promise = promise
   .then(() => {
@@ -30,7 +33,7 @@ promise = promise
   })
   .then(() => {
     console.log(chalk.red('Expected cobrand login failure to throw'));
-    isFailure = true;
+    didPassAllTests = true;
   })
   .catch(error => {
     console.log(chalk.green('Cobrand auth failure detection was successful'));
@@ -48,8 +51,22 @@ promise = promise
   })
   .catch(error => {
     console.log(chalk.red('Cobrand login failed'));
-    isFailure = true;
+    didPassAllTests = true;
     process.exit(1);
+  })
+
+  .then(() => {
+    console.log('\n--- TEST USER LOGIN FAILURE---');
+  })
+  .then(() => {
+    return YodleeClient.genUserAuth(cobrandAuth, USER_LOGIN_NAME_BAD, USER_PASSWORD_BAD);
+  })
+  .then(() => {
+    console.log(chalk.red('Expected user login to fail'));
+    didPassAllTests = true;
+  })
+  .catch(error => {
+    console.log(chalk.green('User login failure succeeded'));
   })
 
   .then(() => {
@@ -63,10 +80,10 @@ promise = promise
   })
   .catch(error => {
     console.log(chalk.red('User login failed', error.toString()));
-    isFailure = true;
+    didPassAllTests = true;
     process.exit(1);
   })
 
   .then(() => {
-    process.exit(isFailure ? 1 : 0);
+    process.exit(didPassAllTests ? 1 : 0);
   });
