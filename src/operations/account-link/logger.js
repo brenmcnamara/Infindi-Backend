@@ -26,14 +26,14 @@ async function genStart(
   accountLink: AccountLink,
   linkType: 'AUTO' | 'MANUAL',
 ): Promise<void> {
-  swallowLoggingErrors(async () => {
+  await swallowLoggingErrors(async () => {
     const linkAttempt = createLinkAttempt(accountLink, linkType);
     await genSetLinkAttempt(linkAttempt);
   });
 }
 
 async function genUpdate(accountLink: AccountLink): Promise<void> {
-  swallowLoggingErrors(async () => {
+  await swallowLoggingErrors(async () => {
     let linkAttempt = await genFetchRunningLinkAttempt(accountLink.id);
     if (!linkAttempt) {
       // NOTE: Not erroring in the logger.
@@ -45,10 +45,10 @@ async function genUpdate(accountLink: AccountLink): Promise<void> {
 }
 
 async function genStop(accountLink: AccountLink): Promise<void> {
-  swallowLoggingErrors(async () => {
+  await swallowLoggingErrors(async () => {
     let linkAttempt = await genFetchRunningLinkAttempt(accountLink.id);
     if (!linkAttempt) {
-      // NOTE: Silently fail.
+      ERROR('ACCOUNT-LINK', 'Cannot find logged link attempt to stop');
       return;
     }
     linkAttempt = updateLinkAttempt(linkAttempt, accountLink, false);
