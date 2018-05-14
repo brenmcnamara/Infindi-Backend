@@ -31,7 +31,13 @@ export default class LinkState {
   // MAY OVERRIDE
   //
   // ---------------------------------------------------------------------------
-  didEnterState(fromState: LinkState | null, engine: LinkEngineType): void {}
+  didEnterState(
+    fromState: LinkState | null,
+    engine: LinkEngineType,
+  ): void | Promise<void> {}
 
-  willLeaveState(toState: LinkState, engine: LinkEngineType): void {}
+  willLeaveState(
+    toState: LinkState,
+    engine: LinkEngineType,
+  ): void | Promise<void> {}
 }

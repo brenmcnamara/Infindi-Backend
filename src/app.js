@@ -31,6 +31,7 @@ export function initialize(): void {
 
   app.use('/', routes);
 
+  // $FlowFixMe - Look into this later.
   app.use((req, res) => {
     const errorCode = 'infindi/resource-not-found';
     const errorMessage = 'Resource not found';
@@ -40,6 +41,7 @@ export function initialize(): void {
   });
 
   // error handler
+  // $FlowFixMe - Look into this later.
   app.use((err, req, res) => {
     // set locals, only providing error in development
     res.locals.message = err.message;

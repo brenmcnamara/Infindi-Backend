@@ -7,10 +7,12 @@ const router = express.Router();
 export default router;
 
 export function initialize(): void {
+  // $FlowFixMe - Look into this later.
   router.get('/plaid', (req, res) => {
     res.render('plaid');
   });
 
+  // $FlowFixMe - Look into this later.
   router.get('/security-checks', (req, res) => {
     res.render('security-checks', {
       AUTH_DOMAIN: process.env.FIREBASE_AUTH_DOMAIN,

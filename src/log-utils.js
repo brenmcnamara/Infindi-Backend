@@ -14,8 +14,10 @@ function log(severity: string, group: string, message: string): void {
   const formatted = `{${severity}}\t[${group}]: ${message}`;
   if (process.env.COLORED_LOGS === 'true') {
     const color = getColor(severity);
+    // $FlowFixMe - Fix this later.
+    const chalkLog = chalk[color];
     // eslint-disable-next-line no-console
-    console.log(chalk[color](formatted));
+    console.log(chalkLog(formatted));
     return;
   }
   // eslint-disable-next-line no-console

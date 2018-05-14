@@ -18,9 +18,12 @@ export function initialize(): void {
   initializeUsers();
   initializeYodlee();
 
+  // $FlowFixMe - Look into this later.
   router.get('/status', (req, res) => {
     res.json({ status: 'OK' });
   });
+
+  // $FlowFixMe - Look into this later.
   router.get('/_ah/health', (req, res) => {
     res.json({ status: 'OK' });
   });
