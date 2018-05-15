@@ -1,6 +1,11 @@
 /* @flow */
 
-import type { AccountLink } from 'common/lib/models/AccountLink';
+import { ERROR } from '../../../log-utils';
+
+import type {
+  AccountLink,
+  AccountLinkStatus,
+} from 'common/lib/models/AccountLink';
 import type { ID } from 'common/types/core';
 import type { LinkEvent } from './LinkEvent';
 
@@ -24,6 +29,21 @@ function genSetAccountLink(accountLink: AccountLink): Promise<void> {
   return Promise.reject(Error('Implement me!'));
 }
 
+function genSetAccountLinkStatus(
+  accountLinkID: ID,
+  status: AccountLinkStatus,
+): Promise<void> {
+  return Promise.reject(Error('Implement me!'));
+}
+
+function genLogStartLinking(accountLinkID: ID): Promise<void> {
+  return Promise.reject(Error('Implement me!'));
+}
+
+function genLogEndLinking(accountLinkID: ID): Promise<void> {
+  return Promise.reject(Error('Implement me!'));
+}
+
 function onLinkEvent(cb: LinkEventCallback): EventEmitter {
   linkEventCallback = cb;
   return {
@@ -34,9 +54,12 @@ function onLinkEvent(cb: LinkEventCallback): EventEmitter {
 }
 
 const LinkEngine = {
+  genLogEndLinking: decoratorSwallowError(genLogEndLinking),
+  genLogStartLinking: decoratorSwallowError(genLogStartLinking),
   genRefetchAccountLink: decoratorAsyncErrorHandling(genRefetchAccountLink),
   genRefreshAccountLink: decoratorAsyncErrorHandling(genRefreshAccountLink),
   genSetAccountLink: decoratorAsyncErrorHandling(genSetAccountLink),
+  genSetAccountLinkStatus: decoratorAsyncErrorHandling(genSetAccountLinkStatus),
   onLinkEvent,
 };
 
@@ -59,6 +82,20 @@ function decoratorAsyncErrorHandling(
         type: 'ERROR',
       };
       linkEventCallback && linkEventCallback(linkEvent);
+    }
+  };
+}
+
+function decoratorSwallowError(
+  gen: (...args: *) => Promise<void>,
+): (...args: *) => Promise<void> {
+  return async () => {
+    try {
+      await gen.apply(gen, arguments);
+    } catch (error) {
+      // TODO: Propert error message extraction.
+      const errorMessage = error.toString();
+      ERROR('ACCOUNT-LINK', `Swallowing error: ${errorMessage}`);
     }
   };
 }

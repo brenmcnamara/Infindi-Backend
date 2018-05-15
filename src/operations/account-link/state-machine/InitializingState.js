@@ -9,12 +9,11 @@ import type { LinkEvent } from './LinkEvent';
 /**
  * Enter this state when starting the linking process.
  */
-export default class InitializingLinkState extends LinkState {
+export default class InitializingState extends LinkState {
   _status: AccountLinkStatus;
 
-  constructor(accountLinkID: ID, status: AccountLinkStatus) {
+  constructor(accountLinkID: ID) {
     super(accountLinkID);
-    this._status = status;
   }
 
   calculateNextState(linkEvent: LinkEvent) {

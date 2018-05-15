@@ -1,13 +1,14 @@
 /* @flow */
 
-import InitializingLinkState from './InitializingLinkState';
+import InitializingState from './InitializingState';
 import LinkEngine from './LinkEngine';
 
 import type LinkState from './LinkState';
 
-import type { AccountLinkStatus } from 'common/lib/models/AccountLink';
 import type { ID } from 'common/types/core';
 import type { LinkEvent } from './LinkEvent';
+
+export type LinkMode = 'AUTO' | 'MANUAL';
 
 /**
  * This is a state machine for managing the state of linking for a particular
@@ -16,16 +17,12 @@ import type { LinkEvent } from './LinkEvent';
 export default class LinkStateMachine {
   _accountLinkID: ID;
   _currentState: LinkState;
-  _linkType: 'AUTO' | 'MANUAL';
+  _mode: LinkMode;
 
-  constructor(
-    accountLinkID: ID,
-    status: AccountLinkStatus,
-    linkType: 'AUTO' | 'MANUAL',
-  ) {
+  constructor(accountLinkID: ID, mode: LinkMode) {
     this._accountLinkID = accountLinkID;
-    this._currentState = new InitializingLinkState(this._accountLinkID, status);
-    this._linkType = linkType;
+    this._currentState = new InitializingState(this._accountLinkID);
+    this._mode = mode;
   }
 
   initialize(): void {
