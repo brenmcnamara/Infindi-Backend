@@ -37,6 +37,7 @@
     "uuid": "^3.1.0"
   },
   "devDependencies": {
+    "babel-jest": "^22.4.3",
     "babel-plugin-transform-class-properties": "^6.24.1",
     "chalk": "^2.3.0",
     "eslint": "^4.11.0",
