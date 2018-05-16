@@ -2,15 +2,14 @@
 
 import LinkState from './LinkState';
 
-import type { ID } from 'common/types/core';
 import type { LinkEngineType } from './LinkEngine';
 import type { LinkEvent } from './LinkEvent';
 
 export default class ErrorState extends LinkState {
   _errorMessage: string;
 
-  constructor(accountLinkID: ID, errorMessage: string) {
-    super(accountLinkID);
+  constructor(errorMessage: string) {
+    super();
     this._errorMessage = errorMessage;
   }
 

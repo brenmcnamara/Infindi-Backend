@@ -1,22 +1,23 @@
 /* @flow */
 
 import LinkState from './LinkState';
+import PollingState from './PollingState';
 
-import type { AccountLinkStatus } from 'common/lib/models/AccountLink';
-import type { ID } from 'common/types/core';
+import type { LinkEngineType } from './LinkEngine';
 import type { LinkEvent } from './LinkEvent';
 
 /**
  * Enter this state when starting the linking process.
  */
 export default class InitializingState extends LinkState {
-  _status: AccountLinkStatus;
-
-  constructor(accountLinkID: ID) {
-    super(accountLinkID);
+  calculateNextState(linkEvent: LinkEvent) {
+    if (linkEvent.type === 'UPDATE_YODLEE_PROVIDER_ACCOUNT') {
+      return new PollingState(linkEvent.providerAccount);
+    }
+    return this;
   }
 
-  calculateNextState(linkEvent: LinkEvent) {
-    return this;
+  didEnterState(fromState: LinkState | null, engine: LinkEngineType): void {
+    engine.genRefreshAccountLink(this.__accountLinkID);
   }
 }
