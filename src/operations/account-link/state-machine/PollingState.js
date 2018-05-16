@@ -18,6 +18,9 @@ export default class PollingState extends LinkState {
   }
 
   calculateNextState(linkEvent: LinkEvent): LinkState {
+    if (linkEvent.type === 'UPDATE_YODLEE_PROVIDER_ACCOUNT') {
+      return new PollingState(linkEvent.providerAccount);
+    }
     return this;
   }
 

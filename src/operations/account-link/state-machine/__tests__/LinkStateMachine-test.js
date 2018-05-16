@@ -50,6 +50,13 @@ beforeEach(() => {
   LinkEngine.genRefreshAccountLink.mockReset();
   LinkEngine.genSetAccountLink.mockReset();
   LinkEngine.genSetAccountLinkStatus.mockReset();
+
+  LinkEngine.genLogEndLinking.mockReturnValue(Promise.resolve());
+  LinkEngine.genLogStartLinking.mockReturnValue(Promise.resolve());
+  LinkEngine.genRefetchAccountLink.mockReturnValue(Promise.resolve());
+  LinkEngine.genRefreshAccountLink.mockReturnValue(Promise.resolve());
+  LinkEngine.genSetAccountLink.mockReturnValue(Promise.resolve());
+  LinkEngine.genSetAccountLinkStatus.mockReturnValue(Promise.resolve());
 });
 
 test('starts at initial link state by default', () => {
@@ -59,8 +66,6 @@ test('starts at initial link state by default', () => {
 
 test('will refresh the account after the state machine is initialized', () => {
   const accountLinkID = '0';
-
-  LinkEngine.genRefreshAccountLink.mockReturnValue(Promise.resolve());
 
   const machine = new LinkStateMachine(accountLinkID, 'MANUAL');
   machine.initialize();
@@ -72,9 +77,6 @@ test('will refresh the account after the state machine is initialized', () => {
 test('goes to polling state after receiving first update event', () => {
   const accountLinkID = '0';
 
-  LinkEngine.genRefetchAccountLink.mockReturnValue(Promise.resolve());
-  LinkEngine.genRefreshAccountLink.mockReturnValue(Promise.resolve());
-
   const machine = new LinkStateMachine(accountLinkID, 'MANUAL');
   machine.initialize();
 
@@ -85,4 +87,32 @@ test('goes to polling state after receiving first update event', () => {
   expect(machine.getCurrentState()).toBeInstanceOf(PollingState);
   expect(LinkEngine.genRefetchAccountLink.mock.calls).toHaveLength(1);
   expect(LinkEngine.genRefetchAccountLink.mock.calls[0][0]).toBe(accountLinkID);
+});
+
+test('stays in polling state after receiving a non-terminal provider update', () => {
+  const accountLinkID = '0';
+
+  const machine = new LinkStateMachine(accountLinkID, 'MANUAL');
+  machine.initialize();
+
+  LinkEngine.sendMockEvent(MOCK_EVENT.pendingLogin);
+  jest.runAllTimers();
+  LinkEngine.sendMockEvent(MOCK_EVENT.pendingLogin);
+  jest.runAllTimers();
+
+  expect(machine.getCurrentState()).toBeInstanceOf(PollingState);
+});
+
+test('re-fetches provider accounts after each update', () => {
+  const accountLinkID = '0';
+
+  const machine = new LinkStateMachine(accountLinkID, 'MANUAL');
+  machine.initialize();
+
+  LinkEngine.sendMockEvent(MOCK_EVENT.pendingLogin);
+  jest.runAllTimers();
+  LinkEngine.sendMockEvent(MOCK_EVENT.pendingLogin);
+  jest.runAllTimers();
+
+  expect(LinkEngine.genRefetchAccountLink.mock.calls).toHaveLength(2);
 });
