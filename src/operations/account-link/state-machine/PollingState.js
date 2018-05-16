@@ -1,6 +1,7 @@
 /* @flow */
 
 import LinkState from './LinkState';
+import LinkUtils from './LinkUtils';
 
 import type { LinkEngineType } from './LinkEngine';
 import type { LinkEvent } from './LinkEvent';
@@ -18,6 +19,13 @@ export default class PollingState extends LinkState {
   }
 
   calculateNextState(linkEvent: LinkEvent): LinkState {
+    const errorState = LinkUtils.calculateStateForSuccessOrFailureEvent(
+      linkEvent,
+    );
+    if (errorState) {
+      return errorState;
+    }
+
     if (linkEvent.type === 'UPDATE_YODLEE_PROVIDER_ACCOUNT') {
       return new PollingState(linkEvent.providerAccount);
     }

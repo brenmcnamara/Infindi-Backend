@@ -1,3 +1,4 @@
+import ErrorState from '../ErrorState';
 import InitializingState from '../InitializingState';
 import LinkEngine from '../LinkEngine';
 import LinkStateMachine from '../LinkStateMachine';
@@ -40,6 +41,12 @@ const MOCK_EVENT = {
       },
     },
     type: 'UPDATE_YODLEE_PROVIDER_ACCOUNT',
+  },
+
+  randomError: {
+    errorMessage: 'This is a random error that hapenned',
+    errorType: 'INTERNAL',
+    type: 'ERROR',
   },
 };
 
@@ -115,4 +122,28 @@ test('re-fetches provider accounts after each update', () => {
   jest.runAllTimers();
 
   expect(LinkEngine.genRefetchAccountLink.mock.calls).toHaveLength(2);
+});
+
+test('goes into error from initializing', () => {
+  const accountLinkID = '0';
+
+  const machine = new LinkStateMachine(accountLinkID, 'MANUAL');
+  machine.initialize();
+
+  LinkEngine.sendMockEvent(MOCK_EVENT.randomError);
+
+  expect(machine.getCurrentState()).toBeInstanceOf(ErrorState);
+});
+
+test('goes into error from polling state', () => {
+  const accountLinkID = '0';
+
+  const machine = new LinkStateMachine(accountLinkID, 'MANUAL');
+  machine.initialize();
+
+  LinkEngine.sendMockEvent(MOCK_EVENT.pendingLogin);
+  expect(machine.getCurrentState()).toBeInstanceOf(PollingState);
+
+  LinkEngine.sendMockEvent(MOCK_EVENT.randomError);
+  expect(machine.getCurrentState()).toBeInstanceOf(ErrorState);
 });
