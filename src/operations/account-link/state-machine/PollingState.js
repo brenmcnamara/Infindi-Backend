@@ -17,37 +17,11 @@ const POLLING_DELAY_MS = 2000;
 export default class PollingState extends LinkState {
   _accountLink: AccountLink;
   _pollingTimeout: ?TimeoutID = null;
+  _targetAccountLinkStatus: AccountLinkStatus;
 
-  constructor(accountLink: AccountLink) {
-    super();
-    this._accountLink = accountLink;
-  }
-
-  calculateNextState(linkEvent: LinkEvent): LinkState {
-    const errorState = LinkUtils.calculateStateForSuccessOrFailureEvent(
-      linkEvent,
-    );
-    if (errorState) {
-      return errorState;
-    }
-
-    if (linkEvent.type === 'UPDATE_ACCOUNT_LINK') {
-      return new PollingState(linkEvent.accountLink);
-    }
-    return this;
-  }
-
-  didEnterState(fromState: LinkState | null, engine: LinkEngineType): void {
-    this._pollingTimeout = setTimeout(() => {
-      engine.genRefetchAccountLink(this.__accountLinkID);
-    }, POLLING_DELAY_MS);
-  }
-
-  willLeaveState(): void {
-    this._pollingTimeout && clearTimeout(this._pollingTimeout);
-  }
-
-  _calculateAccountLinkStatus(accountLink: AccountLink): AccountLinkStatus {
+  static calculateAccountLinkStatus(
+    accountLink: AccountLink,
+  ): AccountLinkStatus {
     const { sourceOfTruth } = accountLink;
     invariant(
       sourceOfTruth.type === 'YODLEE',
@@ -82,5 +56,42 @@ export default class PollingState extends LinkState {
           : 'FAILURE / INTERNAL_SERVICE_FAILURE';
     }
     return 'SUCCESS';
+  }
+
+  constructor(accountLink: AccountLink) {
+    super();
+    this._accountLink = accountLink;
+    this._targetAccountLinkStatus = PollingState.calculateAccountLinkStatus(
+      accountLink,
+    );
+  }
+
+  calculateNextState(linkEvent: LinkEvent): LinkState {
+    const errorState = LinkUtils.calculateStateForSuccessOrFailureEvent(
+      linkEvent,
+    );
+    if (errorState) {
+      return errorState;
+    }
+
+    if (linkEvent.type === 'UPDATE_ACCOUNT_LINK') {
+      return new PollingState(linkEvent.accountLink);
+    }
+    return this;
+  }
+
+  didEnterState(fromState: LinkState | null, engine: LinkEngineType): void {
+    engine.genSetAccountLinkStatus(
+      this.__accountLinkID,
+      this._targetAccountLinkStatus,
+    );
+
+    this._pollingTimeout = setTimeout(() => {
+      engine.genRefetchAccountLink(this.__accountLinkID);
+    }, POLLING_DELAY_MS);
+  }
+
+  willLeaveState(): void {
+    this._pollingTimeout && clearTimeout(this._pollingTimeout);
   }
 }

@@ -93,8 +93,80 @@ const ACCOUNT_LINK = {
 };
 
 const MOCK_EVENT = {
+  pendingDownloadNoAdditionalStatus: {
+    accountLink: {
+      ...ACCOUNT_LINK,
+      sourceOfTruth: {
+        ...ACCOUNT_LINK.sourceOfTruth,
+        providerAccount: {
+          aggregationSource: 'USER',
+          createdDate: '2018-05-10',
+          id: 0,
+          isManual: false,
+          lastUpdated: '2018-05-15T04:23:10Z',
+          loginForm: null,
+          providerId: '643',
+          refreshInfo: {
+            lastRefreshed: '2018-05-15T04:23:10Z',
+            status: 'IN_PROGRESS',
+          },
+        },
+      },
+    },
+    type: 'UPDATE_ACCOUNT_LINK',
+  },
+
   pendingLogin: {
-    accountLink: { ...ACCOUNT_LINK, status: 'SUCCESS' },
+    accountLink: ACCOUNT_LINK,
+    type: 'UPDATE_ACCOUNT_LINK',
+  },
+
+  pendingUserInput: {
+    accountLink: {
+      ...ACCOUNT_LINK,
+      sourceOfTruth: {
+        ...ACCOUNT_LINK.sourceOfTruth,
+        providerAccount: {
+          aggregationSource: 'USER',
+          createdDate: '2018-05-10',
+          id: 0,
+          isManual: false,
+          lastUpdated: '2018-05-15T04:23:10Z',
+          loginForm: null,
+          providerId: '643',
+          refreshInfo: {
+            additionalStatus: 'USER_INPUT_REQUIRED',
+            lastRefreshed: '2018-05-15T04:23:10Z',
+            status: 'IN_PROGRESS',
+          },
+        },
+      },
+    },
+    type: 'UPDATE_ACCOUNT_LINK',
+  },
+
+  pendingUserInputNoLoginForm: {
+    accountLink: {
+      ...ACCOUNT_LINK,
+      sourceOfTruth: {
+        ...ACCOUNT_LINK.sourceOfTruth,
+        loginForm: null,
+        providerAccount: {
+          aggregationSource: 'USER',
+          createdDate: '2018-05-10',
+          id: 0,
+          isManual: false,
+          lastUpdated: '2018-05-15T04:23:10Z',
+          loginForm: null,
+          providerId: '643',
+          refreshInfo: {
+            additionalStatus: 'USER_INPUT_REQUIRED',
+            lastRefreshed: '2018-05-15T04:23:10Z',
+            status: 'IN_PROGRESS',
+          },
+        },
+      },
+    },
     type: 'UPDATE_ACCOUNT_LINK',
   },
 
@@ -102,25 +174,6 @@ const MOCK_EVENT = {
     errorMessage: 'This is a random error that hapenned',
     errorType: 'INTERNAL',
     type: 'ERROR',
-  },
-
-  pendingUserInput: {
-    accountLinkID: '0',
-    providerAccount: {
-      aggregationSource: 'USER',
-      createdDate: '2018-05-10',
-      id: 0,
-      isManual: false,
-      lastUpdated: '2018-05-15T04:23:10Z',
-      loginForm: null,
-      providerId: '643',
-      refreshInfo: {
-        additionalStatus: 'USER_INPUT_REQUIRED',
-        lastRefreshed: '2018-05-15T04:23:10Z',
-        status: 'IN_PROGRESS',
-      },
-    },
-    type: 'UPDATE_YODLEE_PROVIDER_ACCOUNT',
   },
 };
 
@@ -228,7 +281,7 @@ test('updates the account link status when receives pending login', () => {
   const machine = new LinkStateMachine(accountLinkID, 'MANUAL');
   machine.initialize();
 
-  LinkEngine.sendMockEvent(MOCK_EVENT.pendingUserInput);
+  LinkEngine.sendMockEvent(MOCK_EVENT.pendingLogin);
   expect(machine.getCurrentState()).toBeInstanceOf(PollingState);
 
   const genSetAccountLinkStatusMockCalls =
@@ -257,5 +310,44 @@ test('updates the account link status when receiving pending user input', () => 
   expect(genSetAccountLinkStatusMockCalls[0][0]).toBe(accountLinkID);
   expect(genSetAccountLinkStatusMockCalls[0][1]).toBe(
     'MFA / PENDING_USER_INPUT',
+  );
+});
+
+// eslint-disable-next-line max-len
+test('marks account link as waiting for login form when pending user input with no login form', () => {
+  const accountLinkID = '0';
+
+  const machine = new LinkStateMachine(accountLinkID, 'MANUAL');
+  machine.initialize();
+
+  LinkEngine.sendMockEvent(MOCK_EVENT.pendingUserInputNoLoginForm);
+  expect(machine.getCurrentState()).toBeInstanceOf(PollingState);
+
+  const genSetAccountLinkStatusMockCalls =
+    LinkEngine.genSetAccountLinkStatus.mock.calls;
+
+  expect(genSetAccountLinkStatusMockCalls).toHaveLength(1);
+  expect(genSetAccountLinkStatusMockCalls[0][0]).toBe(accountLinkID);
+  expect(genSetAccountLinkStatusMockCalls[0][1]).toBe(
+    'MFA / WAITING_FOR_LOGIN_FORM',
+  );
+});
+
+test('marks account link as downloading when no additional status is in refresh info', () => {
+  const accountLinkID = '0';
+
+  const machine = new LinkStateMachine(accountLinkID, 'MANUAL');
+  machine.initialize();
+
+  LinkEngine.sendMockEvent(MOCK_EVENT.pendingDownloadNoAdditionalStatus);
+  expect(machine.getCurrentState()).toBeInstanceOf(PollingState);
+
+  const genSetAccountLinkStatusMockCalls =
+    LinkEngine.genSetAccountLinkStatus.mock.calls;
+
+  expect(genSetAccountLinkStatusMockCalls).toHaveLength(1);
+  expect(genSetAccountLinkStatusMockCalls[0][0]).toBe(accountLinkID);
+  expect(genSetAccountLinkStatusMockCalls[0][1]).toBe(
+    'IN_PROGRESS / DOWNLOADING_DATA',
   );
 });
