@@ -23,9 +23,54 @@ jest.mock('../LinkEngine', () => {
   };
 });
 
-const MOCK_EVENT = {
-  pendingLogin: {
-    accountLinkID: '0',
+const LOGIN_FORM = {
+  row: [
+    {
+      field: [
+        {
+          valueEditable: true,
+          type: 'text',
+          value: '',
+          id: 567,
+          isOptional: false,
+          maxLength: 32,
+          name: 'LOGIN',
+        },
+      ],
+      form: '0001',
+      fieldRowChoice: '0001',
+      id: 4710,
+      label: 'User ID',
+    },
+    {
+      field: [
+        {
+          name: 'PASSWORD',
+          valueEditable: true,
+          type: 'password',
+          value: '',
+          id: 568,
+          isOptional: false,
+        },
+      ],
+      form: '0001',
+      fieldRowChoice: '0002',
+      id: 11976,
+      label: 'Password',
+    },
+  ],
+  id: 324,
+  forgetPasswordURL:
+    'https://chaseonline.chase.com/Public/ReIdentify/ReidentifyFilterView.aspx?COLLogon',
+  formType: 'login',
+};
+
+const ACCOUNT_LINK = {
+  createdAt: new Date(),
+  id: '0',
+  modelType: 'AccountLink',
+  sourceOfTruth: {
+    loginForm: LOGIN_FORM,
     providerAccount: {
       aggregationSource: 'USER',
       createdDate: '2018-05-10',
@@ -40,13 +85,42 @@ const MOCK_EVENT = {
         status: 'IN_PROGRESS',
       },
     },
-    type: 'UPDATE_YODLEE_PROVIDER_ACCOUNT',
+    type: 'YODLEE',
+  },
+  status: 'SUCCESS',
+  type: 'MODEL',
+  updatedAt: new Date(),
+};
+
+const MOCK_EVENT = {
+  pendingLogin: {
+    accountLink: { ...ACCOUNT_LINK, status: 'SUCCESS' },
+    type: 'UPDATE_ACCOUNT_LINK',
   },
 
   randomError: {
     errorMessage: 'This is a random error that hapenned',
     errorType: 'INTERNAL',
     type: 'ERROR',
+  },
+
+  pendingUserInput: {
+    accountLinkID: '0',
+    providerAccount: {
+      aggregationSource: 'USER',
+      createdDate: '2018-05-10',
+      id: 0,
+      isManual: false,
+      lastUpdated: '2018-05-15T04:23:10Z',
+      loginForm: null,
+      providerId: '643',
+      refreshInfo: {
+        additionalStatus: 'USER_INPUT_REQUIRED',
+        lastRefreshed: '2018-05-15T04:23:10Z',
+        status: 'IN_PROGRESS',
+      },
+    },
+    type: 'UPDATE_YODLEE_PROVIDER_ACCOUNT',
   },
 };
 
@@ -146,4 +220,42 @@ test('goes into error from polling state', () => {
 
   LinkEngine.sendMockEvent(MOCK_EVENT.randomError);
   expect(machine.getCurrentState()).toBeInstanceOf(ErrorState);
+});
+
+test('updates the account link status when receives pending login', () => {
+  const accountLinkID = '0';
+
+  const machine = new LinkStateMachine(accountLinkID, 'MANUAL');
+  machine.initialize();
+
+  LinkEngine.sendMockEvent(MOCK_EVENT.pendingUserInput);
+  expect(machine.getCurrentState()).toBeInstanceOf(PollingState);
+
+  const genSetAccountLinkStatusMockCalls =
+    LinkEngine.genSetAccountLinkStatus.mock.calls;
+
+  expect(genSetAccountLinkStatusMockCalls).toHaveLength(1);
+  expect(genSetAccountLinkStatusMockCalls[0][0]).toBe(accountLinkID);
+  expect(genSetAccountLinkStatusMockCalls[0][1]).toBe(
+    'IN_PROGRESS / VERIFYING_CREDENTIALS',
+  );
+});
+
+test('updates the account link status when receiving pending user input', () => {
+  const accountLinkID = '0';
+
+  const machine = new LinkStateMachine(accountLinkID, 'MANUAL');
+  machine.initialize();
+
+  LinkEngine.sendMockEvent(MOCK_EVENT.pendingUserInput);
+  expect(machine.getCurrentState()).toBeInstanceOf(PollingState);
+
+  const genSetAccountLinkStatusMockCalls =
+    LinkEngine.genSetAccountLinkStatus.mock.calls;
+
+  expect(genSetAccountLinkStatusMockCalls).toHaveLength(1);
+  expect(genSetAccountLinkStatusMockCalls[0][0]).toBe(accountLinkID);
+  expect(genSetAccountLinkStatusMockCalls[0][1]).toBe(
+    'MFA / PENDING_USER_INPUT',
+  );
 });

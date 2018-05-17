@@ -1,14 +1,12 @@
 /* @flow */
 
-import type { ID } from 'common/types/core';
-import type { ProviderAccount as YodleeProviderAccount } from 'common/types/yodlee-v1.0';
+import type { AccountLink } from 'common/lib/models/AccountLink';
 
-export type LinkEvent = LinkEvent$Error | LinkEvent$UpdateYodleeProviderAccount;
+export type LinkEvent = LinkEvent$Error | LinkEvent$UpdateAccountLink;
 
-type LinkEvent$UpdateYodleeProviderAccount = {
-  accountLinkID: ID,
-  providerAccount: YodleeProviderAccount,
-  type: 'UPDATE_YODLEE_PROVIDER_ACCOUNT',
+type LinkEvent$UpdateAccountLink = {
+  accountLink: AccountLink,
+  type: 'UPDATE_ACCOUNT_LINK',
 };
 
 type LinkEvent$Error = {

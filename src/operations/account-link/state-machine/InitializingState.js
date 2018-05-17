@@ -19,8 +19,8 @@ export default class InitializingState extends LinkState {
       return errorState;
     }
 
-    if (linkEvent.type === 'UPDATE_YODLEE_PROVIDER_ACCOUNT') {
-      return new PollingState(linkEvent.providerAccount);
+    if (linkEvent.type === 'UPDATE_ACCOUNT_LINK') {
+      return new PollingState(linkEvent.accountLink);
     }
     return this;
   }
