@@ -11,6 +11,7 @@ import type {
 } from 'common/lib/models/AccountLink';
 import type { LinkEngineType } from './LinkEngine';
 import type { LinkEvent } from './LinkEvent';
+import type { LinkMode } from './LinkStateMachine';
 
 const POLLING_DELAY_MS = 2000;
 
@@ -21,6 +22,7 @@ export default class PollingState extends LinkState {
 
   static calculateAccountLinkStatus(
     accountLink: AccountLink,
+    linkMode: LinkMode,
   ): AccountLinkStatus {
     const { sourceOfTruth } = accountLink;
     invariant(
@@ -37,9 +39,11 @@ export default class PollingState extends LinkState {
       return refreshInfo.additionalStatus === 'LOGIN_IN_PROGRESS'
         ? 'IN_PROGRESS / VERIFYING_CREDENTIALS'
         : refreshInfo.additionalStatus === 'USER_INPUT_REQUIRED'
-          ? loginForm
-            ? 'MFA / PENDING_USER_INPUT'
-            : 'MFA / WAITING_FOR_LOGIN_FORM'
+          ? linkMode === 'MANUAL'
+            ? loginForm
+              ? 'MFA / PENDING_USER_INPUT'
+              : 'MFA / WAITING_FOR_LOGIN_FORM'
+            : 'FAILURE / USER_INPUT_REQUEST_IN_BACKGROUND'
           : 'IN_PROGRESS / DOWNLOADING_DATA';
     }
     if (refreshInfo.status === 'FAILED') {
@@ -61,9 +65,6 @@ export default class PollingState extends LinkState {
   constructor(accountLink: AccountLink) {
     super();
     this._accountLink = accountLink;
-    this._targetAccountLinkStatus = PollingState.calculateAccountLinkStatus(
-      accountLink,
-    );
   }
 
   calculateNextState(linkEvent: LinkEvent): LinkState {
@@ -81,10 +82,11 @@ export default class PollingState extends LinkState {
   }
 
   didEnterState(fromState: LinkState | null, engine: LinkEngineType): void {
-    engine.genSetAccountLinkStatus(
-      this.__accountLinkID,
-      this._targetAccountLinkStatus,
+    const status = PollingState.calculateAccountLinkStatus(
+      this._accountLink,
+      this.__linkMode,
     );
+    engine.genSetAccountLinkStatus(this.__accountLinkID, status);
 
     this._pollingTimeout = setTimeout(() => {
       engine.genRefetchAccountLink(this.__accountLinkID);

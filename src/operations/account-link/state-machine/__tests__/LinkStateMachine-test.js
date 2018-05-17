@@ -351,3 +351,22 @@ test('marks account link as downloading when no additional status is in refresh 
     'IN_PROGRESS / DOWNLOADING_DATA',
   );
 });
+
+test('marks pending user input as failure if downloading in the background', () => {
+  const accountLinkID = '0';
+
+  const machine = new LinkStateMachine(accountLinkID, 'AUTO');
+  machine.initialize();
+
+  LinkEngine.sendMockEvent(MOCK_EVENT.pendingUserInput);
+  expect(machine.getCurrentState()).toBeInstanceOf(PollingState);
+
+  const genSetAccountLinkStatusMockCalls =
+    LinkEngine.genSetAccountLinkStatus.mock.calls;
+
+  expect(genSetAccountLinkStatusMockCalls).toHaveLength(1);
+  expect(genSetAccountLinkStatusMockCalls[0][0]).toBe(accountLinkID);
+  expect(genSetAccountLinkStatusMockCalls[0][1]).toBe(
+    'FAILURE / USER_INPUT_REQUEST_IN_BACKGROUND',
+  );
+});
