@@ -2,7 +2,6 @@
 
 import LinkState from './LinkState';
 import LinkUtils from './LinkUtils';
-import PollingState from './PollingState';
 
 import type { LinkEngineType } from './LinkEngine';
 import type { LinkEvent } from './LinkEvent';
@@ -20,7 +19,10 @@ export default class InitializingState extends LinkState {
     }
 
     if (linkEvent.type === 'UPDATE_ACCOUNT_LINK') {
-      return new PollingState(linkEvent.accountLink);
+      return LinkUtils.calculateStateForUpdatedAccountLink(
+        linkEvent.accountLink,
+        this.__linkMode,
+      );
     }
     return this;
   }

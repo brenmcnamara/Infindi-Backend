@@ -2,6 +2,10 @@
 
 import LinkState from './LinkState';
 
+import type {
+  AccountLink,
+  AccountLinkStatus,
+} from 'common/lib/models/AccountLink';
 import type { LinkEngineType } from './LinkEngine';
 
 /**
@@ -9,9 +13,20 @@ import type { LinkEngineType } from './LinkEngine';
  * reason.
  */
 export default class LinkTerminationState extends LinkState {
+  _accountLink: AccountLink;
+  _targetStatus: AccountLinkStatus;
+
+  constructor(accountLink: AccountLink, targetStatus: AccountLinkStatus) {
+    super();
+    this._accountLink = accountLink;
+    this._targetStatus = targetStatus;
+  }
+
   calculateNextState() {
     return this;
   }
 
-  didEnterState(fromState: LinkState | null, engine: LinkEngineType): void {}
+  didEnterState(fromState: LinkState | null, engine: LinkEngineType): void {
+    engine.genSetAccountLinkStatus(this.__accountLinkID, this._targetStatus);
+  }
 }

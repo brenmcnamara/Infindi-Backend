@@ -2,6 +2,7 @@ import ErrorState from '../ErrorState';
 import InitializingState from '../InitializingState';
 import LinkEngine from '../LinkEngine';
 import LinkStateMachine from '../LinkStateMachine';
+import LinkTerminationState from '../LinkTerminationState';
 import PollingState from '../PollingState';
 
 jest.useFakeTimers();
@@ -359,7 +360,7 @@ test('marks pending user input as failure if downloading in the background', () 
   machine.initialize();
 
   LinkEngine.sendMockEvent(MOCK_EVENT.pendingUserInput);
-  expect(machine.getCurrentState()).toBeInstanceOf(PollingState);
+  expect(machine.getCurrentState()).toBeInstanceOf(LinkTerminationState);
 
   const genSetAccountLinkStatusMockCalls =
     LinkEngine.genSetAccountLinkStatus.mock.calls;
