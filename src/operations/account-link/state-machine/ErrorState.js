@@ -17,5 +17,10 @@ export default class ErrorState extends LinkState {
     return this;
   }
 
-  didEnterState(fromState: LinkState | null, engine: LinkEngineType): void {}
+  didEnterState(fromState: LinkState | null, engine: LinkEngineType): void {
+    engine.genSetAccountLinkStatus(
+      this.__accountLinkID,
+      'FAILURE / INTERNAL_SERVICE_FAILURE',
+    );
+  }
 }

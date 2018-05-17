@@ -276,6 +276,24 @@ test('goes into error from polling state', () => {
   expect(machine.getCurrentState()).toBeInstanceOf(ErrorState);
 });
 
+test('updates account link status when going into error state', () => {
+  const accountLinkID = '0';
+
+  const machine = new LinkStateMachine(accountLinkID, 'MANUAL');
+  machine.initialize();
+
+  const genSetAccountLinkStatusMockCalls =
+    LinkEngine.genSetAccountLinkStatus.mock.calls;
+
+  LinkEngine.sendMockEvent(MOCK_EVENT.randomError);
+  expect(machine.getCurrentState()).toBeInstanceOf(ErrorState);
+  expect(genSetAccountLinkStatusMockCalls).toHaveLength(1);
+  expect(genSetAccountLinkStatusMockCalls[0][0]).toBe(accountLinkID);
+  expect(genSetAccountLinkStatusMockCalls[0][1]).toBe(
+    'FAILURE / INTERNAL_SERVICE_FAILURE',
+  );
+});
+
 test('updates the account link status when receives pending login', () => {
   const accountLinkID = '0';
 
