@@ -36,6 +36,7 @@ function calculateStateForUpdatedAccountLink(
     case 'FAILURE / INTERNAL_SERVICE_FAILURE':
     case 'FAILURE / MFA_FAILURE':
     case 'FAILURE / USER_INPUT_REQUEST_IN_BACKGROUND':
+    case 'SUCCESS':
       return new LinkTerminationState(accountLink, status);
 
     case 'IN_PROGRESS / DOWNLOADING_DATA':

@@ -94,6 +94,53 @@ const ACCOUNT_LINK = {
 };
 
 const MOCK_EVENT = {
+  badCredentials: {
+    accountLink: {
+      ...ACCOUNT_LINK,
+      sourceOfTruth: {
+        ...ACCOUNT_LINK.sourceOfTruth,
+        providerAccount: {
+          aggregationSource: 'USER',
+          createdDate: '2018-05-10',
+          id: 0,
+          isManual: false,
+          lastUpdated: '2018-05-15T04:23:10Z',
+          loginForm: null,
+          providerId: '643',
+          refreshInfo: {
+            additionalStatus: 'LOGIN_FAILED',
+            lastRefreshed: '2018-05-15T04:23:10Z',
+            status: 'FAILED',
+          },
+        },
+      },
+    },
+    type: 'UPDATE_ACCOUNT_LINK',
+  },
+
+  linkComplete: {
+    accountLink: {
+      ...ACCOUNT_LINK,
+      sourceOfTruth: {
+        ...ACCOUNT_LINK.sourceOfTruth,
+        providerAccount: {
+          aggregationSource: 'USER',
+          createdDate: '2018-05-10',
+          id: 0,
+          isManual: false,
+          lastUpdated: '2018-05-15T04:23:10Z',
+          loginForm: null,
+          providerId: '643',
+          refreshInfo: {
+            lastRefreshed: '2018-05-15T04:23:10Z',
+            status: 'SUCCESS',
+          },
+        },
+      },
+    },
+    type: 'UPDATE_ACCOUNT_LINK',
+  },
+
   pendingDownloadNoAdditionalStatus: {
     accountLink: {
       ...ACCOUNT_LINK,
@@ -388,4 +435,44 @@ test('marks pending user input as failure if downloading in the background', () 
   expect(genSetAccountLinkStatusMockCalls[0][1]).toBe(
     'FAILURE / USER_INPUT_REQUEST_IN_BACKGROUND',
   );
+});
+
+test('terminates linking on bad credentials', () => {
+  const accountLinkID = '0';
+
+  const machine = new LinkStateMachine(accountLinkID, 'AUTO');
+  machine.initialize();
+
+  LinkEngine.sendMockEvent(MOCK_EVENT.badCredentials);
+  expect(machine.getCurrentState()).toBeInstanceOf(LinkTerminationState);
+});
+
+test('goes from polling state to termination state on SUCCESS status', () => {
+  const accountLinkID = '0';
+
+  const machine = new LinkStateMachine(accountLinkID, 'AUTO');
+  machine.initialize();
+
+  LinkEngine.sendMockEvent(MOCK_EVENT.pendingLogin);
+  expect(machine.getCurrentState()).toBeInstanceOf(PollingState);
+
+  LinkEngine.sendMockEvent(MOCK_EVENT.linkComplete);
+  expect(machine.getCurrentState()).toBeInstanceOf(LinkTerminationState);
+});
+
+test('updates account link status to SUCCESS after successful termination', () => {
+  const accountLinkID = '0';
+
+  const machine = new LinkStateMachine(accountLinkID, 'AUTO');
+  machine.initialize();
+
+  LinkEngine.sendMockEvent(MOCK_EVENT.linkComplete);
+  expect(machine.getCurrentState()).toBeInstanceOf(LinkTerminationState);
+
+  const genSetAccountLinkStatusMockCalls =
+    LinkEngine.genSetAccountLinkStatus.mock.calls;
+
+  expect(genSetAccountLinkStatusMockCalls).toHaveLength(1);
+  expect(genSetAccountLinkStatusMockCalls[0][0]).toBe(accountLinkID);
+  expect(genSetAccountLinkStatusMockCalls[0][1]).toBe('SUCCESS');
 });
