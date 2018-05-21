@@ -26,7 +26,15 @@ export default class LinkTerminationState extends LinkState {
     return this;
   }
 
-  didEnterState(fromState: LinkState | null, engine: LinkEngineType): void {
-    engine.genSetAccountLinkStatus(this.__accountLinkID, this._targetStatus);
+  async didEnterState(
+    fromState: LinkState | null,
+    engine: LinkEngineType,
+  ): Promise<void> {
+    await engine.genSetAccountLinkStatus(
+      this.__accountLinkID,
+      this._targetStatus,
+    );
+
+    engine.genLogEndLinking(this.__accountLinkID);
   }
 }

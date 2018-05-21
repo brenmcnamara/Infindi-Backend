@@ -17,10 +17,14 @@ export default class ErrorState extends LinkState {
     return this;
   }
 
-  didEnterState(fromState: LinkState | null, engine: LinkEngineType): void {
-    engine.genSetAccountLinkStatus(
+  async didEnterState(
+    fromState: LinkState | null,
+    engine: LinkEngineType,
+  ): Promise<void> {
+    await engine.genSetAccountLinkStatus(
       this.__accountLinkID,
       'FAILURE / INTERNAL_SERVICE_FAILURE',
     );
+    engine.genLogEndLinking(this.__accountLinkID);
   }
 }

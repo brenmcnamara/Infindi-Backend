@@ -476,3 +476,74 @@ test('updates account link status to SUCCESS after successful termination', () =
   expect(genSetAccountLinkStatusMockCalls[0][0]).toBe(accountLinkID);
   expect(genSetAccountLinkStatusMockCalls[0][1]).toBe('SUCCESS');
 });
+
+test('starts logging on initialization state', () => {
+  const accountLinkID = '0';
+
+  const machine = new LinkStateMachine(accountLinkID, 'AUTO');
+  machine.initialize();
+
+  expect(machine.getCurrentState()).toBeInstanceOf(InitializingState);
+
+  const genLogStartLinkingMockCalls = LinkEngine.genLogStartLinking.mock.calls;
+
+  expect(genLogStartLinkingMockCalls).toHaveLength(1);
+  expect(genLogStartLinkingMockCalls[0][0]).toBe(accountLinkID);
+});
+
+test('ends logging after account link status has been update in termination state', async () => {
+  expect.assertions(4);
+
+  const accountLinkID = '0';
+
+  let finishSettingAccountLinkStatus;
+  const waitForSettingAccountLinkStatus = new Promise(resolve => {
+    finishSettingAccountLinkStatus = resolve;
+  });
+
+  LinkEngine.genSetAccountLinkStatus.mockImplementation(
+    () => waitForSettingAccountLinkStatus,
+  );
+
+  const machine = new LinkStateMachine(accountLinkID, 'AUTO');
+  machine.initialize();
+
+  LinkEngine.sendMockEvent(MOCK_EVENT.linkComplete);
+  expect(machine.getCurrentState()).toBeInstanceOf(LinkTerminationState);
+
+  expect(LinkEngine.genSetAccountLinkStatus.mock.calls).toHaveLength(1);
+  expect(LinkEngine.genLogEndLinking.mock.calls).toHaveLength(0);
+
+  finishSettingAccountLinkStatus();
+  await waitForSettingAccountLinkStatus;
+
+  expect(LinkEngine.genLogEndLinking.mock.calls).toHaveLength(1);
+});
+
+test('ends logging after account link status has been updated in error state', async () => {
+  expect.assertions(4);
+
+  const accountLinkID = '0';
+
+  let finishSettingAccountLinkStatus;
+  const waitForSettingAccountLinkStatus = new Promise(resolve => {
+    finishSettingAccountLinkStatus = resolve;
+  });
+  LinkEngine.genSetAccountLinkStatus.mockImplementation(
+    () => waitForSettingAccountLinkStatus,
+  );
+
+  const machine = new LinkStateMachine(accountLinkID, 'AUTO');
+  machine.initialize();
+
+  LinkEngine.sendMockEvent(MOCK_EVENT.randomError);
+  expect(machine.getCurrentState()).toBeInstanceOf(ErrorState);
+
+  expect(LinkEngine.genSetAccountLinkStatus.mock.calls).toHaveLength(1);
+  expect(LinkEngine.genLogEndLinking.mock.calls).toHaveLength(0);
+
+  finishSettingAccountLinkStatus();
+  await waitForSettingAccountLinkStatus;
+
+  expect(LinkEngine.genLogEndLinking.mock.calls).toHaveLength(1);
+});

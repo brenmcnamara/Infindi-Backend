@@ -28,6 +28,7 @@ export default class InitializingState extends LinkState {
   }
 
   didEnterState(fromState: LinkState | null, engine: LinkEngineType): void {
+    engine.genLogStartLinking(this.__accountLinkID);
     engine.genRefreshAccountLink(this.__accountLinkID);
   }
 }
