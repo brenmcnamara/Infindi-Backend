@@ -120,26 +120,7 @@ const MOCK_EVENT = {
   },
 
   linkComplete: {
-    accountLink: {
-      ...ACCOUNT_LINK,
-      sourceOfTruth: {
-        ...ACCOUNT_LINK.sourceOfTruth,
-        providerAccount: {
-          aggregationSource: 'USER',
-          createdDate: '2018-05-10',
-          id: 0,
-          isManual: false,
-          lastUpdated: '2018-05-15T04:23:10Z',
-          loginForm: null,
-          providerId: '643',
-          refreshInfo: {
-            lastRefreshed: '2018-05-15T04:23:10Z',
-            status: 'SUCCESS',
-          },
-        },
-      },
-    },
-    type: 'UPDATE_ACCOUNT_LINK',
+    type: 'LINK_COMPLETE',
   },
 
   pendingDownloadNoAdditionalStatus: {
@@ -223,6 +204,29 @@ const MOCK_EVENT = {
     errorMessage: 'This is a random error that hapenned',
     errorType: 'INTERNAL',
     type: 'ERROR',
+  },
+
+  sourceReady: {
+    accountLink: {
+      ...ACCOUNT_LINK,
+      sourceOfTruth: {
+        ...ACCOUNT_LINK.sourceOfTruth,
+        providerAccount: {
+          aggregationSource: 'USER',
+          createdDate: '2018-05-10',
+          id: 0,
+          isManual: false,
+          lastUpdated: '2018-05-15T04:23:10Z',
+          loginForm: null,
+          providerId: '643',
+          refreshInfo: {
+            lastRefreshed: '2018-05-15T04:23:10Z',
+            status: 'SUCCESS',
+          },
+        },
+      },
+    },
+    type: 'UPDATE_ACCOUNT_LINK',
   },
 };
 
@@ -452,7 +456,7 @@ test('goes from polling state to sync-with-source state on SUCCESS status', () =
   mockEngine.sendMockEvent(MOCK_EVENT.pendingLogin);
   expect(machine.getCurrentState()).toBeInstanceOf(PollingState);
 
-  mockEngine.sendMockEvent(MOCK_EVENT.linkComplete);
+  mockEngine.sendMockEvent(MOCK_EVENT.sourceReady);
   expect(machine.getCurrentState()).toBeInstanceOf(SyncWithSourceState);
 });
 
@@ -463,8 +467,8 @@ test('updates account link status to IN_PROGRESS / DOWNLOADING_FROM_SOURCE when 
   const machine = new LinkStateMachine(accountLinkID, 'AUTO', mockEngine);
   machine.initialize();
 
-  mockEngine.sendMockEvent(MOCK_EVENT.linkComplete);
-  expect(machine.getCurrentState()).toBeInstanceOf(LinkTerminationState);
+  mockEngine.sendMockEvent(MOCK_EVENT.sourceReady);
+  expect(machine.getCurrentState()).toBeInstanceOf(SyncWithSourceState);
 
   const genSetAccountLinkStatusMockCalls =
     mockEngine.genSetAccountLinkStatus.mock.calls;
@@ -491,6 +495,7 @@ test('starts logging on initialization state', () => {
 });
 
 test('ends logging after account link status has been update in termination state', async () => {
+  throw Error('Need to revise this test');
   expect.assertions(4);
 
   const accountLinkID = '0';
@@ -507,10 +512,11 @@ test('ends logging after account link status has been update in termination stat
   const machine = new LinkStateMachine(accountLinkID, 'AUTO', mockEngine);
   machine.initialize();
 
+  mockEngine.sendMockEvent(MOCK_EVENT.sourceReady);
   mockEngine.sendMockEvent(MOCK_EVENT.linkComplete);
   expect(machine.getCurrentState()).toBeInstanceOf(LinkTerminationState);
 
-  expect(mockEngine.genSetAccountLinkStatus.mock.calls).toHaveLength(1);
+  expect(mockEngine.genSetAccountLinkStatus.mock.calls).toHaveLength(2);
   expect(mockEngine.genLogEndLinking.mock.calls).toHaveLength(0);
 
   finishSettingAccountLinkStatus();

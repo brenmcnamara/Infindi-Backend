@@ -17,9 +17,8 @@ export default class LinkTerminationState extends LinkState {
   _accountLink: AccountLink;
   _targetStatus: AccountLinkStatus;
 
-  constructor(accountLink: AccountLink, targetStatus: AccountLinkStatus) {
+  constructor(targetStatus: AccountLinkStatus) {
     super();
-    this._accountLink = accountLink;
     this._targetStatus = targetStatus;
   }
 

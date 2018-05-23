@@ -19,10 +19,14 @@ import type { LinkMode } from './LinkStateMachine';
 function calculateStateForSuccessOrFailureEvent(
   event: LinkEvent,
 ): LinkState | null {
-  if (event.type === 'ERROR') {
-    return new ErrorState(event.errorMessage);
+  switch (event.type) {
+    case 'ERROR': {
+      return new ErrorState(event.errorMessage);
+    }
+    case 'LINK_COMPLETE': {
+      return new LinkTerminationState('SUCCESS');
+    }
   }
-  // TODO: Handle link events for terminal link states.
   return null;
 }
 
@@ -38,7 +42,7 @@ function calculateStateForUpdatedAccountLink(
     case 'FAILURE / MFA_FAILURE':
     case 'FAILURE / USER_INPUT_REQUEST_IN_BACKGROUND':
     case 'SUCCESS':
-      return new LinkTerminationState(accountLink, status);
+      return new LinkTerminationState(status);
 
     case 'IN_PROGRESS / DOWNLOADING_DATA':
     case 'IN_PROGRESS / INITIALIZING':
