@@ -2,7 +2,8 @@
 
 import LinkState from './LinkState';
 
-import type { LinkEngineType } from './LinkEngine';
+import type LinkEngine from './LinkEngine';
+
 import type { LinkEvent } from './LinkEvent';
 
 export default class ErrorState extends LinkState {
@@ -19,7 +20,7 @@ export default class ErrorState extends LinkState {
 
   async didEnterState(
     fromState: LinkState | null,
-    engine: LinkEngineType,
+    engine: LinkEngine,
   ): Promise<void> {
     await engine.genSetAccountLinkStatus(
       this.__accountLinkID,

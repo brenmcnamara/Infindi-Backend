@@ -1,10 +1,10 @@
 /* @flow */
 
 import InitializingState from './InitializingState';
-import LinkEngine from './LinkEngine';
 
 import invariant from 'invariant';
 
+import type LinkEngine from './LinkEngine';
 import type LinkState from './LinkState';
 
 import type { ID } from 'common/types/core';
@@ -18,13 +18,15 @@ export type LinkMode = 'AUTO' | 'MANUAL';
  */
 export default class LinkStateMachine {
   _accountLinkID: ID;
+  _engine: LinkEngine;
   _currentState: LinkState;
   _mode: LinkMode;
   _processingEventGuard: boolean = false;
 
-  constructor(accountLinkID: ID, mode: LinkMode) {
+  constructor(accountLinkID: ID, mode: LinkMode, engine: LinkEngine) {
     this._accountLinkID = accountLinkID;
     this._currentState = new InitializingState();
+    this._engine = engine;
     this._mode = mode;
 
     this._currentState.setAccountLinkID(accountLinkID);
@@ -32,8 +34,8 @@ export default class LinkStateMachine {
   }
 
   initialize(): void {
-    LinkEngine.onLinkEvent(this._processEvent);
-    this._currentState.didEnterState(null, LinkEngine);
+    this._engine.onLinkEvent(this._processEvent);
+    this._currentState.didEnterState(null, this._engine);
   }
 
   _processEvent = (event: LinkEvent): void => {
@@ -51,9 +53,9 @@ export default class LinkStateMachine {
     nextState.setAccountLinkID(this._accountLinkID);
     nextState.setLinkMode(this._mode);
 
-    currentState.willLeaveState(nextState, LinkEngine);
+    currentState.willLeaveState(nextState, this._engine);
     this._currentState = nextState;
-    nextState.didEnterState(currentState, LinkEngine);
+    nextState.didEnterState(currentState, this._engine);
     this._processingEventGuard = false;
   };
 

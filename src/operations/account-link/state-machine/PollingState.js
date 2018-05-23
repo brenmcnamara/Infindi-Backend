@@ -3,11 +3,12 @@
 import LinkState from './LinkState';
 import LinkUtils from './LinkUtils';
 
+import type LinkEngine from './LinkEngine';
+
 import type {
   AccountLink,
   AccountLinkStatus,
 } from 'common/lib/models/AccountLink';
-import type { LinkEngineType } from './LinkEngine';
 import type { LinkEvent } from './LinkEvent';
 
 const POLLING_DELAY_MS = 2000;
@@ -40,7 +41,7 @@ export default class PollingState extends LinkState {
     return this;
   }
 
-  didEnterState(fromState: LinkState | null, engine: LinkEngineType): void {
+  didEnterState(fromState: LinkState | null, engine: LinkEngine): void {
     engine.genSetAccountLinkStatus(this.__accountLinkID, this._targetStatus);
 
     this._pollingTimeout = setTimeout(() => {

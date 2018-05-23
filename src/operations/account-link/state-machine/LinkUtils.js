@@ -3,6 +3,7 @@
 import ErrorState from './ErrorState';
 import LinkTerminationState from './LinkTerminationState';
 import PollingState from './PollingState';
+import SyncWithSourceState from './SyncWithSourceState';
 
 import invariant from 'invariant';
 
@@ -45,6 +46,9 @@ function calculateStateForUpdatedAccountLink(
     case 'MFA / PENDING_USER_INPUT':
     case 'MFA / WAITING_FOR_LOGIN_FORM':
       return new PollingState(accountLink, status);
+
+    case 'IN_PROGRESS / DOWNLOADING_FROM_SOURCE':
+      return new SyncWithSourceState();
 
     default:
       return invariant(false, 'Unhandled account link status: %s', status);
@@ -90,7 +94,7 @@ function calculateAccountLinkStatus(
         ? 'FAILURE / BAD_CREDENTIALS'
         : 'FAILURE / INTERNAL_SERVICE_FAILURE';
   }
-  return 'SUCCESS';
+  return 'IN_PROGRESS / DOWNLOADING_FROM_SOURCE';
 }
 
 export default {

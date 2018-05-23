@@ -1,6 +1,11 @@
 /* @flow */
 
 import { ERROR } from '../../../log-utils';
+import {
+  genFetchAccountLink,
+  genUpdateAccountLink,
+  updateAccountLinkStatus,
+} from 'common/lib/models/AccountLink';
 
 import type {
   AccountLink,
@@ -12,58 +17,70 @@ import type { LinkEvent } from './LinkEvent';
 export type EventEmitter = { remove: () => void };
 export type LinkEventCallback = (event: LinkEvent) => void;
 
-let linkEventCallback: LinkEventCallback | null = null;
+class LinkEngine {
+  _linkEventCallback: LinkEventCallback | null = null;
 
-function genRefreshAccountLink(accountLinkID: ID): Promise<void> {
-  return Promise.reject(Error('Implement me!'));
+  /**
+   * Signals the source of truth that it is time to start updating the account
+   * link.
+   */
+  genRefreshAccountLink(accountLinkID: ID): Promise<void> {
+    return Promise.reject(Error('Implement me!'));
+  }
+
+  /**
+   * Refetches the account link from the source of truth.
+   */
+  genRefetchAccountLink(accountLinkID: ID): Promise<void> {
+    return Promise.reject(Error('Implement me!'));
+  }
+
+  async genSetAccountLink(accountLink: AccountLink): Promise<void> {
+    await genUpdateAccountLink(accountLink);
+  }
+
+  async genSetAccountLinkStatus(
+    accountLinkID: ID,
+    status: AccountLinkStatus,
+  ): Promise<void> {
+    const accountLink = await genFetchAccountLink(accountLinkID);
+    if (!accountLink) {
+      this._sendEvent({
+        errorMessage: `Cannot find account link with id: ${accountLinkID}`,
+        errorType: 'INTERNAL',
+        type: 'ERROR',
+      });
+      return;
+    }
+    await genUpdateAccountLink(updateAccountLinkStatus(accountLink, status));
+  }
+
+  successfullyTerminateLink(accountLinkID: ID): void {
+    this._sendEvent({ type: 'LINK_COMPLETE' });
+  }
+
+  genLogStartLinking(accountLinkID: ID): Promise<void> {
+    return Promise.reject(Error('Implement me!'));
+  }
+
+  genLogEndLinking(accountLinkID: ID): Promise<void> {
+    return Promise.reject(Error('Implement me!'));
+  }
+
+  onLinkEvent(cb: LinkEventCallback): EventEmitter {
+    this._linkEventCallback = cb;
+    return {
+      remove: () => {
+        this._linkEventCallback = null;
+      },
+    };
+  }
+
+  _sendEvent(linkEvent: LinkEvent): void {
+    this._linkEventCallback && this._linkEventCallback(linkEvent);
+  }
 }
 
-/**
- * Refetches the account link from the source of truth.
- */
-function genRefetchAccountLink(accountLinkID: ID): Promise<void> {
-  return Promise.reject(Error('Implement me!'));
-}
-
-function genSetAccountLink(accountLink: AccountLink): Promise<void> {
-  return Promise.reject(Error('Implement me!'));
-}
-
-function genSetAccountLinkStatus(
-  accountLinkID: ID,
-  status: AccountLinkStatus,
-): Promise<void> {
-  return Promise.reject(Error('Implement me!'));
-}
-
-function genLogStartLinking(accountLinkID: ID): Promise<void> {
-  return Promise.reject(Error('Implement me!'));
-}
-
-function genLogEndLinking(accountLinkID: ID): Promise<void> {
-  return Promise.reject(Error('Implement me!'));
-}
-
-function onLinkEvent(cb: LinkEventCallback): EventEmitter {
-  linkEventCallback = cb;
-  return {
-    remove: () => {
-      linkEventCallback = null;
-    },
-  };
-}
-
-const LinkEngine = {
-  genLogEndLinking: decoratorSwallowError(genLogEndLinking),
-  genLogStartLinking: decoratorSwallowError(genLogStartLinking),
-  genRefetchAccountLink: decoratorAsyncErrorHandling(genRefetchAccountLink),
-  genRefreshAccountLink: decoratorAsyncErrorHandling(genRefreshAccountLink),
-  genSetAccountLink: decoratorAsyncErrorHandling(genSetAccountLink),
-  genSetAccountLinkStatus: decoratorAsyncErrorHandling(genSetAccountLinkStatus),
-  onLinkEvent,
-};
-
-export type LinkEngineType = typeof LinkEngine;
 export default LinkEngine;
 
 function decoratorAsyncErrorHandling(
@@ -81,7 +98,8 @@ function decoratorAsyncErrorHandling(
         errorMessage: error.toString(),
         type: 'ERROR',
       };
-      linkEventCallback && linkEventCallback(linkEvent);
+      // TODO: This does not have the right context.
+      this._sendEvent(linkEvent);
     }
   };
 }

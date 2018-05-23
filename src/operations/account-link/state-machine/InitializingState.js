@@ -3,7 +3,8 @@
 import LinkState from './LinkState';
 import LinkUtils from './LinkUtils';
 
-import type { LinkEngineType } from './LinkEngine';
+import type LinkEngine from './LinkEngine';
+
 import type { LinkEvent } from './LinkEvent';
 
 /**
@@ -27,7 +28,7 @@ export default class InitializingState extends LinkState {
     return this;
   }
 
-  didEnterState(fromState: LinkState | null, engine: LinkEngineType): void {
+  didEnterState(fromState: LinkState | null, engine: LinkEngine): void {
     engine.genLogStartLinking(this.__accountLinkID);
     engine.genRefreshAccountLink(this.__accountLinkID);
   }

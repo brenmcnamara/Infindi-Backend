@@ -2,11 +2,12 @@
 
 import LinkState from './LinkState';
 
+import type LinkEngine from './LinkEngine';
+
 import type {
   AccountLink,
   AccountLinkStatus,
 } from 'common/lib/models/AccountLink';
-import type { LinkEngineType } from './LinkEngine';
 
 /**
  * Enter this state when we are terminating the linking process for whatever
@@ -28,7 +29,7 @@ export default class LinkTerminationState extends LinkState {
 
   async didEnterState(
     fromState: LinkState | null,
-    engine: LinkEngineType,
+    engine: LinkEngine,
   ): Promise<void> {
     await engine.genSetAccountLinkStatus(
       this.__accountLinkID,

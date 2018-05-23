@@ -2,7 +2,10 @@
 
 import type { AccountLink } from 'common/lib/models/AccountLink';
 
-export type LinkEvent = LinkEvent$Error | LinkEvent$UpdateAccountLink;
+export type LinkEvent =
+  | LinkEvent$Error
+  | LinkEvent$LinkComplete
+  | LinkEvent$UpdateAccountLink;
 
 type LinkEvent$UpdateAccountLink = {
   accountLink: AccountLink,
@@ -13,4 +16,8 @@ type LinkEvent$Error = {
   errorType: 'INTERNAL',
   errorMessage: string,
   type: 'ERROR',
+};
+
+type LinkEvent$LinkComplete = {
+  type: 'LINK_COMPLETE',
 };

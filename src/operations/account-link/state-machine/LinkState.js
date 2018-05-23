@@ -2,8 +2,9 @@
 
 import invariant from 'invariant';
 
+import type LinkEngine from './LinkEngine';
+
 import type { ID } from 'common/types/core';
-import type { LinkEngineType } from './LinkEngine';
 import type { LinkEvent } from './LinkEvent';
 import type { LinkMode } from './LinkStateMachine';
 
@@ -31,12 +32,12 @@ export default class LinkState {
   // ---------------------------------------------------------------------------
   didEnterState(
     fromState: LinkState | null,
-    engine: LinkEngineType,
+    engine: LinkEngine,
   ): void | Promise<void> {}
 
   willLeaveState(
     toState: LinkState,
-    engine: LinkEngineType,
+    engine: LinkEngine,
   ): void | Promise<void> {}
 
   // ---------------------------------------------------------------------------
