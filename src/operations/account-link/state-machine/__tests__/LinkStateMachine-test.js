@@ -495,10 +495,16 @@ test('starts logging on initialization state', () => {
 });
 
 test('ends logging after account link status has been update in termination state', async () => {
-  throw Error('Need to revise this test');
   expect.assertions(4);
 
   const accountLinkID = '0';
+
+  const machine = new LinkStateMachine(accountLinkID, 'AUTO', mockEngine);
+  machine.initialize();
+
+  mockEngine.sendMockEvent(MOCK_EVENT.sourceReady);
+
+  mockEngine.genSetAccountLinkStatus.mockReset();
 
   let finishSettingAccountLinkStatus;
   const waitForSettingAccountLinkStatus = new Promise(resolve => {
@@ -509,14 +515,10 @@ test('ends logging after account link status has been update in termination stat
     () => waitForSettingAccountLinkStatus,
   );
 
-  const machine = new LinkStateMachine(accountLinkID, 'AUTO', mockEngine);
-  machine.initialize();
-
-  mockEngine.sendMockEvent(MOCK_EVENT.sourceReady);
   mockEngine.sendMockEvent(MOCK_EVENT.linkComplete);
   expect(machine.getCurrentState()).toBeInstanceOf(LinkTerminationState);
 
-  expect(mockEngine.genSetAccountLinkStatus.mock.calls).toHaveLength(2);
+  expect(mockEngine.genSetAccountLinkStatus.mock.calls).toHaveLength(1);
   expect(mockEngine.genLogEndLinking.mock.calls).toHaveLength(0);
 
   finishSettingAccountLinkStatus();
