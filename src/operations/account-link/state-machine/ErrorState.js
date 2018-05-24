@@ -22,10 +22,7 @@ export default class ErrorState extends LinkState {
     fromState: LinkState | null,
     engine: LinkEngine,
   ): Promise<void> {
-    await engine.genSetAccountLinkStatus(
-      this.__accountLinkID,
-      'FAILURE / INTERNAL_SERVICE_FAILURE',
-    );
-    engine.genLogEndLinking(this.__accountLinkID);
+    await engine.genSetAccountLinkStatus('FAILURE / INTERNAL_SERVICE_FAILURE');
+    engine.genLogEndLinking();
   }
 }

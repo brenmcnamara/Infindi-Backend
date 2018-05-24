@@ -90,6 +90,7 @@ export const genProviderLogin: GenProviderLogin = overrideClientAsyncMethod(
   'genProviderLogin',
 );
 
+// TODO: This should be genFetchProviderAccount
 type GenProviderAccounts = ID => Promise<Array<ProviderAccount>>;
 export const genProviderAccounts: GenProviderAccounts = overrideClientAsyncMethod(
   'genProviderAccounts',

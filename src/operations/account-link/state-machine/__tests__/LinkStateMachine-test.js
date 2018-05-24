@@ -5,10 +5,15 @@ import LinkTerminationState from '../LinkTerminationState';
 import PollingState from '../PollingState';
 import SyncWithSourceState from '../SyncWithSourceState';
 
-jest.useFakeTimers();
+import type { ID } from 'common/types/core';
 
 class MockLinkEngine {
+  _accountLinkID: ID;
   _cb: Function | null = null;
+
+  constructor(accountLinkID: ID) {
+    this._accountLinkID = accountLinkID;
+  }
 
   genLogEndLinking = jest.fn();
   genLogStartLinking = jest.fn();
@@ -230,8 +235,12 @@ const MOCK_EVENT = {
   },
 };
 
+const TEST_ACCOUNT_LINK_ID = '1';
+
+jest.useFakeTimers();
+
 beforeEach(() => {
-  mockEngine = new MockLinkEngine();
+  mockEngine = new MockLinkEngine(TEST_ACCOUNT_LINK_ID);
 
   mockEngine.genLogEndLinking.mockReturnValue(Promise.resolve());
   mockEngine.genLogStartLinking.mockReturnValue(Promise.resolve());
@@ -242,24 +251,32 @@ beforeEach(() => {
 });
 
 test('starts at initial link state by default', () => {
-  const machine = new LinkStateMachine('0', 'MANUAL', mockEngine);
+  const machine = new LinkStateMachine(
+    TEST_ACCOUNT_LINK_ID,
+    'MANUAL',
+    mockEngine,
+  );
   expect(machine.getCurrentState()).toBeInstanceOf(InitializingState);
 });
 
 test('will refresh the account after the state machine is initialized', () => {
-  const accountLinkID = '0';
-
-  const machine = new LinkStateMachine(accountLinkID, 'MANUAL', mockEngine);
+  const machine = new LinkStateMachine(
+    TEST_ACCOUNT_LINK_ID,
+    'MANUAL',
+    mockEngine,
+  );
   machine.initialize();
 
   expect(mockEngine.genRefreshAccountLink.mock.calls).toHaveLength(1);
-  expect(mockEngine.genRefreshAccountLink.mock.calls[0][0]).toBe(accountLinkID);
+  expect(mockEngine.genRefreshAccountLink.mock.calls[0]).toHaveLength(0);
 });
 
 test('goes to polling state after receiving first update event', () => {
-  const accountLinkID = '0';
-
-  const machine = new LinkStateMachine(accountLinkID, 'MANUAL', mockEngine);
+  const machine = new LinkStateMachine(
+    TEST_ACCOUNT_LINK_ID,
+    'MANUAL',
+    mockEngine,
+  );
   machine.initialize();
 
   mockEngine.sendMockEvent(MOCK_EVENT.pendingLogin);
@@ -268,13 +285,15 @@ test('goes to polling state after receiving first update event', () => {
 
   expect(machine.getCurrentState()).toBeInstanceOf(PollingState);
   expect(mockEngine.genRefetchAccountLink.mock.calls).toHaveLength(1);
-  expect(mockEngine.genRefetchAccountLink.mock.calls[0][0]).toBe(accountLinkID);
+  expect(mockEngine.genRefetchAccountLink.mock.calls[0]).toHaveLength(0);
 });
 
 test('stays in polling state after receiving a non-terminal provider update', () => {
-  const accountLinkID = '0';
-
-  const machine = new LinkStateMachine(accountLinkID, 'MANUAL', mockEngine);
+  const machine = new LinkStateMachine(
+    TEST_ACCOUNT_LINK_ID,
+    'MANUAL',
+    mockEngine,
+  );
   machine.initialize();
 
   mockEngine.sendMockEvent(MOCK_EVENT.pendingLogin);
@@ -286,9 +305,11 @@ test('stays in polling state after receiving a non-terminal provider update', ()
 });
 
 test('re-fetches provider accounts after each update', () => {
-  const accountLinkID = '0';
-
-  const machine = new LinkStateMachine(accountLinkID, 'MANUAL', mockEngine);
+  const machine = new LinkStateMachine(
+    TEST_ACCOUNT_LINK_ID,
+    'MANUAL',
+    mockEngine,
+  );
   machine.initialize();
 
   mockEngine.sendMockEvent(MOCK_EVENT.pendingLogin);
@@ -300,9 +321,11 @@ test('re-fetches provider accounts after each update', () => {
 });
 
 test('goes into error from initializing', () => {
-  const accountLinkID = '0';
-
-  const machine = new LinkStateMachine(accountLinkID, 'MANUAL', mockEngine);
+  const machine = new LinkStateMachine(
+    TEST_ACCOUNT_LINK_ID,
+    'MANUAL',
+    mockEngine,
+  );
   machine.initialize();
 
   mockEngine.sendMockEvent(MOCK_EVENT.randomError);
@@ -311,9 +334,11 @@ test('goes into error from initializing', () => {
 });
 
 test('goes into error from polling state', () => {
-  const accountLinkID = '0';
-
-  const machine = new LinkStateMachine(accountLinkID, 'MANUAL', mockEngine);
+  const machine = new LinkStateMachine(
+    TEST_ACCOUNT_LINK_ID,
+    'MANUAL',
+    mockEngine,
+  );
   machine.initialize();
 
   mockEngine.sendMockEvent(MOCK_EVENT.pendingLogin);
@@ -324,9 +349,11 @@ test('goes into error from polling state', () => {
 });
 
 test('updates account link status when going into error state', () => {
-  const accountLinkID = '0';
-
-  const machine = new LinkStateMachine(accountLinkID, 'MANUAL', mockEngine);
+  const machine = new LinkStateMachine(
+    TEST_ACCOUNT_LINK_ID,
+    'MANUAL',
+    mockEngine,
+  );
   machine.initialize();
 
   const genSetAccountLinkStatusMockCalls =
@@ -335,16 +362,17 @@ test('updates account link status when going into error state', () => {
   mockEngine.sendMockEvent(MOCK_EVENT.randomError);
   expect(machine.getCurrentState()).toBeInstanceOf(ErrorState);
   expect(genSetAccountLinkStatusMockCalls).toHaveLength(1);
-  expect(genSetAccountLinkStatusMockCalls[0][0]).toBe(accountLinkID);
-  expect(genSetAccountLinkStatusMockCalls[0][1]).toBe(
+  expect(genSetAccountLinkStatusMockCalls[0][0]).toBe(
     'FAILURE / INTERNAL_SERVICE_FAILURE',
   );
 });
 
 test('updates the account link status when receives pending login', () => {
-  const accountLinkID = '0';
-
-  const machine = new LinkStateMachine(accountLinkID, 'MANUAL', mockEngine);
+  const machine = new LinkStateMachine(
+    TEST_ACCOUNT_LINK_ID,
+    'MANUAL',
+    mockEngine,
+  );
   machine.initialize();
 
   mockEngine.sendMockEvent(MOCK_EVENT.pendingLogin);
@@ -354,16 +382,17 @@ test('updates the account link status when receives pending login', () => {
     mockEngine.genSetAccountLinkStatus.mock.calls;
 
   expect(genSetAccountLinkStatusMockCalls).toHaveLength(1);
-  expect(genSetAccountLinkStatusMockCalls[0][0]).toBe(accountLinkID);
-  expect(genSetAccountLinkStatusMockCalls[0][1]).toBe(
+  expect(genSetAccountLinkStatusMockCalls[0][0]).toBe(
     'IN_PROGRESS / VERIFYING_CREDENTIALS',
   );
 });
 
 test('updates the account link status when receiving pending user input', () => {
-  const accountLinkID = '0';
-
-  const machine = new LinkStateMachine(accountLinkID, 'MANUAL', mockEngine);
+  const machine = new LinkStateMachine(
+    TEST_ACCOUNT_LINK_ID,
+    'MANUAL',
+    mockEngine,
+  );
   machine.initialize();
 
   mockEngine.sendMockEvent(MOCK_EVENT.pendingUserInput);
@@ -373,17 +402,18 @@ test('updates the account link status when receiving pending user input', () => 
     mockEngine.genSetAccountLinkStatus.mock.calls;
 
   expect(genSetAccountLinkStatusMockCalls).toHaveLength(1);
-  expect(genSetAccountLinkStatusMockCalls[0][0]).toBe(accountLinkID);
-  expect(genSetAccountLinkStatusMockCalls[0][1]).toBe(
+  expect(genSetAccountLinkStatusMockCalls[0][0]).toBe(
     'MFA / PENDING_USER_INPUT',
   );
 });
 
 // eslint-disable-next-line max-len
 test('marks account link as waiting for login form when pending user input with no login form', () => {
-  const accountLinkID = '0';
-
-  const machine = new LinkStateMachine(accountLinkID, 'MANUAL', mockEngine);
+  const machine = new LinkStateMachine(
+    TEST_ACCOUNT_LINK_ID,
+    'MANUAL',
+    mockEngine,
+  );
   machine.initialize();
 
   mockEngine.sendMockEvent(MOCK_EVENT.pendingUserInputNoLoginForm);
@@ -393,16 +423,17 @@ test('marks account link as waiting for login form when pending user input with 
     mockEngine.genSetAccountLinkStatus.mock.calls;
 
   expect(genSetAccountLinkStatusMockCalls).toHaveLength(1);
-  expect(genSetAccountLinkStatusMockCalls[0][0]).toBe(accountLinkID);
-  expect(genSetAccountLinkStatusMockCalls[0][1]).toBe(
+  expect(genSetAccountLinkStatusMockCalls[0][0]).toBe(
     'MFA / WAITING_FOR_LOGIN_FORM',
   );
 });
 
 test('marks account link as downloading when no additional status is in refresh info', () => {
-  const accountLinkID = '0';
-
-  const machine = new LinkStateMachine(accountLinkID, 'MANUAL', mockEngine);
+  const machine = new LinkStateMachine(
+    TEST_ACCOUNT_LINK_ID,
+    'MANUAL',
+    mockEngine,
+  );
   machine.initialize();
 
   mockEngine.sendMockEvent(MOCK_EVENT.pendingDownloadNoAdditionalStatus);
@@ -412,16 +443,17 @@ test('marks account link as downloading when no additional status is in refresh 
     mockEngine.genSetAccountLinkStatus.mock.calls;
 
   expect(genSetAccountLinkStatusMockCalls).toHaveLength(1);
-  expect(genSetAccountLinkStatusMockCalls[0][0]).toBe(accountLinkID);
-  expect(genSetAccountLinkStatusMockCalls[0][1]).toBe(
+  expect(genSetAccountLinkStatusMockCalls[0][0]).toBe(
     'IN_PROGRESS / DOWNLOADING_DATA',
   );
 });
 
 test('marks pending user input as failure if downloading in the background', () => {
-  const accountLinkID = '0';
-
-  const machine = new LinkStateMachine(accountLinkID, 'AUTO', mockEngine);
+  const machine = new LinkStateMachine(
+    TEST_ACCOUNT_LINK_ID,
+    'AUTO',
+    mockEngine,
+  );
   machine.initialize();
 
   mockEngine.sendMockEvent(MOCK_EVENT.pendingUserInput);
@@ -431,16 +463,17 @@ test('marks pending user input as failure if downloading in the background', () 
     mockEngine.genSetAccountLinkStatus.mock.calls;
 
   expect(genSetAccountLinkStatusMockCalls).toHaveLength(1);
-  expect(genSetAccountLinkStatusMockCalls[0][0]).toBe(accountLinkID);
-  expect(genSetAccountLinkStatusMockCalls[0][1]).toBe(
+  expect(genSetAccountLinkStatusMockCalls[0][0]).toBe(
     'FAILURE / USER_INPUT_REQUEST_IN_BACKGROUND',
   );
 });
 
 test('terminates linking on bad credentials', () => {
-  const accountLinkID = '0';
-
-  const machine = new LinkStateMachine(accountLinkID, 'AUTO', mockEngine);
+  const machine = new LinkStateMachine(
+    TEST_ACCOUNT_LINK_ID,
+    'AUTO',
+    mockEngine,
+  );
   machine.initialize();
 
   mockEngine.sendMockEvent(MOCK_EVENT.badCredentials);
@@ -448,9 +481,11 @@ test('terminates linking on bad credentials', () => {
 });
 
 test('goes from polling state to sync-with-source state on SUCCESS status', () => {
-  const accountLinkID = '0';
-
-  const machine = new LinkStateMachine(accountLinkID, 'AUTO', mockEngine);
+  const machine = new LinkStateMachine(
+    TEST_ACCOUNT_LINK_ID,
+    'AUTO',
+    mockEngine,
+  );
   machine.initialize();
 
   mockEngine.sendMockEvent(MOCK_EVENT.pendingLogin);
@@ -460,11 +495,30 @@ test('goes from polling state to sync-with-source state on SUCCESS status', () =
   expect(machine.getCurrentState()).toBeInstanceOf(SyncWithSourceState);
 });
 
+test('does not perform any refetches when leaving the polling state early', () => {
+  const machine = new LinkStateMachine(
+    TEST_ACCOUNT_LINK_ID,
+    'AUTO',
+    mockEngine,
+  );
+  machine.initialize();
+
+  mockEngine.sendMockEvent(MOCK_EVENT.pendingLogin);
+  mockEngine.sendMockEvent(MOCK_EVENT.randomError);
+
+  expect(machine.getCurrentState()).toBeInstanceOf(ErrorState);
+
+  jest.runAllTimers();
+  expect(mockEngine.genRefetchAccountLink.mock.calls).toHaveLength(0);
+});
+
 // eslint-disable-next-line max-len
 test('updates account link status to IN_PROGRESS / DOWNLOADING_FROM_SOURCE when sync starts', () => {
-  const accountLinkID = '0';
-
-  const machine = new LinkStateMachine(accountLinkID, 'AUTO', mockEngine);
+  const machine = new LinkStateMachine(
+    TEST_ACCOUNT_LINK_ID,
+    'AUTO',
+    mockEngine,
+  );
   machine.initialize();
 
   mockEngine.sendMockEvent(MOCK_EVENT.sourceReady);
@@ -474,16 +528,17 @@ test('updates account link status to IN_PROGRESS / DOWNLOADING_FROM_SOURCE when 
     mockEngine.genSetAccountLinkStatus.mock.calls;
 
   expect(genSetAccountLinkStatusMockCalls).toHaveLength(1);
-  expect(genSetAccountLinkStatusMockCalls[0][0]).toBe(accountLinkID);
-  expect(genSetAccountLinkStatusMockCalls[0][1]).toBe(
+  expect(genSetAccountLinkStatusMockCalls[0][0]).toBe(
     'IN_PROGRESS / DOWNLOADING_FROM_SOURCE',
   );
 });
 
 test('starts logging on initialization state', () => {
-  const accountLinkID = '0';
-
-  const machine = new LinkStateMachine(accountLinkID, 'AUTO', mockEngine);
+  const machine = new LinkStateMachine(
+    TEST_ACCOUNT_LINK_ID,
+    'AUTO',
+    mockEngine,
+  );
   machine.initialize();
 
   expect(machine.getCurrentState()).toBeInstanceOf(InitializingState);
@@ -491,15 +546,17 @@ test('starts logging on initialization state', () => {
   const genLogStartLinkingMockCalls = mockEngine.genLogStartLinking.mock.calls;
 
   expect(genLogStartLinkingMockCalls).toHaveLength(1);
-  expect(genLogStartLinkingMockCalls[0][0]).toBe(accountLinkID);
+  expect(genLogStartLinkingMockCalls[0]).toHaveLength(0);
 });
 
 test('ends logging after account link status has been update in termination state', async () => {
   expect.assertions(4);
 
-  const accountLinkID = '0';
-
-  const machine = new LinkStateMachine(accountLinkID, 'AUTO', mockEngine);
+  const machine = new LinkStateMachine(
+    TEST_ACCOUNT_LINK_ID,
+    'AUTO',
+    mockEngine,
+  );
   machine.initialize();
 
   mockEngine.sendMockEvent(MOCK_EVENT.sourceReady);
@@ -530,8 +587,6 @@ test('ends logging after account link status has been update in termination stat
 test('ends logging after account link status has been updated in error state', async () => {
   expect.assertions(4);
 
-  const accountLinkID = '0';
-
   let finishSettingAccountLinkStatus;
   const waitForSettingAccountLinkStatus = new Promise(resolve => {
     finishSettingAccountLinkStatus = resolve;
@@ -540,7 +595,11 @@ test('ends logging after account link status has been updated in error state', a
     () => waitForSettingAccountLinkStatus,
   );
 
-  const machine = new LinkStateMachine(accountLinkID, 'AUTO', mockEngine);
+  const machine = new LinkStateMachine(
+    TEST_ACCOUNT_LINK_ID,
+    'AUTO',
+    mockEngine,
+  );
   machine.initialize();
 
   mockEngine.sendMockEvent(MOCK_EVENT.randomError);

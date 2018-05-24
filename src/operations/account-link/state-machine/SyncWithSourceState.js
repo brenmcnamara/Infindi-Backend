@@ -22,9 +22,6 @@ export default class SyncWithSourceState extends LinkState {
 
   didEnterState(fromState: LinkState | null, engine: LinkEngine): void {
     // TODO: IMPLEMENT DOWNLOADING LOGIC!
-    engine.genSetAccountLinkStatus(
-      this.__accountLinkID,
-      'IN_PROGRESS / DOWNLOADING_FROM_SOURCE',
-    );
+    engine.genSetAccountLinkStatus('IN_PROGRESS / DOWNLOADING_FROM_SOURCE');
   }
 }

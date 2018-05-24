@@ -42,10 +42,10 @@ export default class PollingState extends LinkState {
   }
 
   didEnterState(fromState: LinkState | null, engine: LinkEngine): void {
-    engine.genSetAccountLinkStatus(this.__accountLinkID, this._targetStatus);
+    engine.genSetAccountLinkStatus(this._targetStatus);
 
     this._pollingTimeout = setTimeout(() => {
-      engine.genRefetchAccountLink(this.__accountLinkID);
+      engine.genRefetchAccountLink();
     }, POLLING_DELAY_MS);
   }
 

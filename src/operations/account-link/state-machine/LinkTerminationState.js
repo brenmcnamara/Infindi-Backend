@@ -30,11 +30,8 @@ export default class LinkTerminationState extends LinkState {
     fromState: LinkState | null,
     engine: LinkEngine,
   ): Promise<void> {
-    await engine.genSetAccountLinkStatus(
-      this.__accountLinkID,
-      this._targetStatus,
-    );
+    await engine.genSetAccountLinkStatus(this._targetStatus);
 
-    engine.genLogEndLinking(this.__accountLinkID);
+    engine.genLogEndLinking();
   }
 }

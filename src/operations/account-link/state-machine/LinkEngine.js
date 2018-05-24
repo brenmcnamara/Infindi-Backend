@@ -1,11 +1,17 @@
 /* @flow */
 
+import invariant from 'invariant';
+
 import { ERROR } from '../../../log-utils';
 import {
   genFetchAccountLink,
   genUpdateAccountLink,
   updateAccountLinkStatus,
 } from 'common/lib/models/AccountLink';
+import {
+  genProviderAccount,
+  genProviderAccountRefresh,
+} from '../../../yodlee/yodlee-manager';
 
 import type {
   AccountLink,
@@ -13,12 +19,18 @@ import type {
 } from 'common/lib/models/AccountLink';
 import type { ID } from 'common/types/core';
 import type { LinkEvent } from './LinkEvent';
+import type { ProviderAccount as YodleeProviderAccount } from 'common/types/yodlee-v1.0';
 
 export type EventEmitter = { remove: () => void };
 export type LinkEventCallback = (event: LinkEvent) => void;
 
 export default class LinkEngine {
+  _accountLinkID: ID;
   _linkEventCallback: LinkEventCallback | null = null;
+
+  constructor(accountLinkID: ID) {
+    this._accountLinkID = accountLinkID;
+  }
 
   _errorHandlerAsync(cb: () => Promise<void>): Promise<void> {
     return cb().catch(error => {
@@ -47,18 +59,23 @@ export default class LinkEngine {
    * Signals the source of truth that it is time to start updating the account
    * link.
    */
-  async genRefreshAccountLink(accountLinkID: ID): Promise<void> {
-    await this._errorHandlerAsync(() => {
-      return Promise.reject(Error('genRefreshAccountLink: Implement me!'));
+  async genRefreshAccountLink(): Promise<void> {
+    await this._errorHandlerAsync(async () => {
+      const accountLink = await genForceFetchAccountLink(this._accountLinkID);
+      const userID = accountLink.userRef.refID;
+      const providerAccount = getYodleeProviderAccount(accountLink);
+      const providerAccountID = String(providerAccount.id);
+      await genProviderAccountRefresh(userID, providerAccountID);
     });
   }
 
   /**
    * Refetches the account link from the source of truth.
    */
-  async genRefetchAccountLink(accountLinkID: ID): Promise<void> {
-    await this._errorHandlerAsync(() => {
-      return Promise.reject(Error('genRefetchAccountLink: Implement me!'));
+  async genRefetchAccountLink(): Promise<void> {
+    await this._errorHandlerAsync(async () => {
+      const accountLink = genFetchAccountLink(this._accountLinkID);
+      const providerAccount = genProviderAccount();
     });
   }
 
@@ -68,37 +85,26 @@ export default class LinkEngine {
     });
   }
 
-  async genSetAccountLinkStatus(
-    accountLinkID: ID,
-    status: AccountLinkStatus,
-  ): Promise<void> {
+  async genSetAccountLinkStatus(status: AccountLinkStatus): Promise<void> {
     await this._errorHandlerAsync(async () => {
-      const accountLink = await genFetchAccountLink(accountLinkID);
-      if (!accountLink) {
-        this._sendEvent({
-          errorMessage: `Cannot find account link with id: ${accountLinkID}`,
-          errorType: 'INTERNAL',
-          type: 'ERROR',
-        });
-        return;
-      }
+      const accountLink = await genForceFetchAccountLink(this._accountLinkID);
       await genUpdateAccountLink(updateAccountLinkStatus(accountLink, status));
     });
   }
 
-  async genLogStartLinking(accountLinkID: ID): Promise<void> {
+  async genLogStartLinking(): Promise<void> {
     await this._errorSwallowerAsync(() => {
       return Promise.reject(Error('genLogStartLinking: Implement me!'));
     });
   }
 
-  async genLogEndLinking(accountLinkID: ID): Promise<void> {
+  async genLogEndLinking(): Promise<void> {
     await this._errorSwallowerAsync(() => {
       return Promise.reject(Error('genLogEndLinking: Implement me!'));
     });
   }
 
-  successfullyTerminateLink(accountLinkID: ID) {
+  successfullyTerminateLink() {
     this._sendEvent({ type: 'LINK_COMPLETE' });
   }
 
@@ -114,4 +120,28 @@ export default class LinkEngine {
   _sendEvent(linkEvent: LinkEvent): void {
     this._linkEventCallback && this._linkEventCallback(linkEvent);
   }
+}
+
+async function genForceFetchAccountLink(
+  accountLinkID: ID,
+): Promise<AccountLink> {
+  const accountLink = await genFetchAccountLink(accountLinkID);
+  if (!accountLink) {
+    const errorCode = 'infindi/resource-not-found';
+    const errorMessage = `Could not find account link: ${accountLinkID}`;
+    const toString = `[${errorCode}]: ${errorMessage}`;
+    throw { errorCode, errorMessage, toString };
+  }
+  return accountLink;
+}
+
+function getYodleeProviderAccount(
+  accountLink: AccountLink,
+): YodleeProviderAccount {
+  const { sourceOfTruth } = accountLink;
+  invariant(
+    sourceOfTruth.type === 'YODLEE',
+    'Expecting source of truth to come from YODLEE',
+  );
+  return sourceOfTruth.providerAccount;
 }
