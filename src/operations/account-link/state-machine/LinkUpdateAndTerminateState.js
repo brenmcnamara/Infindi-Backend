@@ -38,7 +38,5 @@ export default class LinkUpdateAndTerminateState extends LinkState {
       this._targetStatus,
     );
     await engine.genSetAccountLink(accountLink);
-
-    engine.genLogEndLinking();
   }
 }

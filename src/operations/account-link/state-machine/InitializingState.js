@@ -35,7 +35,6 @@ export default class InitializingState extends LinkState {
     engine: LinkEngine,
   ): Promise<void> {
     INFO('ACCOUNT-LINK', 'New State: Initializing');
-    engine.genLogStartLinking();
     await engine.genRefreshAccountLink();
     await engine.genRefetchAccountLink();
   }

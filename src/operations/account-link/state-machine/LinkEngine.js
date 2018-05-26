@@ -88,18 +88,6 @@ export default class LinkEngine {
     });
   }
 
-  async genLogStartLinking(): Promise<void> {
-    await this._errorSwallowerAsync(async () => {
-      await Promise.resolve();
-    });
-  }
-
-  async genLogEndLinking(): Promise<void> {
-    await this._errorSwallowerAsync(async () => {
-      await Promise.resolve();
-    });
-  }
-
   successfullyTerminateLink() {
     this._sendEvent({ type: 'LINK_COMPLETE' });
   }

@@ -18,8 +18,6 @@ class MockLinkEngine {
     this._accountLinkID = accountLinkID;
   }
 
-  genLogEndLinking = jest.fn();
-  genLogStartLinking = jest.fn();
   genRefetchAccountLink = jest.fn();
   genRefreshAccountLink = jest.fn();
   genSetAccountLink = jest.fn();
@@ -245,8 +243,6 @@ jest.useFakeTimers();
 beforeEach(() => {
   mockEngine = new MockLinkEngine(TEST_ACCOUNT_LINK_ID);
 
-  mockEngine.genLogEndLinking.mockReturnValue(Promise.resolve());
-  mockEngine.genLogStartLinking.mockReturnValue(Promise.resolve());
   mockEngine.genRefetchAccountLink.mockReturnValue(Promise.resolve());
   mockEngine.genRefreshAccountLink.mockReturnValue(Promise.resolve());
   mockEngine.genSetAccountLink.mockReturnValue(Promise.resolve());
@@ -529,50 +525,4 @@ test('updates account link status to IN_PROGRESS / DOWNLOADING_FROM_SOURCE when 
   expect(genSetAccountLinkStatusMockCalls[0][0]).toBe(
     'IN_PROGRESS / DOWNLOADING_FROM_SOURCE',
   );
-});
-
-test('starts logging on initialization state', () => {
-  const machine = new LinkStateMachine(
-    TEST_ACCOUNT_LINK_ID,
-    'AUTO',
-    mockEngine,
-  );
-  machine.initialize();
-
-  expect(machine.getCurrentState()).toBeInstanceOf(InitializingState);
-
-  const genLogStartLinkingMockCalls = mockEngine.genLogStartLinking.mock.calls;
-
-  expect(genLogStartLinkingMockCalls).toHaveLength(1);
-  expect(genLogStartLinkingMockCalls[0]).toHaveLength(0);
-});
-
-test('ends logging after account link status has been updated in error state', async () => {
-  expect.assertions(4);
-
-  let finishSettingAccountLinkStatus;
-  const waitForSettingAccountLinkStatus = new Promise(resolve => {
-    finishSettingAccountLinkStatus = resolve;
-  });
-  mockEngine.genSetAccountLink.mockImplementation(
-    () => waitForSettingAccountLinkStatus,
-  );
-
-  const machine = new LinkStateMachine(
-    TEST_ACCOUNT_LINK_ID,
-    'AUTO',
-    mockEngine,
-  );
-  machine.initialize();
-
-  mockEngine.sendMockEvent(MOCK_EVENT.randomError);
-  expect(machine.getCurrentState()).toBeInstanceOf(ErrorState);
-
-  expect(mockEngine.genSetAccountLinkStatus.mock.calls).toHaveLength(1);
-  expect(mockEngine.genLogEndLinking.mock.calls).toHaveLength(0);
-
-  finishSettingAccountLinkStatus();
-  await waitForSettingAccountLinkStatus;
-
-  expect(mockEngine.genLogEndLinking.mock.calls).toHaveLength(1);
 });

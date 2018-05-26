@@ -27,6 +27,5 @@ export default class ErrorState extends LinkState {
     INFO('ACCOUNT-LINK', 'New State: Error State');
 
     await engine.genSetAccountLinkStatus('FAILURE / INTERNAL_SERVICE_FAILURE');
-    engine.genLogEndLinking();
   }
 }
