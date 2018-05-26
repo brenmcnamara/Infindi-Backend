@@ -35,29 +35,6 @@ export default class LinkEngine {
     this._accountLinkID = accountLinkID;
   }
 
-  _errorHandlerAsync(cb: () => Promise<void>): Promise<void> {
-    return cb().catch(error => {
-      // TODO: Proper error detection here. Where is the error coming from?
-      // Is there anything from the error that we can parse out to discover
-      // what kind of error it is?
-      const linkEvent = {
-        errorType: 'INTERNAL',
-        errorMessage: error.toString(),
-        type: 'ERROR',
-      };
-      // TODO: Should not be calling private method from outside scope.
-      this._sendEvent(linkEvent);
-    });
-  }
-
-  _errorSwallowerAsync(cb: () => Promise<void>): Promise<void> {
-    return cb().catch(error => {
-      // TODO: Propert error message extraction.
-      const errorMessage = error.toString();
-      ERROR('ACCOUNT-LINK', `Swallowing error: ${errorMessage}`);
-    });
-  }
-
   /**
    * Signals the source of truth that it is time to start updating the account
    * link.
@@ -112,14 +89,14 @@ export default class LinkEngine {
   }
 
   async genLogStartLinking(): Promise<void> {
-    await this._errorSwallowerAsync(() => {
-      return Promise.reject(Error('genLogStartLinking: Implement me!'));
+    await this._errorSwallowerAsync(async () => {
+      await Promise.resolve();
     });
   }
 
   async genLogEndLinking(): Promise<void> {
-    await this._errorSwallowerAsync(() => {
-      return Promise.reject(Error('genLogEndLinking: Implement me!'));
+    await this._errorSwallowerAsync(async () => {
+      await Promise.resolve();
     });
   }
 
@@ -151,6 +128,7 @@ export default class LinkEngine {
     }
     const providerAccount = getYodleeProviderAccount(accountLink);
     this._providerAccountID = String(providerAccount.id);
+    this._userID = accountLink.userRef.refID;
     return accountLink;
   }
 
@@ -171,9 +149,33 @@ export default class LinkEngine {
     }
     invariant(
       this._userID,
-      'Expecting _genFetchAccountLink to cache providerAccountID',
+      'Expecting _genFetchAccountLink to cache userID',
     );
     return this._userID;
+  }
+
+  _errorHandlerAsync(cb: () => Promise<void>): Promise<void> {
+    return cb().catch(error => {
+      // TODO: Proper error detection here. Where is the error coming from?
+      // Is there anything from the error that we can parse out to discover
+      // what kind of error it is?
+      const linkEvent = {
+        errorType: 'INTERNAL',
+        errorMessage: error.toString(),
+        type: 'ERROR',
+      };
+      ERROR('ACCOUNT-LINK', error.toString());
+      // TODO: Should not be calling private method from outside scope.
+      this._sendEvent(linkEvent);
+    });
+  }
+
+  _errorSwallowerAsync(cb: () => Promise<void>): Promise<void> {
+    return cb().catch(error => {
+      // TODO: Propert error message extraction.
+      const errorMessage = error.toString();
+      ERROR('ACCOUNT-LINK', `Swallowing error: ${errorMessage}`);
+    });
   }
 }
 

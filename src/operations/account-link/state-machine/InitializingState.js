@@ -30,9 +30,13 @@ export default class InitializingState extends LinkState {
     return this;
   }
 
-  didEnterState(fromState: LinkState | null, engine: LinkEngine): void {
+  async didEnterState(
+    fromState: LinkState | null,
+    engine: LinkEngine,
+  ): Promise<void> {
     INFO('ACCOUNT-LINK', 'New State: Initializing');
     engine.genLogStartLinking();
-    engine.genRefreshAccountLink();
+    await engine.genRefreshAccountLink();
+    await engine.genRefetchAccountLink();
   }
 }

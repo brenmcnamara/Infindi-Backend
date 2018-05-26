@@ -46,6 +46,7 @@ export default class LinkStateMachine {
     this._processingEventGuard = true;
     const currentState = this.getCurrentState();
     const nextState = currentState.calculateNextState(event);
+
     if (currentState === nextState) {
       return;
     }
