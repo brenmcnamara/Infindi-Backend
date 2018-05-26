@@ -43,7 +43,6 @@ export default class LinkStateMachine {
       !this._processingEventGuard,
       'Recursive link event dispatches are not allowed',
     );
-    console.log('processing event', event.type, event);
     this._processingEventGuard = true;
     const currentState = this.getCurrentState();
     const nextState = currentState.calculateNextState(event);

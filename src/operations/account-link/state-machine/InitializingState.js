@@ -3,6 +3,8 @@
 import LinkState from './LinkState';
 import LinkUtils from './LinkUtils';
 
+import { INFO } from '../../../log-utils';
+
 import type LinkEngine from './LinkEngine';
 
 import type { LinkEvent } from './LinkEvent';
@@ -29,6 +31,7 @@ export default class InitializingState extends LinkState {
   }
 
   didEnterState(fromState: LinkState | null, engine: LinkEngine): void {
+    INFO('ACCOUNT-LINK', 'New State: Initializing');
     engine.genLogStartLinking();
     engine.genRefreshAccountLink();
   }

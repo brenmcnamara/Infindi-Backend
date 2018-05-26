@@ -2,6 +2,8 @@
 
 import LinkState from './LinkState';
 
+import { INFO } from '../../../log-utils';
+
 import type LinkEngine from './LinkEngine';
 
 import type { LinkEvent } from './LinkEvent';
@@ -22,6 +24,8 @@ export default class ErrorState extends LinkState {
     fromState: LinkState | null,
     engine: LinkEngine,
   ): Promise<void> {
+    INFO('ACCOUNT-LINK', 'New State: Error State');
+
     await engine.genSetAccountLinkStatus('FAILURE / INTERNAL_SERVICE_FAILURE');
     engine.genLogEndLinking();
   }

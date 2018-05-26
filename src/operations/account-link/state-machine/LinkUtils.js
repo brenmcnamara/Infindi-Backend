@@ -1,7 +1,8 @@
 /* @flow */
 
 import ErrorState from './ErrorState';
-import LinkTerminationState from './LinkTerminationState';
+import LinkSuccessfullyTerminateState from './LinkSuccessfullyTerminateState';
+import LinkUpdateAndTerminateState from './LinkUpdateAndTerminateState';
 import PollingState from './PollingState';
 import SyncWithSourceState from './SyncWithSourceState';
 
@@ -20,12 +21,11 @@ function calculateStateForSuccessOrFailureEvent(
   event: LinkEvent,
 ): LinkState | null {
   switch (event.type) {
-    case 'ERROR': {
+    case 'ERROR':
       return new ErrorState(event.errorMessage);
-    }
-    case 'LINK_COMPLETE': {
-      return new LinkTerminationState('SUCCESS');
-    }
+
+    case 'LINK_COMPLETE':
+      return new LinkSuccessfullyTerminateState();
   }
   return null;
 }
@@ -42,7 +42,7 @@ function calculateStateForUpdatedAccountLink(
     case 'FAILURE / MFA_FAILURE':
     case 'FAILURE / USER_INPUT_REQUEST_IN_BACKGROUND':
     case 'SUCCESS':
-      return new LinkTerminationState(status);
+      return new LinkUpdateAndTerminateState(accountLink, status);
 
     case 'IN_PROGRESS / DOWNLOADING_DATA':
     case 'IN_PROGRESS / INITIALIZING':
@@ -52,7 +52,7 @@ function calculateStateForUpdatedAccountLink(
       return new PollingState(accountLink, status);
 
     case 'IN_PROGRESS / DOWNLOADING_FROM_SOURCE':
-      return new SyncWithSourceState();
+      return new SyncWithSourceState(accountLink);
 
     default:
       return invariant(false, 'Unhandled account link status: %s', status);

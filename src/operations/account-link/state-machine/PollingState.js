@@ -3,6 +3,9 @@
 import LinkState from './LinkState';
 import LinkUtils from './LinkUtils';
 
+import { INFO } from '../../../log-utils';
+import { updateAccountLinkStatus } from 'common/lib/models/AccountLink';
+
 import type LinkEngine from './LinkEngine';
 
 import type {
@@ -42,7 +45,12 @@ export default class PollingState extends LinkState {
   }
 
   didEnterState(fromState: LinkState | null, engine: LinkEngine): void {
-    engine.genSetAccountLinkStatus(this._targetStatus);
+    INFO('ACCOUNT-LINK', 'New State: Polling');
+    const accountLink = updateAccountLinkStatus(
+      this._accountLink,
+      this._targetStatus,
+    );
+    engine.genSetAccountLink(accountLink);
 
     this._pollingTimeout = setTimeout(() => {
       engine.genRefetchAccountLink();

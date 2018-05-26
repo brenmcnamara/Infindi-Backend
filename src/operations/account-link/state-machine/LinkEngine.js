@@ -7,6 +7,7 @@ import {
   genFetchAccountLink,
   genUpdateAccountLink,
   updateAccountLinkStatus,
+  updateAccountLinkYodlee,
 } from 'common/lib/models/AccountLink';
 import {
   genProviderAccount,
@@ -27,6 +28,8 @@ export type LinkEventCallback = (event: LinkEvent) => void;
 export default class LinkEngine {
   _accountLinkID: ID;
   _linkEventCallback: LinkEventCallback | null = null;
+  _providerAccountID: ID | null = null;
+  _userID: ID | null = null;
 
   constructor(accountLinkID: ID) {
     this._accountLinkID = accountLinkID;
@@ -61,10 +64,11 @@ export default class LinkEngine {
    */
   async genRefreshAccountLink(): Promise<void> {
     await this._errorHandlerAsync(async () => {
-      const accountLink = await genForceFetchAccountLink(this._accountLinkID);
-      const userID = accountLink.userRef.refID;
-      const providerAccount = getYodleeProviderAccount(accountLink);
-      const providerAccountID = String(providerAccount.id);
+      // Want to get the userID and providerID in sequence because when fetching
+      // one of them, we fetch the other value as well. If we run them in
+      // parallel, we may end up making an extra network call.
+      const userID = await this._genFetchUserID();
+      const providerAccountID = await this._genFetchProviderAccountID();
       await genProviderAccountRefresh(userID, providerAccountID);
     });
   }
@@ -74,8 +78,23 @@ export default class LinkEngine {
    */
   async genRefetchAccountLink(): Promise<void> {
     await this._errorHandlerAsync(async () => {
-      const accountLink = genFetchAccountLink(this._accountLinkID);
-      const providerAccount = genProviderAccount();
+      let accountLink = await this._genFetchAccountLink();
+      const userID = await this._genFetchUserID();
+      const providerAccountID = await this._genFetchProviderAccountID();
+      const providerAccount = await genProviderAccount(
+        userID,
+        providerAccountID,
+      );
+      if (!providerAccount) {
+        const errorCode = 'infindi/resource-not-found';
+        const errorMessage = `Could not find providerAccount for id: ${providerAccountID}`;
+        const toString = `[${errorCode}]: ${errorMessage}`;
+        throw { errorCode, errorMessage, toString };
+      }
+      // TODO: Should we send this to firebase at this point? Need to get
+      // the updates account link state from the link state.
+      accountLink = updateAccountLinkYodlee(accountLink, providerAccount);
+      this._sendEvent({ accountLink, type: 'UPDATE_ACCOUNT_LINK' });
     });
   }
 
@@ -87,7 +106,7 @@ export default class LinkEngine {
 
   async genSetAccountLinkStatus(status: AccountLinkStatus): Promise<void> {
     await this._errorHandlerAsync(async () => {
-      const accountLink = await genForceFetchAccountLink(this._accountLinkID);
+      const accountLink = await this._genFetchAccountLink();
       await genUpdateAccountLink(updateAccountLinkStatus(accountLink, status));
     });
   }
@@ -120,19 +139,42 @@ export default class LinkEngine {
   _sendEvent(linkEvent: LinkEvent): void {
     this._linkEventCallback && this._linkEventCallback(linkEvent);
   }
-}
 
-async function genForceFetchAccountLink(
-  accountLinkID: ID,
-): Promise<AccountLink> {
-  const accountLink = await genFetchAccountLink(accountLinkID);
-  if (!accountLink) {
-    const errorCode = 'infindi/resource-not-found';
-    const errorMessage = `Could not find account link: ${accountLinkID}`;
-    const toString = `[${errorCode}]: ${errorMessage}`;
-    throw { errorCode, errorMessage, toString };
+  async _genFetchAccountLink(): Promise<AccountLink> {
+    const accountLinkID = this._accountLinkID;
+    const accountLink = await genFetchAccountLink(this._accountLinkID);
+    if (!accountLink) {
+      const errorCode = 'infindi/resource-not-found';
+      const errorMessage = `Could not find account link: ${accountLinkID}`;
+      const toString = `[${errorCode}]: ${errorMessage}`;
+      throw { errorCode, errorMessage, toString };
+    }
+    const providerAccount = getYodleeProviderAccount(accountLink);
+    this._providerAccountID = String(providerAccount.id);
+    return accountLink;
   }
-  return accountLink;
+
+  async _genFetchProviderAccountID(): Promise<ID> {
+    if (!this._providerAccountID) {
+      await this._genFetchAccountLink();
+    }
+    invariant(
+      this._providerAccountID,
+      'Expecting _genFetchAccountLink to cache providerAccountID',
+    );
+    return this._providerAccountID;
+  }
+
+  async _genFetchUserID(): Promise<ID> {
+    if (!this._userID) {
+      await this._genFetchAccountLink();
+    }
+    invariant(
+      this._userID,
+      'Expecting _genFetchAccountLink to cache providerAccountID',
+    );
+    return this._userID;
+  }
 }
 
 function getYodleeProviderAccount(
