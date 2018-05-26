@@ -3,7 +3,7 @@
   "version": "1.6.0",
   "private": true,
   "scripts": {
-    "build": "babel src --out-dir build",
+    "build": "babel src --ignore __tests__,__mocks__ --out-dir build",
     "build-watch": "npm run build -- --watch",
     "postinstall": "npm run build",
     "start": "node ./bin/www",
