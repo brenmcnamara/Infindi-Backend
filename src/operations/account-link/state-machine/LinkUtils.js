@@ -78,7 +78,7 @@ function calculateAccountLinkStatus(
     return refreshInfo.additionalStatus === 'LOGIN_IN_PROGRESS'
       ? 'IN_PROGRESS / VERIFYING_CREDENTIALS'
       : refreshInfo.additionalStatus === 'USER_INPUT_REQUIRED'
-        ? linkMode === 'MANUAL'
+        ? linkMode === 'FOREGROUND_UPDATE'
           ? loginForm
             ? 'MFA / PENDING_USER_INPUT'
             : 'MFA / WAITING_FOR_LOGIN_FORM'

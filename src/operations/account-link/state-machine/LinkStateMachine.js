@@ -10,7 +10,7 @@ import type LinkState from './LinkState';
 import type { ID } from 'common/types/core';
 import type { LinkEvent } from './LinkEvent';
 
-export type LinkMode = 'AUTO' | 'MANUAL';
+export type LinkMode = 'FOREGROUND_UPDATE' | 'BACKGROUND_UPDATE';
 
 /**
  * This is a state machine for managing the state of linking for a particular
