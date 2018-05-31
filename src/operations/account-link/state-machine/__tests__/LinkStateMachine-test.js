@@ -252,7 +252,7 @@ beforeEach(() => {
 test('starts at initial link state by default', () => {
   const machine = new LinkStateMachine(
     TEST_ACCOUNT_LINK_ID,
-    'MANUAL',
+    'FOREGROUND_UPDATE',
     mockEngine,
   );
   expect(machine.getCurrentState()).toBeInstanceOf(InitializingState);
@@ -261,7 +261,7 @@ test('starts at initial link state by default', () => {
 test('will refresh the account after the state machine is initialized', () => {
   const machine = new LinkStateMachine(
     TEST_ACCOUNT_LINK_ID,
-    'MANUAL',
+    'FOREGROUND_UPDATE',
     mockEngine,
   );
   machine.initialize();
@@ -273,7 +273,7 @@ test('will refresh the account after the state machine is initialized', () => {
 test('goes to polling state after receiving first update event', () => {
   const machine = new LinkStateMachine(
     TEST_ACCOUNT_LINK_ID,
-    'MANUAL',
+    'FOREGROUND_UPDATE',
     mockEngine,
   );
   machine.initialize();
@@ -290,7 +290,7 @@ test('goes to polling state after receiving first update event', () => {
 test('stays in polling state after receiving a non-terminal provider update', () => {
   const machine = new LinkStateMachine(
     TEST_ACCOUNT_LINK_ID,
-    'MANUAL',
+    'FOREGROUND_UPDATE',
     mockEngine,
   );
   machine.initialize();
@@ -306,7 +306,7 @@ test('stays in polling state after receiving a non-terminal provider update', ()
 test('re-fetches provider accounts after each update', () => {
   const machine = new LinkStateMachine(
     TEST_ACCOUNT_LINK_ID,
-    'MANUAL',
+    'FOREGROUND_UPDATE',
     mockEngine,
   );
   machine.initialize();
@@ -322,7 +322,7 @@ test('re-fetches provider accounts after each update', () => {
 test('goes into error from initializing', () => {
   const machine = new LinkStateMachine(
     TEST_ACCOUNT_LINK_ID,
-    'MANUAL',
+    'FOREGROUND_UPDATE',
     mockEngine,
   );
   machine.initialize();
@@ -335,7 +335,7 @@ test('goes into error from initializing', () => {
 test('goes into error from polling state', () => {
   const machine = new LinkStateMachine(
     TEST_ACCOUNT_LINK_ID,
-    'MANUAL',
+    'FOREGROUND_UPDATE',
     mockEngine,
   );
   machine.initialize();
@@ -350,7 +350,7 @@ test('goes into error from polling state', () => {
 test('updates account link status when going into error state', () => {
   const machine = new LinkStateMachine(
     TEST_ACCOUNT_LINK_ID,
-    'MANUAL',
+    'FOREGROUND_UPDATE',
     mockEngine,
   );
   machine.initialize();
@@ -369,7 +369,7 @@ test('updates account link status when going into error state', () => {
 test('updates the account link status when receives pending login', () => {
   const machine = new LinkStateMachine(
     TEST_ACCOUNT_LINK_ID,
-    'MANUAL',
+    'FOREGROUND_UPDATE',
     mockEngine,
   );
   machine.initialize();
@@ -388,7 +388,7 @@ test('updates the account link status when receives pending login', () => {
 test('updates the account link status when receiving pending user input', () => {
   const machine = new LinkStateMachine(
     TEST_ACCOUNT_LINK_ID,
-    'MANUAL',
+    'FOREGROUND_UPDATE',
     mockEngine,
   );
   machine.initialize();
@@ -408,7 +408,7 @@ test('updates the account link status when receiving pending user input', () => 
 test('marks account link as waiting for login form when pending user input with no login form', () => {
   const machine = new LinkStateMachine(
     TEST_ACCOUNT_LINK_ID,
-    'MANUAL',
+    'FOREGROUND_UPDATE',
     mockEngine,
   );
   machine.initialize();
@@ -427,7 +427,7 @@ test('marks account link as waiting for login form when pending user input with 
 test('marks account link as downloading when no additional status is in refresh info', () => {
   const machine = new LinkStateMachine(
     TEST_ACCOUNT_LINK_ID,
-    'MANUAL',
+    'FOREGROUND_UPDATE',
     mockEngine,
   );
   machine.initialize();
@@ -446,7 +446,7 @@ test('marks account link as downloading when no additional status is in refresh 
 test('marks pending user input as failure if downloading in the background', () => {
   const machine = new LinkStateMachine(
     TEST_ACCOUNT_LINK_ID,
-    'AUTO',
+    'BACKGROUND_UPDATE',
     mockEngine,
   );
   machine.initialize();
@@ -465,7 +465,7 @@ test('marks pending user input as failure if downloading in the background', () 
 test('terminates linking on bad credentials', () => {
   const machine = new LinkStateMachine(
     TEST_ACCOUNT_LINK_ID,
-    'AUTO',
+    'BACKGROUND_UPDATE',
     mockEngine,
   );
   machine.initialize();
@@ -477,7 +477,7 @@ test('terminates linking on bad credentials', () => {
 test('goes from polling state to sync-with-source state on SUCCESS status', () => {
   const machine = new LinkStateMachine(
     TEST_ACCOUNT_LINK_ID,
-    'AUTO',
+    'BACKGROUND_UPDATE',
     mockEngine,
   );
   machine.initialize();
@@ -492,7 +492,7 @@ test('goes from polling state to sync-with-source state on SUCCESS status', () =
 test('does not perform any refetches when leaving the polling state early', () => {
   const machine = new LinkStateMachine(
     TEST_ACCOUNT_LINK_ID,
-    'AUTO',
+    'BACKGROUND_UPDATE',
     mockEngine,
   );
   machine.initialize();
@@ -510,7 +510,7 @@ test('does not perform any refetches when leaving the polling state early', () =
 test('updates account link status to IN_PROGRESS / DOWNLOADING_FROM_SOURCE when sync starts', () => {
   const machine = new LinkStateMachine(
     TEST_ACCOUNT_LINK_ID,
-    'AUTO',
+    'BACKGROUND_UPDATE',
     mockEngine,
   );
   machine.initialize();
