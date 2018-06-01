@@ -4,7 +4,7 @@ import type { AccountLink } from 'common/lib/models/AccountLink';
 
 export type LinkEvent =
   | LinkEvent$Error
-  | LinkEvent$LinkComplete
+  | LinkEvent$ForceTerminateLinking
   | LinkEvent$UpdateAccountLink;
 
 type LinkEvent$UpdateAccountLink = {
@@ -18,6 +18,6 @@ type LinkEvent$Error = {
   type: 'ERROR',
 };
 
-type LinkEvent$LinkComplete = {
-  type: 'LINK_COMPLETE',
+type LinkEvent$ForceTerminateLinking = {
+  type: 'FORCE_TERMINATE_LINKING',
 };

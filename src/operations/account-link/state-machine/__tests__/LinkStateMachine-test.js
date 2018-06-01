@@ -1,7 +1,7 @@
 import ErrorState from '../ErrorState';
 import InitializingState from '../InitializingState';
 import LinkStateMachine from '../LinkStateMachine';
-import LinkSuccessfullyTerminateState from '../LinkSuccessfullyTerminateState';
+import LinkTerminateWithoutUpdatingState from '../LinkTerminateWithoutUpdatingState';
 import LinkUpdateAndTerminateState from '../LinkUpdateAndTerminateState';
 import PollingState from '../PollingState';
 import SyncWithSourceState from '../SyncWithSourceState';
@@ -73,39 +73,68 @@ const LOGIN_FORM = {
   formType: 'login',
 };
 
-const ACCOUNT_LINK = {
-  createdAt: new Date(),
-  id: '0',
-  modelType: 'AccountLink',
-  sourceOfTruth: {
-    loginForm: LOGIN_FORM,
-    providerAccount: {
-      aggregationSource: 'USER',
-      createdDate: '2018-05-10',
-      id: 0,
-      isManual: false,
-      lastUpdated: '2018-05-15T04:23:10Z',
-      loginForm: null,
-      providerId: '643',
-      refreshInfo: {
-        additionalStatus: 'LOGIN_IN_PROGRESS',
-        lastRefreshed: '2018-05-15T04:23:10Z',
-        status: 'IN_PROGRESS',
+const ACCOUNT_LINKS = {
+  Linking: {
+    createdAt: new Date(),
+    id: '0',
+    modelType: 'AccountLink',
+    sourceOfTruth: {
+      loginForm: LOGIN_FORM,
+      providerAccount: {
+        aggregationSource: 'USER',
+        createdDate: '2018-05-10',
+        id: 0,
+        isManual: false,
+        lastUpdated: '2018-05-15T04:23:10Z',
+        loginForm: null,
+        providerId: '643',
+        refreshInfo: {
+          additionalStatus: 'LOGIN_FAILED',
+          lastRefreshed: '2018-05-15T04:23:10Z',
+          status: 'IN_PROGRESS',
+        },
       },
+      type: 'YODLEE',
     },
-    type: 'YODLEE',
+    status: 'IN_PROGRESS / DOWNLOADING_DATA',
+    type: 'MODEL',
+    updatedAt: new Date(),
   },
-  status: 'SUCCESS',
-  type: 'MODEL',
-  updatedAt: new Date(),
+
+  Success: {
+    createdAt: new Date(),
+    id: '0',
+    modelType: 'AccountLink',
+    sourceOfTruth: {
+      loginForm: LOGIN_FORM,
+      providerAccount: {
+        aggregationSource: 'USER',
+        createdDate: '2018-05-10',
+        id: 0,
+        isManual: false,
+        lastUpdated: '2018-05-15T04:23:10Z',
+        loginForm: null,
+        providerId: '643',
+        refreshInfo: {
+          additionalStatus: 'LOGIN_IN_PROGRESS',
+          lastRefreshed: '2018-05-15T04:23:10Z',
+          status: 'IN_PROGRESS',
+        },
+      },
+      type: 'YODLEE',
+    },
+    status: 'SUCCESS',
+    type: 'MODEL',
+    updatedAt: new Date(),
+  },
 };
 
 const MOCK_EVENT = {
   badCredentials: {
     accountLink: {
-      ...ACCOUNT_LINK,
+      ...ACCOUNT_LINKS.Success,
       sourceOfTruth: {
-        ...ACCOUNT_LINK.sourceOfTruth,
+        ...ACCOUNT_LINKS.Success.sourceOfTruth,
         providerAccount: {
           aggregationSource: 'USER',
           createdDate: '2018-05-10',
@@ -131,9 +160,9 @@ const MOCK_EVENT = {
 
   pendingDownloadNoAdditionalStatus: {
     accountLink: {
-      ...ACCOUNT_LINK,
+      ...ACCOUNT_LINKS.Success,
       sourceOfTruth: {
-        ...ACCOUNT_LINK.sourceOfTruth,
+        ...ACCOUNT_LINKS.Success.sourceOfTruth,
         providerAccount: {
           aggregationSource: 'USER',
           createdDate: '2018-05-10',
@@ -153,15 +182,20 @@ const MOCK_EVENT = {
   },
 
   pendingLogin: {
-    accountLink: ACCOUNT_LINK,
+    accountLink: ACCOUNT_LINKS.Success,
+    type: 'UPDATE_ACCOUNT_LINK',
+  },
+
+  pendingLoginAlreadyLinking: {
+    accountLink: ACCOUNT_LINKS.Linking,
     type: 'UPDATE_ACCOUNT_LINK',
   },
 
   pendingUserInput: {
     accountLink: {
-      ...ACCOUNT_LINK,
+      ...ACCOUNT_LINKS.Success,
       sourceOfTruth: {
-        ...ACCOUNT_LINK.sourceOfTruth,
+        ...ACCOUNT_LINKS.Success.sourceOfTruth,
         providerAccount: {
           aggregationSource: 'USER',
           createdDate: '2018-05-10',
@@ -183,9 +217,9 @@ const MOCK_EVENT = {
 
   pendingUserInputNoLoginForm: {
     accountLink: {
-      ...ACCOUNT_LINK,
+      ...ACCOUNT_LINKS.Success,
       sourceOfTruth: {
-        ...ACCOUNT_LINK.sourceOfTruth,
+        ...ACCOUNT_LINKS.Success.sourceOfTruth,
         loginForm: null,
         providerAccount: {
           aggregationSource: 'USER',
@@ -214,9 +248,9 @@ const MOCK_EVENT = {
 
   sourceReady: {
     accountLink: {
-      ...ACCOUNT_LINK,
+      ...ACCOUNT_LINKS.Success,
       sourceOfTruth: {
-        ...ACCOUNT_LINK.sourceOfTruth,
+        ...ACCOUNT_LINKS.Success.sourceOfTruth,
         providerAccount: {
           aggregationSource: 'USER',
           createdDate: '2018-05-10',
@@ -301,6 +335,20 @@ test('stays in polling state after receiving a non-terminal provider update', ()
   jest.runAllTimers();
 
   expect(machine.getCurrentState()).toBeInstanceOf(PollingState);
+});
+
+test('terminates link if starting linking with an account link that is already linking', () => {
+  const machine = new LinkStateMachine(
+    TEST_ACCOUNT_LINK_ID,
+    'FOREGROUND_UPDATE',
+    mockEngine,
+  );
+  machine.initialize();
+
+  mockEngine.sendMockEvent(MOCK_EVENT.pendingLoginAlreadyLinking);
+  expect(machine.getCurrentState()).toBeInstanceOf(
+    LinkTerminateWithoutUpdatingState,
+  );
 });
 
 test('re-fetches provider accounts after each update', () => {

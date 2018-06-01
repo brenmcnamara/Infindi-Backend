@@ -9,7 +9,7 @@ import type { LinkEvent } from './LinkEvent';
 /**
  * Successfully terminate the linking process.
  */
-export default class LinkSuccessfullyTerminateState extends LinkState {
+export default class LinkTerminateWithoutUpdatingState extends LinkState {
   calculateNextState(event: LinkEvent): LinkState {
     return this;
   }

@@ -88,8 +88,8 @@ export default class LinkEngine {
     });
   }
 
-  successfullyTerminateLink() {
-    this._sendEvent({ type: 'LINK_COMPLETE' });
+  forceTerminateTerminateLinking() {
+    this._sendEvent({ type: 'FORCE_TERMINATE_LINKING' });
   }
 
   onLinkEvent(cb: LinkEventCallback): EventEmitter {

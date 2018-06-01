@@ -1,7 +1,7 @@
 /* @flow */
 
 import ErrorState from './ErrorState';
-import LinkSuccessfullyTerminateState from './LinkSuccessfullyTerminateState';
+import LinkTerminateWithoutUpdatingState from './LinkTerminateWithoutUpdatingState';
 import LinkUpdateAndTerminateState from './LinkUpdateAndTerminateState';
 import PollingState from './PollingState';
 import SyncWithSourceState from './SyncWithSourceState';
@@ -24,8 +24,8 @@ function calculateStateForSuccessOrFailureEvent(
     case 'ERROR':
       return new ErrorState(event.errorMessage);
 
-    case 'LINK_COMPLETE':
-      return new LinkSuccessfullyTerminateState();
+    case 'FORCE_TERMINATE_LINKING':
+      return new LinkTerminateWithoutUpdatingState();
   }
   return null;
 }
