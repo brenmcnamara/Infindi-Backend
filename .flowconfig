@@ -1,6 +1,6 @@
 [ignore]
 dist/
-.*/node_modules/common-backend/src/.*
+.*/node_modules/immutable/.*
 ; my node modules
 .*/node_modules/common/src.*
 ; random node modules

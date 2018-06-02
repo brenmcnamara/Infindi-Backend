@@ -53,7 +53,7 @@ async function genYodleeRefreshAccountLinkImpl(
   if (
     accountLink.status === 'FAILURE / USER_INPUT_REQUEST_IN_BACKGROUND' ||
     isInMFA(accountLink) ||
-    (isLinking(accountLink) && !force)
+    (false && isLinking(accountLink) && !force)
   ) {
     INFO(
       'ACCOUNT-LINK',

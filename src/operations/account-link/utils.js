@@ -1,17 +1,12 @@
 /* @flow */
 
 import * as FirebaseAdmin from 'firebase-admin';
+import Account from 'common/lib/models/Account';
 import Logger from './logger';
 
 import invariant from 'invariant';
 import nullthrows from 'nullthrows';
 
-import {
-  createAccountYodlee,
-  getAccountCollection,
-  genFetchAccountsForAccountLink,
-  updateAccountYodlee,
-} from 'common/lib/models/Account';
 import {
   createTransactionYodlee,
   genCreateTransaction,
@@ -34,7 +29,6 @@ import {
   updateAccountLinkYodlee,
 } from 'common/lib/models/AccountLink';
 
-import type { Account } from 'common/lib/models/Account';
 import type { AccountLink } from 'common/lib/models/AccountLink';
 import type { ID } from 'common/types/core';
 import type { ProviderAccount as YodleeProviderAccount } from 'common/types/yodlee-v1.0';
@@ -54,6 +48,7 @@ export function handleLinkingError(
       'ACCOUNT-LINK',
       `Error while linking account: [${accountLinkID}] ${errorMessage}`,
     );
+    console.log(error);
     genFetchAccountLink(accountLinkID)
       .then(accountLink => {
         invariant(accountLink, 'Failed to fetch account link in error handler');
@@ -153,10 +148,12 @@ export async function genYodleeUpdateLink(
 
   // Update existing accounts, create new accounts, delete old accounts.
   const yodleeAccountStatusMap = {};
-  const prevAccounts = await genFetchAccountsForAccountLink(accountLink.id);
+  const prevAccounts = await Account.Fetcher.genCollectionFromAccountLink(
+    accountLink.id,
+  );
 
   // Figure out which accounts need to be updated or deleted.
-  for (const prevAccount of prevAccounts) {
+  prevAccounts.forEach(prevAccount => {
     const stillExists = yodleeAccounts.some(yAccount =>
       doesAccountMatchYodleeAccountID(prevAccount, String(yAccount.id)),
     );
@@ -164,7 +161,7 @@ export async function genYodleeUpdateLink(
     yodleeAccountStatusMap[prevYodleeAccountID] = stillExists
       ? 'UPDATE'
       : 'DELETE';
-  }
+  });
 
   // Any accounts that are not marked as updated or deleted should be created.
   for (const yodleeAccount of yodleeAccounts) {
@@ -197,9 +194,9 @@ export async function genYodleeUpdateLink(
         const yodleeAccount = nullthrows(
           yodleeAccounts.find(ya => String(ya.id) === yodleeAccountID),
         );
-        const ref = getAccountCollection().doc(account.id);
-        const newAccount = updateAccountYodlee(account, yodleeAccount);
-        batch.update(ref, newAccount);
+        const ref = Account.FirebaseCollectionUNSAFE.doc(account.id);
+        const newAccount = account.setYodlee(yodleeAccount);
+        batch.update(ref, newAccount.toRaw());
 
         createdOrUpdatedAccounts.push(newAccount);
         ++updateCount;
@@ -212,7 +209,7 @@ export async function genYodleeUpdateLink(
             doesAccountMatchYodleeAccountID(a, yodleeAccountID),
           ),
         );
-        const ref = getAccountCollection().doc(account.id);
+        const ref = Account.FirebaseCollectionUNSAFE.doc(account.id);
         batch.delete(ref);
 
         deletedAccounts.push(account);
@@ -224,13 +221,13 @@ export async function genYodleeUpdateLink(
         const yodleeAccount = nullthrows(
           yodleeAccounts.find(ya => String(ya.id) === yodleeAccountID),
         );
-        const newAccount = createAccountYodlee(
+        const newAccount = Account.createYodlee(
           yodleeAccount,
           accountLink.id,
           userID,
         );
-        const ref = getAccountCollection().doc(newAccount.id);
-        batch.set(ref, newAccount);
+        const ref = Account.FirebaseCollectionUNSAFE.doc(newAccount.id);
+        batch.set(ref, newAccount.toRaw());
 
         createdOrUpdatedAccounts.push(newAccount);
         ++createCount;
@@ -270,7 +267,9 @@ async function genYodleeDeleteTransactions(
     `Deleting transactions for account link ${accountLink.id}`,
   );
   const transactionsList: Array<Array<Transaction>> = await Promise.all(
-    accounts.map(account => genFetchTransactionsForAccount(account, Infinity)),
+    accounts.map(account =>
+      genFetchTransactionsForAccount(account.toRaw(), Infinity),
+    ),
   );
 
   const batches = [];
@@ -318,7 +317,7 @@ async function genYodleeCreateTransactions(
   // Step 1: Get the most recent transaction for each account. We only want to
   // fetch accounts after the latest transaction.
   const transactionsList: Array<Array<Transaction>> = await Promise.all(
-    accounts.map(account => genFetchTransactionsForAccount(account, 1)),
+    accounts.map(account => genFetchTransactionsForAccount(account.toRaw(), 1)),
   );
 
   const accountToLastTransactionMap = {};
