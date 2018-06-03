@@ -2,6 +2,7 @@
 
 import * as FirebaseAdmin from 'firebase-admin';
 import Account from 'common/lib/models/Account';
+import AccountFetcher from 'common/lib/models/AccountFetcher';
 import Logger from './logger';
 
 import invariant from 'invariant';
@@ -48,7 +49,6 @@ export function handleLinkingError(
       'ACCOUNT-LINK',
       `Error while linking account: [${accountLinkID}] ${errorMessage}`,
     );
-    console.log(error);
     genFetchAccountLink(accountLinkID)
       .then(accountLink => {
         invariant(accountLink, 'Failed to fetch account link in error handler');
@@ -148,7 +148,7 @@ export async function genYodleeUpdateLink(
 
   // Update existing accounts, create new accounts, delete old accounts.
   const yodleeAccountStatusMap = {};
-  const prevAccounts = await Account.Fetcher.genCollectionFromAccountLink(
+  const prevAccounts = await AccountFetcher.genCollectionFromAccountLink(
     accountLink.id,
   );
 

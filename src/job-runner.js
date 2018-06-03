@@ -1,6 +1,7 @@
 /* @flow */
 
 import FirebaseAdmin from 'firebase-admin';
+import UserInfo from 'common/lib/models/UserInfo';
 
 import invariant from 'invariant';
 import uuid from 'uuid/v4';
@@ -9,7 +10,6 @@ import { ERROR, INFO } from './log-utils';
 import { genYodleeRefreshAccountLinksForUser } from './operations/account-link/refresh';
 
 import type { ModelStub } from 'common/types/core';
-import type { UserInfo } from 'common/lib/models/UserInfo';
 
 const MILLIS_PER_DAY = 1000 * 60 * 60 * 24;
 
@@ -26,8 +26,6 @@ export function initialize(): void {
   jobs.forEach(job => {
     scheduleJob(job);
   });
-
-  jobs[0].genRun();
 }
 
 const jobs: Array<Job> = [
@@ -138,10 +136,10 @@ function scheduleJob(job: Job): void {
 }
 
 async function genFetchAllUsers(): Promise<Array<UserInfo>> {
-  const snapshot = await FirebaseAdmin.firestore()
-    .collection('UserInfo')
-    .get();
-  return snapshot.docs.filter(doc => doc.exists).map(doc => doc.data());
+  const snapshot = await UserInfo.FirebaseCollectionUNSAFE.get();
+  return snapshot.docs
+    .filter(doc => doc.exists)
+    .map(doc => UserInfo.fromRaw(doc.data()));
 }
 
 function runAtPTCTime(hour: number, minute: number) {

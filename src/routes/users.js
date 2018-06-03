@@ -1,12 +1,13 @@
 /* @flow */
 
 import FirebaseAdmin from 'firebase-admin';
+import UserInfo from 'common/lib/models/UserInfo';
+import UserInfoMutator from 'common/lib/models/UserInfoMutator';
 
 import express from 'express';
 
 import { createPointer } from 'common/lib/db-utils';
 import { ERROR } from '../log-utils';
-import { genSetUserInfo } from 'common/lib/models/UserInfo';
 import { handleError } from '../route-utils';
 
 import type { RouteHandler } from '../middleware';
@@ -74,7 +75,7 @@ function performCreateUser(): RouteHandler {
     };
 
     try {
-      await genSetUserInfo(userInfo);
+      await UserInfoMutator.genSet(UserInfo.fromRaw(userInfo));
     } catch (error) {
       ERROR('CREATE-USER', 'Created user but failed to create user info');
       throw error;

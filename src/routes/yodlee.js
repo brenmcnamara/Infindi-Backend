@@ -1,5 +1,7 @@
 /* @flow */
 
+import UserInfoFetcher from 'common/lib/models/UserInfoFetcher';
+
 import express from 'express';
 import invariant from 'invariant';
 
@@ -13,7 +15,6 @@ import {
   updateAccountLinkStatus,
 } from 'common/lib/models/AccountLink';
 import { genFetchProvider, getProviderName } from 'common/lib/models/Provider';
-import { genFetchUserInfo } from 'common/lib/models/UserInfo';
 import { genProviderAccountMFALogin } from '../yodlee/yodlee-manager';
 import {
   genTestYodleePerformLink,
@@ -120,8 +121,7 @@ function validateProviderSearch(): RouteHandler {
 function performProviderSearch(): RouteHandler {
   return handleError(async (req, res) => {
     const { limit, page, query } = req.query;
-
-    const userInfo = await genFetchUserInfo(req.decodedIDToken.uid);
+    const userInfo = await UserInfoFetcher.gen(req.decodedIDToken.uid);
     if (!userInfo) {
       const errorCode = 'infindi/server-error';
       const errorMessage = `Logged in with user with no user info: ${
