@@ -10,6 +10,10 @@ Install the following:
 #### Do the Following
 1. Clone the repo, then `cd path/to/repo`
 2. You must acquire a `.env` file from the owner
+  - You can find that file [here](https://drive.google.com/drive/u/0/folders/1yOl9S1kT19nB8OHYvvI24axkIpSIZRbG) if you have access permission
+  - Download `env.txt`
+  - Rename it to `.env`
+  - Place it in the root of the repo
 3. `yarn`
 4. `npm run build`
 5. `npm start`
