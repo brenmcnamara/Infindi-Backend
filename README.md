@@ -1,5 +1,20 @@
 # Infindi-Backend
 
+## Build and Running Locally
+
+#### Pre-Requisites
+Install the following:
+- [node js](https://nodejs.org/en/download/)
+- [yarn](https://flow.org/en/docs/install/)
+
+#### Do the Following
+1. Clone the repo, then `cd path/to/repo`
+2. You must acquire a `.env` file from the owner
+3. `yarn`
+4. `npm run build`
+5. `npm start`
+
+
 ## Deploying Web Service
 
 **NOTE:** If your name is not Brendan McNamara, you should probably not be doing this.
