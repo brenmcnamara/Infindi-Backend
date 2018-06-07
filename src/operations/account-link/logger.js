@@ -7,8 +7,7 @@ import uuid from 'uuid/v4';
 import { createPointer } from 'common/lib/db-utils';
 import { ERROR } from '../../log-utils';
 
-import type {
-  AccountLink,
+import type AccountLink, {
   AccountLinkStatus,
 } from 'common/lib/models/AccountLink';
 import type { ID, ModelStub, Pointer } from 'common/types/core';

@@ -4,7 +4,8 @@
 
 require('./cli-setup');
 
-const AccountLink = require('common/lib/models/AccountLink');
+const AccountLinkFetcher = require('common/lib/models/AccountLinkFetcher')
+  .default;
 const RefreshOperations = require('../build/operations/account-link/refresh');
 
 const chalk = require('chalk');
@@ -22,7 +23,7 @@ if (!accountLinkID) {
 console.log(chalk.blue('Initializing yodlee client...'));
 
 // Find the provider account in the firestore db.
-AccountLink.genFetchAccountLink(accountLinkID)
+AccountLinkFetcher.gen(accountLinkID)
   .then(accountLink => {
     invariant(accountLink, 'No account link found with id: %s', accountLinkID);
     return RefreshOperations.genYodleeRefreshAccountLink(accountLink, true);

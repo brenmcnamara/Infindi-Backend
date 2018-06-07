@@ -3,18 +3,17 @@
 import * as FirebaseAdmin from 'firebase-admin';
 import Account from 'common/lib/models/Account';
 import AccountFetcher from 'common/lib/models/AccountFetcher';
+import AccountLink from 'common/lib/models/AccountLink';
+import AccountLinkFetcher from 'common/lib/models/AccountLinkFetcher';
+import AccountLinkMutator from 'common/lib/models/AccountLinkMutator';
 import Logger from './logger';
+import Transaction from 'common/lib/models/Transaction';
+import TransactionFetcher from 'common/lib/models/TransactionFetcher';
+import TransactionMutator from 'common/lib/models/TransactionMutator';
 
 import invariant from 'invariant';
 import nullthrows from 'nullthrows';
 
-import {
-  createTransactionYodlee,
-  genCreateTransaction,
-  genDoesYodleeTransactionExist,
-  genFetchTransactionsForAccount,
-  getTransactionCollection,
-} from 'common/lib/models/Transaction';
 import { ERROR, INFO } from '../../log-utils';
 import {
   genAccountsForProviderAccount,
@@ -22,18 +21,10 @@ import {
   genTransactions,
   genTransactionsFromDate,
 } from '../../yodlee/yodlee-manager';
-import {
-  genCreateAccountLink,
-  genFetchAccountLink,
-  genFetchAccountLinksForUser,
-  updateAccountLinkStatus,
-  updateAccountLinkYodlee,
-} from 'common/lib/models/AccountLink';
 
-import type { AccountLink } from 'common/lib/models/AccountLink';
 import type { ID } from 'common/types/core';
 import type { ProviderAccount as YodleeProviderAccount } from 'common/types/yodlee-v1.0';
-import type { Transaction } from 'common/lib/models/Transaction';
+import type { TransactionOrderedCollection } from 'common/lib/models/Transaction';
 
 export function handleLinkingError(
   accountLinkID: ID,
@@ -49,15 +40,14 @@ export function handleLinkingError(
       'ACCOUNT-LINK',
       `Error while linking account: [${accountLinkID}] ${errorMessage}`,
     );
-    genFetchAccountLink(accountLinkID)
+    AccountLinkFetcher.gen(accountLinkID)
       .then(accountLink => {
         invariant(accountLink, 'Failed to fetch account link in error handler');
-        const newAccountLink = updateAccountLinkStatus(
-          accountLink,
+        const newAccountLink = accountLink.setStatus(
           'FAILURE / INTERNAL_SERVICE_FAILURE',
         );
         Logger.genStop(newAccountLink);
-        return genCreateAccountLink(newAccountLink);
+        return AccountLinkMutator.genSet(newAccountLink);
       })
       .catch(error => {
         const errorMessage =
@@ -88,7 +78,7 @@ export async function genUpdateLink(accountLink: AccountLink): Promise<void> {
 export async function genUpdateLinksForUser(userID: ID): Promise<void> {
   INFO('ACCOUNT-LINK', `Updating all account links for user ${userID}`);
 
-  const accountLinks = await genFetchAccountLinksForUser(userID);
+  const accountLinks = await AccountLinkFetcher.genCollectionForUser(userID);
   await Promise.all(
     accountLinks.map(accountLink => genUpdateLink(accountLink)),
   );
@@ -100,7 +90,7 @@ export async function genYodleeLinkPass(
 ): Promise<AccountLink> {
   INFO('ACCOUNT-LINK', 'Attempting provider link');
 
-  const accountLink = await genFetchAccountLink(accountLinkID);
+  const accountLink = await AccountLinkFetcher.gen(accountLinkID);
   invariant(
     accountLink,
     'No refresh info found while attempting provider link',
@@ -124,11 +114,8 @@ export async function genYodleeLinkPass(
   );
 
   INFO('ACCOUNT-LINK', 'Updating account link');
-  const newAccountLink = updateAccountLinkYodlee(
-    accountLink,
-    yodleeProviderAccount,
-  );
-  await genCreateAccountLink(newAccountLink);
+  const newAccountLink = accountLink.setYodlee(yodleeProviderAccount);
+  await AccountLinkMutator.genSet(newAccountLink);
   // NOTE: If we are pending user input, then assume that the client will take
   // care of this asyncronously. This pass fails until the user input is
   // provided successfully.
@@ -266,9 +253,15 @@ async function genYodleeDeleteTransactions(
     'ACCOUNT-LINK',
     `Deleting transactions for account link ${accountLink.id}`,
   );
-  const transactionsList: Array<Array<Transaction>> = await Promise.all(
+  // eslint-disable-next-line flowtype/generic-spacing
+  const transactionsList: Array<
+    TransactionOrderedCollection,
+  > = await Promise.all(
     accounts.map(account =>
-      genFetchTransactionsForAccount(account.toRaw(), Infinity),
+      TransactionFetcher.genOrderedCollectionForAccount(
+        account.id,
+        Infinity /* limit */,
+      ),
     ),
   );
 
@@ -276,15 +269,15 @@ async function genYodleeDeleteTransactions(
   let transactionCount = 0;
 
   for (const transactions of transactionsList) {
-    for (const transaction of transactions) {
+    transactions.forEach(transaction => {
       // Only aloud 500 batched operations at a time.
       if (transactionCount % 500 === 0) {
         batches.push(FirebaseAdmin.firestore().batch());
       }
-      const ref = getTransactionCollection().doc(transaction.id);
+      const ref = Transaction.FirebaseCollectionUNSAFE.doc(transaction.id);
       batches[batches.length - 1].delete(ref);
       ++transactionCount;
-    }
+    });
   }
 
   INFO(
@@ -316,13 +309,22 @@ async function genYodleeCreateTransactions(
 
   // Step 1: Get the most recent transaction for each account. We only want to
   // fetch accounts after the latest transaction.
-  const transactionsList: Array<Array<Transaction>> = await Promise.all(
-    accounts.map(account => genFetchTransactionsForAccount(account.toRaw(), 1)),
+
+  // eslint-disable-next-line flowtype/generic-spacing
+  const transactionsList: Array<
+    TransactionOrderedCollection,
+  > = await Promise.all(
+    accounts.map(account =>
+      TransactionFetcher.genOrderedCollectionForAccount(
+        account.id,
+        1, // limit
+      ),
+    ),
   );
 
   const accountToLastTransactionMap = {};
   transactionsList.forEach((transactions, index) => {
-    const transaction = transactions[0] || null;
+    const transaction = transactions.first() || null;
     accountToLastTransactionMap[accounts[index].id] = transaction;
   });
 
@@ -355,16 +357,19 @@ async function genYodleeCreateTransactions(
     // NOTE: Because transaction dates are not perfectly accurate (rounded to
     // the nearest day), this will result in some overlap on the days, so we
     // need to make sure that we are excluding any transactions that have
-    // already been added.
+
     const doesTransactionExist = await Promise.all(
-      newYodleeTransactions.map(yt => genDoesYodleeTransactionExist(yt)),
+      newYodleeTransactions.map(yodleeTransaction =>
+        TransactionFetcher.genForYodleeTransaction(yodleeTransaction),
+      ),
     );
+
     newYodleeTransactions = newYodleeTransactions.filter(
       (yt, i) => !doesTransactionExist[i],
     );
 
     const newTransactions = newYodleeTransactions.map(yodleeTransaction =>
-      createTransactionYodlee(yodleeTransaction, userID, accountID),
+      Transaction.createYodlee(yodleeTransaction, userID, accountID),
     );
     allNewTransactions.push.apply(allNewTransactions, newTransactions);
   }
@@ -375,7 +380,7 @@ async function genYodleeCreateTransactions(
       accountLink.id
     }`,
   );
-  await Promise.all(allNewTransactions.map(t => genCreateTransaction(t)));
+  await Promise.all(allNewTransactions.map(t => TransactionMutator.genSet(t)));
 }
 
 function doesAccountMatchYodleeAccountID(

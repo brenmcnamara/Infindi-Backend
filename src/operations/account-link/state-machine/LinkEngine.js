@@ -1,21 +1,17 @@
 /* @flow */
 
+import AccountLinkFetcher from 'common/lib/models/AccountLinkFetcher';
+import AccountLinkMutator from 'common/lib/models/AccountLinkMutator';
+
 import invariant from 'invariant';
 
 import { ERROR } from '../../../log-utils';
-import {
-  genFetchAccountLink,
-  genUpdateAccountLink,
-  updateAccountLinkStatus,
-  updateAccountLinkYodlee,
-} from 'common/lib/models/AccountLink';
 import {
   genProviderAccount,
   genProviderAccountRefresh,
 } from '../../../yodlee/yodlee-manager';
 
-import type {
-  AccountLink,
+import type AccountLink, {
   AccountLinkStatus,
 } from 'common/lib/models/AccountLink';
 import type { ID } from 'common/types/core';
@@ -70,21 +66,21 @@ export default class LinkEngine {
       }
       // TODO: Should we send this to firebase at this point? Need to get
       // the updates account link state from the link state.
-      accountLink = updateAccountLinkYodlee(accountLink, providerAccount);
+      accountLink = accountLink.setYodlee(providerAccount);
       this._sendEvent({ accountLink, type: 'UPDATE_ACCOUNT_LINK' });
     });
   }
 
   async genSetAccountLink(accountLink: AccountLink): Promise<void> {
     await this._errorHandlerAsync(async () => {
-      await genUpdateAccountLink(accountLink);
+      await AccountLinkMutator.genSet(accountLink);
     });
   }
 
   async genSetAccountLinkStatus(status: AccountLinkStatus): Promise<void> {
     await this._errorHandlerAsync(async () => {
       const accountLink = await this._genFetchAccountLink();
-      await genUpdateAccountLink(updateAccountLinkStatus(accountLink, status));
+      await AccountLinkMutator.genSet(accountLink.setStatus(status));
     });
   }
 
@@ -107,7 +103,7 @@ export default class LinkEngine {
 
   async _genFetchAccountLink(): Promise<AccountLink> {
     const accountLinkID = this._accountLinkID;
-    const accountLink = await genFetchAccountLink(this._accountLinkID);
+    const accountLink = await AccountLinkFetcher.gen(this._accountLinkID);
     if (!accountLink) {
       const errorCode = 'infindi/resource-not-found';
       const errorMessage = `Could not find account link: ${accountLinkID}`;
@@ -135,10 +131,7 @@ export default class LinkEngine {
     if (!this._userID) {
       await this._genFetchAccountLink();
     }
-    invariant(
-      this._userID,
-      'Expecting _genFetchAccountLink to cache userID',
-    );
+    invariant(this._userID, 'Expecting _genFetchAccountLink to cache userID');
     return this._userID;
   }
 

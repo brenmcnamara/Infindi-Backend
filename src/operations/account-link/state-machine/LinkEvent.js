@@ -1,6 +1,6 @@
 /* @flow */
 
-import type { AccountLink } from 'common/lib/models/AccountLink';
+import type AccountLink from 'common/lib/models/AccountLink';
 
 export type LinkEvent =
   | LinkEvent$Error

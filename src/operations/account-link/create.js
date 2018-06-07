@@ -1,29 +1,20 @@
 /* @flow */
 
+import AccountLink from 'common/lib/models/AccountLink';
+import AccountLinkFetcher from 'common/lib/models/AccountLinkFetcher';
+import AccountLinkMutator from 'common/lib/models/AccountLinkMutator';
 import Logger from './logger';
 
 import invariant from 'invariant';
 
 import {
-  createAccountLinkYodlee,
-  genCreateAccountLink,
-  genFetchAccountLink,
-  genFetchAccountLinkForProvider,
-  isInMFA,
-  isLinking,
-  isLinkFailure,
-  isLinkSuccess,
-  updateAccountLinkStatus,
-  updateAccountLinkYodlee,
-} from 'common/lib/models/AccountLink';
-import { genProviderAccount, genProviderLogin } from '../../yodlee/yodlee-manager';
+  genProviderAccount,
+  genProviderLogin,
+} from '../../yodlee/yodlee-manager';
 import { genUpdateLink, genYodleeLinkPass, handleLinkingError } from './utils';
 import { INFO } from '../../log-utils';
 
-import type {
-  AccountLink,
-  AccountLinkStatus,
-} from 'common/lib/models/AccountLink';
+import type { AccountLinkStatus } from 'common/lib/models/AccountLink';
 import type { ID } from 'common/types/core';
 import type {
   LoginForm as YodleeLoginForm,
@@ -54,11 +45,11 @@ export async function genYodleeProviderLogin(
     'ACCOUNT-LINK',
     `Checking if account link for provider ${providerID} already exists`,
   );
-  const existingAccountLink = await genFetchAccountLinkForProvider(
+  const existingAccountLink = await AccountLinkFetcher.genForUserAndProvider(
     userID,
     providerID,
   );
-  if (existingAccountLink && isLinking(existingAccountLink)) {
+  if (existingAccountLink && existingAccountLink.isLinking) {
     // TODO: This should not have to know about requests.
     throw {
       errorCode: 'infindi/bad-request',
@@ -73,8 +64,8 @@ export async function genYodleeProviderLogin(
       : `No account link found for provider ${providerID}`,
   );
   const accountLink: AccountLink = existingAccountLink
-    ? updateAccountLinkYodlee(existingAccountLink, yodleeProviderAccount)
-    : createAccountLinkYodlee(
+    ? existingAccountLink.setYodlee(yodleeProviderAccount)
+    : AccountLink.createYodlee(
         yodleeProviderAccount,
         userID,
         providerID,
@@ -82,7 +73,7 @@ export async function genYodleeProviderLogin(
       );
 
   INFO('ACCOUNT-LINK', 'Creating / Updating refresh info');
-  await genCreateAccountLink(accountLink);
+  await AccountLinkMutator.genSet(accountLink);
   return accountLink;
 }
 
@@ -94,7 +85,7 @@ export async function genYodleePerformLink(accountLinkID: ID): Promise<void> {
 
 async function genYodleePerformLinkImpl(accountLinkID: ID): Promise<void> {
   INFO('ACCOUNT-LINK', `Performing link with account link ${accountLinkID}`);
-  let accountLink = await genFetchAccountLink(accountLinkID);
+  let accountLink = await AccountLinkFetcher.gen(accountLinkID);
 
   if (!accountLink) {
     // TODO: Move these types of errors to the request logic. This should be
@@ -113,7 +104,7 @@ async function genYodleePerformLinkImpl(accountLinkID: ID): Promise<void> {
   );
   let newAccountLink = await genYodleeLinkPass(userID, accountLinkID);
   const sleepTime = 4000;
-  while (isLinking(newAccountLink) || isInMFA(newAccountLink)) {
+  while (newAccountLink.isLinking || newAccountLink.isInMFA) {
     await sleepForMillis(sleepTime);
     newAccountLink = await genYodleeLinkPass(userID, accountLinkID);
     Logger.genUpdate(newAccountLink);
@@ -125,11 +116,11 @@ async function genYodleePerformLinkImpl(accountLinkID: ID): Promise<void> {
     'Expecting account link to exist after linking is complete',
   );
   invariant(
-    !isLinking(newAccountLink),
+    !newAccountLink.isLinking,
     'Expecting account link to be finished linking',
   );
 
-  if (isLinkFailure(newAccountLink)) {
+  if (newAccountLink.isLinkFailure) {
     INFO(
       'ACCOUNT-LINK',
       `Yodlee linking failed. Check account link for more info: ${
@@ -140,7 +131,7 @@ async function genYodleePerformLinkImpl(accountLinkID: ID): Promise<void> {
   }
 
   invariant(
-    isLinkSuccess(newAccountLink),
+    newAccountLink.isLinkSuccess,
     'Refresh info is in unknown state. Please check refresh for more info: %s',
     accountLink.id,
   );
@@ -161,21 +152,21 @@ export async function genTestYodleeProviderLogin(
   const providerID = String(yodleeProvider.id);
   const providerName = yodleeProvider.name;
 
-  let accountLink = await genFetchAccountLinkForProvider(userID, providerID);
+  let accountLink = await AccountLinkFetcher.genForUserAndProvider(
+    userID,
+    providerID,
+  );
 
   accountLink = accountLink
-    ? updateAccountLinkStatus(
-        accountLink,
-        'IN_PROGRESS / VERIFYING_CREDENTIALS',
-      )
-    : createAccountLinkYodlee(
+    ? accountLink.setStatus('IN_PROGRESS / VERIFYING_CREDENTIALS')
+    : AccountLink.createYodlee(
         createTestYodleeProviderAccount(yodleeProvider.id),
         userID,
         providerID,
         providerName,
       );
 
-  await genCreateAccountLink(accountLink);
+  await AccountLinkMutator.genSet(accountLink);
   return accountLink;
 }
 
@@ -183,7 +174,7 @@ export async function genTestYodleeSubmitMFALoginForm(
   accountLinkID: ID,
   loginForm: YodleeLoginForm,
 ): Promise<void> {
-  let accountLink = await genFetchAccountLink(accountLinkID);
+  let accountLink = await AccountLinkFetcher.gen(accountLinkID);
   const isCorrect =
     loginForm.row[0].field[0].value === '4' ||
     loginForm.row[0].field[0].value === '8';
@@ -204,11 +195,8 @@ export async function genTestYodleeSubmitMFALoginForm(
   await sleepForMillis(4000);
 
   if (!isCorrect) {
-    accountLink = updateAccountLinkStatus(
-      accountLink,
-      'FAILURE / BAD_CREDENTIALS',
-    );
-    await genCreateAccountLink(accountLink);
+    accountLink = accountLink.setStatus('FAILURE / BAD_CREDENTIALS');
+    await AccountLinkMutator.genSet(accountLink);
     return;
   }
 
@@ -222,8 +210,8 @@ export async function genTestYodleeSubmitMFALoginForm(
       statusMessage: 'blah',
     },
   };
-  accountLink = updateAccountLinkYodlee(accountLink, yodleeProviderAccount);
-  await genCreateAccountLink(accountLink);
+  accountLink = accountLink.setYodlee(yodleeProviderAccount);
+  await AccountLinkMutator.genSet(accountLink);
 }
 
 export async function genTestYodleePerformLink(
@@ -231,7 +219,7 @@ export async function genTestYodleePerformLink(
   desiredStatus: AccountLinkStatus,
   loginFormCount: '0' | '1' | '2',
 ): Promise<void> {
-  let accountLink = await genFetchAccountLink(accountLinkID);
+  let accountLink = await AccountLinkFetcher.gen(accountLinkID);
 
   if (!accountLink) {
     const errorCode = 'infindi/server-error';
@@ -244,11 +232,8 @@ export async function genTestYodleePerformLink(
 
   // STEP 2: FAILURE / BAD_CREDENTIALS
   if (desiredStatus === 'FAILURE / BAD_CREDENTIALS') {
-    accountLink = updateAccountLinkStatus(
-      accountLink,
-      'FAILURE / BAD_CREDENTIALS',
-    );
-    await genCreateAccountLink(accountLink);
+    accountLink = accountLink.setStatus('FAILURE / BAD_CREDENTIALS');
+    await AccountLinkMutator.genSet(accountLink);
     return;
   }
 
@@ -269,8 +254,8 @@ export async function genTestYodleePerformLink(
         additionalStatus: 'USER_INPUT_REQUIRED',
       },
     };
-    accountLink = updateAccountLinkYodlee(accountLink, providerAccount);
-    await genCreateAccountLink(accountLink);
+    accountLink = accountLink.setYodlee(providerAccount);
+    await AccountLinkMutator.genSet(accountLink);
 
     // Loop until we are no longer in MFA login, or if there is no feedback
     // for a long enough time.
@@ -282,7 +267,7 @@ export async function genTestYodleePerformLink(
     ) {
       await sleepForMillis(3000);
 
-      accountLink = await genFetchAccountLink(accountLinkID);
+      accountLink = await AccountLinkFetcher.gen(accountLinkID);
       invariant(
         accountLink,
         'Expecting account link to exist: %s',
@@ -293,11 +278,8 @@ export async function genTestYodleePerformLink(
 
     if (accountLink.status === 'MFA / PENDING_USER_INPUT') {
       // Never completed MFA. Force fail.
-      accountLink = updateAccountLinkStatus(
-        accountLink,
-        'FAILURE / MFA_FAILURE',
-      );
-      await genCreateAccountLink(accountLink);
+      accountLink = accountLink.setStatus('FAILURE / MFA_FAILURE');
+      await AccountLinkMutator.genSet(accountLink);
       return;
     }
 
@@ -311,8 +293,8 @@ export async function genTestYodleePerformLink(
           additionalStatus: 'USER_INPUT_REQUIRED',
         },
       };
-      accountLink = updateAccountLinkYodlee(accountLink, providerAccount);
-      await genCreateAccountLink(accountLink);
+      accountLink = accountLink.setYodlee(providerAccount);
+      await AccountLinkMutator.genSet(accountLink);
 
       remainingLoops = 5;
       while (
@@ -321,7 +303,7 @@ export async function genTestYodleePerformLink(
       ) {
         await sleepForMillis(3000);
 
-        accountLink = await genFetchAccountLink(accountLinkID);
+        accountLink = await AccountLinkFetcher.gen(accountLinkID);
         invariant(
           accountLink,
           'Expecting account link to exist: %s',
@@ -335,17 +317,14 @@ export async function genTestYodleePerformLink(
   // STEP 4: IN_PROGRESS / DOWNLOADING_DATA
   if (loginFormCount === '0') {
     // The MFA login will enter this state for us.
-    accountLink = updateAccountLinkStatus(
-      accountLink,
-      'IN_PROGRESS / DOWNLOADING_DATA',
-    );
-    await genCreateAccountLink(accountLink);
+    accountLink = accountLink.setStatus('IN_PROGRESS / DOWNLOADING_DATA');
+    await AccountLinkMutator.genSet(accountLink);
   }
   await sleepForMillis(8000);
 
   // STEP 5: desired status.
-  accountLink = updateAccountLinkStatus(accountLink, desiredStatus);
-  await genCreateAccountLink(accountLink);
+  accountLink = accountLink.setStatus(desiredStatus);
+  await AccountLinkMutator.genSet(accountLink);
 }
 
 // -----------------------------------------------------------------------------
