@@ -1,5 +1,10 @@
 /* @flow */
 
+import AccountLink from 'common/lib/models/AccountLink';
+import AccountLinkFetcher from 'common/lib/models/AccountLinkFetcher';
+import AccountLinkMutator from 'common/lib/models/AccountLinkMutator';
+import Provider from 'common/lib/models/Provider';
+import ProviderFetcher from 'common/lib/models/ProviderFetcher';
 import UserInfoFetcher from 'common/lib/models/UserInfoFetcher';
 
 import express from 'express';
@@ -8,13 +13,6 @@ import invariant from 'invariant';
 import { checkAuth } from '../middleware';
 import { createPointer } from 'common/lib/db-utils';
 import { DEBUG, INFO } from '../log-utils';
-import {
-  genCreateAccountLink,
-  genFetchAccountLinkForProvider,
-  isInMFA,
-  updateAccountLinkStatus,
-} from 'common/lib/models/AccountLink';
-import { genFetchProvider, getProviderName } from 'common/lib/models/Provider';
 import { genProviderAccountMFALogin } from '../yodlee/yodlee-manager';
 import {
   genTestYodleePerformLink,
@@ -25,7 +23,6 @@ import {
 } from '../operations/account-link/create';
 import { handleError } from '../route-utils';
 
-import type { AccountLink } from 'common/lib/models/AccountLink';
 import type { ID } from 'common/types/core';
 import type {
   LoginForm as YodleeLoginForm,
@@ -33,7 +30,6 @@ import type {
   ProviderFull as YodleeProvider,
 } from 'common/types/yodlee-v1.0';
 import type { RouteHandler } from '../middleware';
-import type { Provider } from 'common/lib/models/Provider';
 
 const router = express.Router();
 
@@ -138,7 +134,7 @@ function performProviderSearch(): RouteHandler {
         .concat(getProviders())
         .slice(page * limit, limit);
       res.json({
-        data: providers,
+        data: providers.map(p => p.toRaw()),
         page,
         query,
       });
@@ -148,11 +144,11 @@ function performProviderSearch(): RouteHandler {
     const searchRegExp = new RegExp(query, 'i');
     const providers = (isTestUser ? [createTestYodleeProvider()] : [])
       .concat(getProviders())
-      .filter(p => searchRegExp.test(getProviderName(p)))
+      .filter(p => searchRegExp.test(p.name))
       .slice(page * limit, limit);
 
     res.json({
-      data: providers,
+      data: providers.map(p => p.toRaw()),
       limit,
       page,
     });
@@ -181,12 +177,12 @@ function performTestProviderLogin(): RouteHandler {
 
     const userID: ID = req.decodedIDToken.uid;
 
-    let accountLink: AccountLink | null = await genFetchAccountLinkForProvider(
+    let accountLink: AccountLink | null = await AccountLinkFetcher.genForUserAndProvider(
       userID,
       TEST_YODLEE_PROVIDER_ID,
     );
 
-    if (accountLink && isInMFA(accountLink)) {
+    if (accountLink && accountLink.isInMfa) {
       res.json({ data: createPointer('AccountLink', accountLink.id) });
       await genTestYodleeSubmitMFALoginForm(accountLink.id, loginForm);
       return;
@@ -226,7 +222,7 @@ function performProviderLogin(): RouteHandler {
     DEBUG('YODLEE', 'Attempting to login with provider');
     const providerID: ID = req.params.providerID;
 
-    const provider = await genFetchProvider(providerID);
+    const provider = await ProviderFetcher.gen(providerID);
     if (!provider) {
       const errorCode = 'infindi/bad-request';
       const errorMessage = `Provider ${providerID} does not exist`;
@@ -274,7 +270,7 @@ function performProviderLogin(): RouteHandler {
       case 'questionAndAnswer':
       case 'token': {
         const userID: ID = req.decodedIDToken.uid;
-        const accountLink = await genFetchAccountLinkForProvider(
+        const accountLink = await AccountLinkFetcher.genForUserAndProvider(
           userID,
           providerID,
         );
@@ -298,8 +294,8 @@ function performProviderLogin(): RouteHandler {
         // method is called, we get the new MFA login form, in which case, we
         // would then overwrite it with this call, which is very bad. Should
         // find a way around this.
-        await genCreateAccountLink(
-          updateAccountLinkStatus(accountLink, 'MFA / WAITING_FOR_LOGIN_FORM'),
+        await AccountLinkMutator.genSet(
+          accountLink.setStatus('MFA / WAITING_FOR_LOGIN_FORM'),
         );
         res.send({ data: response });
         break;
@@ -337,7 +333,7 @@ let _providers: Array<Provider> = [];
 async function genSetupProviders(): Promise<void> {
   INFO('YODLEE', 'Setting up providers');
   const allProviders: Array<Provider | null> = await Promise.all(
-    PROVIDER_IDS.map(id => genFetchProvider(id)),
+    PROVIDER_IDS.map(id => ProviderFetcher.gen(id)),
   );
   // $FlowFixMe - This is correct.
   _providers = allProviders.filter(p => p && isProviderSupported(p));
@@ -455,7 +451,7 @@ function createTestYodleeProvider(): Provider {
     status: 'Supported',
   };
 
-  return {
+  const raw = {
     createdAt: now,
     id: TEST_YODLEE_PROVIDER_ID,
     isDeprecated: false,
@@ -469,4 +465,6 @@ function createTestYodleeProvider(): Provider {
     type: 'MODEL',
     updatedAt: now,
   };
+
+  return Provider.fromRaw(raw);
 }

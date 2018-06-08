@@ -5,7 +5,8 @@ import LinkUtils from './LinkUtils';
 
 import type LinkEngine from './LinkEngine';
 
-import type { AccountLink } from 'common/lib/models/AccountLink';
+import type AccountLink from 'common/lib/models/AccountLink';
+
 import type { LinkEvent } from './LinkEvent';
 
 /**

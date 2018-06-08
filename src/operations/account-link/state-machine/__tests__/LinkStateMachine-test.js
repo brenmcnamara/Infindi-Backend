@@ -1,3 +1,4 @@
+import AccountLink from 'common/lib/models/AccountLink';
 import ErrorState from '../ErrorState';
 import InitializingState from '../InitializingState';
 import LinkStateMachine from '../LinkStateMachine';
@@ -74,7 +75,7 @@ const LOGIN_FORM = {
 };
 
 const ACCOUNT_LINKS = {
-  Linking: {
+  Linking: AccountLink.fromRaw({
     createdAt: new Date(),
     id: '0',
     modelType: 'AccountLink',
@@ -99,9 +100,9 @@ const ACCOUNT_LINKS = {
     status: 'IN_PROGRESS / DOWNLOADING_DATA',
     type: 'MODEL',
     updatedAt: new Date(),
-  },
+  }),
 
-  Success: {
+  Success: AccountLink.fromRaw({
     createdAt: new Date(),
     id: '0',
     modelType: 'AccountLink',
@@ -126,13 +127,13 @@ const ACCOUNT_LINKS = {
     status: 'SUCCESS',
     type: 'MODEL',
     updatedAt: new Date(),
-  },
+  }),
 };
 
 const MOCK_EVENT = {
   badCredentials: {
-    accountLink: {
-      ...ACCOUNT_LINKS.Success,
+    accountLink: AccountLink.fromRaw({
+      ...ACCOUNT_LINKS.Success.toRaw(),
       sourceOfTruth: {
         ...ACCOUNT_LINKS.Success.sourceOfTruth,
         providerAccount: {
@@ -150,7 +151,7 @@ const MOCK_EVENT = {
           },
         },
       },
-    },
+    }),
     type: 'UPDATE_ACCOUNT_LINK',
   },
 
@@ -159,8 +160,8 @@ const MOCK_EVENT = {
   },
 
   pendingDownloadNoAdditionalStatus: {
-    accountLink: {
-      ...ACCOUNT_LINKS.Success,
+    accountLink: AccountLink.fromRaw({
+      ...ACCOUNT_LINKS.Success.toRaw(),
       sourceOfTruth: {
         ...ACCOUNT_LINKS.Success.sourceOfTruth,
         providerAccount: {
@@ -177,7 +178,7 @@ const MOCK_EVENT = {
           },
         },
       },
-    },
+    }),
     type: 'UPDATE_ACCOUNT_LINK',
   },
 
@@ -192,8 +193,8 @@ const MOCK_EVENT = {
   },
 
   pendingUserInput: {
-    accountLink: {
-      ...ACCOUNT_LINKS.Success,
+    accountLink: AccountLink.fromRaw({
+      ...ACCOUNT_LINKS.Success.toRaw(),
       sourceOfTruth: {
         ...ACCOUNT_LINKS.Success.sourceOfTruth,
         providerAccount: {
@@ -211,13 +212,13 @@ const MOCK_EVENT = {
           },
         },
       },
-    },
+    }),
     type: 'UPDATE_ACCOUNT_LINK',
   },
 
   pendingUserInputNoLoginForm: {
-    accountLink: {
-      ...ACCOUNT_LINKS.Success,
+    accountLink: AccountLink.fromRaw({
+      ...ACCOUNT_LINKS.Success.toRaw(),
       sourceOfTruth: {
         ...ACCOUNT_LINKS.Success.sourceOfTruth,
         loginForm: null,
@@ -236,7 +237,7 @@ const MOCK_EVENT = {
           },
         },
       },
-    },
+    }),
     type: 'UPDATE_ACCOUNT_LINK',
   },
 
@@ -247,8 +248,8 @@ const MOCK_EVENT = {
   },
 
   sourceReady: {
-    accountLink: {
-      ...ACCOUNT_LINKS.Success,
+    accountLink: AccountLink.fromRaw({
+      ...ACCOUNT_LINKS.Success.toRaw(),
       sourceOfTruth: {
         ...ACCOUNT_LINKS.Success.sourceOfTruth,
         providerAccount: {
@@ -265,7 +266,7 @@ const MOCK_EVENT = {
           },
         },
       },
-    },
+    }),
     type: 'UPDATE_ACCOUNT_LINK',
   },
 };

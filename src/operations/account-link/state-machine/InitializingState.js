@@ -5,7 +5,6 @@ import LinkTerminateWithoutUpdatingState from './LinkTerminateWithoutUpdatingSta
 import LinkUtils from './LinkUtils';
 
 import { INFO } from '../../../log-utils';
-import { isLinking } from 'common/lib/models/AccountLink';
 
 import type LinkEngine from './LinkEngine';
 
@@ -25,7 +24,7 @@ export default class InitializingState extends LinkState {
 
     if (linkEvent.type === 'UPDATE_ACCOUNT_LINK') {
       const { accountLink } = linkEvent;
-      if (isLinking(accountLink)) {
+      if (accountLink.isLinking) {
         return new LinkTerminateWithoutUpdatingState();
       }
       return LinkUtils.calculateStateForUpdatedAccountLink(

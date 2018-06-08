@@ -1,18 +1,12 @@
 /* @flow */
 
+import AccountLinkFetcher from 'common/lib/models/AccountLinkFetcher';
+import AccountLinkMutator from 'common/lib/models/AccountLinkMutator';
 import Logger from './logger';
 
 import invariant from 'invariant';
 
 import { ERROR, INFO } from '../../log-utils';
-import {
-  genCreateAccountLink,
-  genFetchAccountLinksForUser,
-  isInMFA,
-  isLinking,
-  isLinkSuccess,
-  updateAccountLinkStatus,
-} from 'common/lib/models/AccountLink';
 import { genProviderAccountRefresh } from '../../yodlee/yodlee-manager';
 import {
   genYodleeLinkPass,
@@ -20,14 +14,15 @@ import {
   handleLinkingError,
 } from './utils';
 
-import type { AccountLink } from 'common/lib/models/AccountLink';
+import type AccountLink from 'common/lib/models/AccountLink';
+
 import type { ID } from 'common/types/core';
 import type { ProviderAccount as YodleeProviderAccount } from 'common/types/yodlee-v1.0';
 
 export async function genYodleeRefreshAccountLinksForUser(
   userID: ID,
 ): Promise<void> {
-  const accountLinks = await genFetchAccountLinksForUser(userID);
+  const accountLinks = await AccountLinkFetcher.genCollectionForUser(userID);
   await Promise.all(
     accountLinks.map(link => genYodleeRefreshAccountLink(link)),
   );
@@ -52,8 +47,8 @@ async function genYodleeRefreshAccountLinkImpl(
 ): Promise<void> {
   if (
     accountLink.status === 'FAILURE / USER_INPUT_REQUEST_IN_BACKGROUND' ||
-    isInMFA(accountLink) ||
-    (false && isLinking(accountLink) && !force)
+    accountLink.isInMFA ||
+    (false && accountLink.isLinking && !force)
   ) {
     INFO(
       'ACCOUNT-LINK',
@@ -69,7 +64,7 @@ async function genYodleeRefreshAccountLinkImpl(
   const yodleeProviderAccount = getYodleeProviderAccount(accountLink);
   await genProviderAccountRefresh(userID, String(yodleeProviderAccount.id));
   let newAccountLink = await genYodleeLinkPass(userID, accountLink.id);
-  while (isLinking(newAccountLink)) {
+  while (newAccountLink.isLinking) {
     await sleepForMillis(8000);
     newAccountLink = await genYodleeLinkPass(userID, accountLink.id);
   }
@@ -79,17 +74,16 @@ async function genYodleeRefreshAccountLinkImpl(
     'Could not find account link while refreshing: %s',
     accountLink.id,
   );
-  if (isInMFA(newAccountLink)) {
+  if (newAccountLink.isInMFA) {
     INFO('ACCOUNT-LINK', 'Making an MFA request during a background refresh');
-    newAccountLink = updateAccountLinkStatus(
-      newAccountLink,
+    newAccountLink = newAccountLink.setStatus(
       'FAILURE / USER_INPUT_REQUEST_IN_BACKGROUND',
     );
-    await genCreateAccountLink(newAccountLink);
+    await AccountLinkMutator.genSet(newAccountLink);
     Logger.genStop(newAccountLink);
     return;
   }
-  if (!isLinkSuccess(newAccountLink)) {
+  if (!newAccountLink.isLinkSuccess) {
     ERROR(
       'ACCOUNT-LINK',
       `Refresh failed for account link ${

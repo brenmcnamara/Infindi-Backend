@@ -10,7 +10,8 @@
 const Common = require('common');
 const FirebaseAdmin = require('firebase-admin');
 const YodleeClient = require('../build/YodleeClient').default;
-const Provider = require('common/lib/models/Provider');
+const Provider = require('common/lib/models/Provider').default;
+const ProviderMutator = require('common/lib/models/ProviderMutator').default;
 
 const chalk = require('chalk');
 const dotenv = require('dotenv');
@@ -89,9 +90,9 @@ function fetchAndSyncProviders(offset) {
           const providers = fullProviders.map(yodleeProvider => {
             const sourceOfTruth = {type: 'YODLEE', value: yodleeProvider};
             const quirks = getProviderQuirks(yodleeProvider);
-            return Provider.createProvider(sourceOfTruth, quirks);
+            return Provider.create(sourceOfTruth, quirks);
           });
-          return Provider.genUpsertProviders(providers);
+          return ProviderMutator.genSet(providers);
         })
         .then(() => shouldFetchMore);
     })

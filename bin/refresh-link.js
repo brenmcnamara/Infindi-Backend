@@ -4,7 +4,8 @@
 
 require('./cli-setup');
 
-const AccountLink = require('common/lib/models/AccountLink');
+const AccountLinkFetcher = require('common/lib/models/AccountLinkFetcher')
+  .default;
 const AccountLinkRefreshOperations = require('../build/operations/account-link/refresh');
 
 const chalk = require('chalk');
@@ -20,7 +21,7 @@ if (!accountLinkID) {
   process.exit(1);
 }
 
-AccountLink.genFetchAccountLink(accountLinkID)
+AccountLinkFetcher.gen(accountLinkID)
   .then(accountLink => {
     invariant(
       accountLink,
@@ -29,7 +30,7 @@ AccountLink.genFetchAccountLink(accountLinkID)
     );
     return AccountLinkRefreshOperations.genYodleeRefreshAccountLink(
       accountLink,
-      force === 'true'
+      force === 'true',
     );
   })
   .then(() => {

@@ -8,12 +8,11 @@ import SyncWithSourceState from './SyncWithSourceState';
 
 import invariant from 'invariant';
 
-import type LinkState from './LinkState';
-
-import type {
-  AccountLink,
+import type AccountLink, {
   AccountLinkStatus,
 } from 'common/lib/models/AccountLink';
+import type LinkState from './LinkState';
+
 import type { LinkEvent } from './LinkEvent';
 import type { LinkMode } from './LinkStateMachine';
 
