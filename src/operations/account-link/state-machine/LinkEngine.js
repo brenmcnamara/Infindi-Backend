@@ -67,7 +67,7 @@ export default class LinkEngine {
       // TODO: Should we send this to firebase at this point? Need to get
       // the updates account link state from the link state.
       accountLink = accountLink.setYodlee(providerAccount);
-      this._sendEvent({ accountLink, type: 'UPDATE_ACCOUNT_LINK' });
+      this.sendEvent({ accountLink, type: 'UPDATE_ACCOUNT_LINK' });
     });
   }
 
@@ -85,7 +85,7 @@ export default class LinkEngine {
   }
 
   forceTerminateTerminateLinking() {
-    this._sendEvent({ type: 'FORCE_TERMINATE_LINKING' });
+    this.sendEvent({ type: 'FORCE_TERMINATE_LINKING' });
   }
 
   onLinkEvent(cb: LinkEventCallback): EventEmitter {
@@ -97,7 +97,7 @@ export default class LinkEngine {
     };
   }
 
-  _sendEvent(linkEvent: LinkEvent): void {
+  sendEvent(linkEvent: LinkEvent): void {
     this._linkEventCallback && this._linkEventCallback(linkEvent);
   }
 
@@ -147,7 +147,7 @@ export default class LinkEngine {
       };
       ERROR('ACCOUNT-LINK', error.toString());
       // TODO: Should not be calling private method from outside scope.
-      this._sendEvent(linkEvent);
+      this.sendEvent(linkEvent);
     });
   }
 

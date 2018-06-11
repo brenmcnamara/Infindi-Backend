@@ -2,6 +2,8 @@
 
 import LinkState from './LinkState';
 
+import { INFO } from '../../../log-utils';
+
 import type LinkEngine from './LinkEngine';
 
 import type AccountLink, {
@@ -30,6 +32,8 @@ export default class LinkUpdateAndTerminateState extends LinkState {
     fromState: LinkState | null,
     engine: LinkEngine,
   ): Promise<void> {
+    INFO('ACCOUNT-LINK', 'New State: LinkUpdateAndTerminate');
+
     const accountLink = this._accountLink.setStatus(this._targetStatus);
     await engine.genSetAccountLink(accountLink);
   }

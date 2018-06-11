@@ -23,10 +23,11 @@ export default class InitializingState extends LinkState {
     }
 
     if (linkEvent.type === 'UPDATE_ACCOUNT_LINK') {
-      const { accountLink } = linkEvent;
-      if (accountLink.isLinking) {
+      const {accountLink} = linkEvent;
+      if (accountLink.isLinking || accountLink.isInMFA) {
         return new LinkTerminateWithoutUpdatingState();
       }
+
       return LinkUtils.calculateStateForUpdatedAccountLink(
         linkEvent.accountLink,
         this.__linkMode,
