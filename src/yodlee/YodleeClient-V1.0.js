@@ -334,6 +334,8 @@ export default class YodleeClient {
    * Returns undefined if it does not make sense for the give account to have
    * transactions. (i.e. Rewards accounts)
    */
+  // TODO: This throws an error if the account id cannot be found. Better to
+  // return an empty array.
   genTransactions(
     userSession: string,
     accountID: ID,
@@ -345,7 +347,7 @@ export default class YodleeClient {
           `${BASE_URI}/transactions?accountId=${accountID}`,
         ),
       )
-      .then(response => response.transaction);
+      .then(response => response.transaction || []);
   }
 
   genTransactionsFromDate(
@@ -370,7 +372,7 @@ export default class YodleeClient {
           `${BASE_URI}/transactions?accountId=${accountID}&fromDate=${fromDateString}`,
         ),
       )
-      .then(response => response.transaction);
+      .then(response => response.transaction || []);
   }
 
   // ---------------------------------------------------------------------------
