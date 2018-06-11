@@ -163,8 +163,16 @@ function overrideClientAsyncMethod(methodName: string) {
         );
         return result;
       } catch (_error) {
-        DEBUG('YODLEE', `Caught yodlee error: ${_error.toString()}`);
-        error = _error;
+        const errorType =
+          _error.type || _error.errorType || 'infindi/unknown_error';
+        const errorMessage =
+          _error.message ||
+          _error.errorMessage ||
+          _error.errorCode ||
+          _error.toString();
+        const toString = () => `[${errorType}]: ${errorMessage}`;
+        DEBUG('YODLEE', `Caught yodlee error: ${toString()}`);
+        error = { errorMessage, errorType, toString };
       }
       await genSleepForMS(RETRY_TIMEOUT);
     }
