@@ -71,12 +71,6 @@ export default class LinkEngine {
     });
   }
 
-  async genSetAccountLink(accountLink: AccountLink): Promise<void> {
-    await this._errorHandlerAsync(async () => {
-      await AccountLinkMutator.genSet(accountLink);
-    });
-  }
-
   async genSetAccountLinkStatus(status: AccountLinkStatus): Promise<void> {
     await this._errorHandlerAsync(async () => {
       const accountLink = await this._genFetchAccountLink();

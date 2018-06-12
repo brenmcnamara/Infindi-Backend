@@ -1,11 +1,14 @@
 /* @flow */
 
+import AccountLinkMutator from 'common/lib/models/AccountLinkMutator';
 import LinkState from './LinkState';
 import LinkUtils from './LinkUtils';
 
 import { INFO } from '../../../log-utils';
 
-import type AccountLink, { AccountLinkStatus } from 'common/lib/models/AccountLink';
+import type AccountLink, {
+  AccountLinkStatus,
+} from 'common/lib/models/AccountLink';
 import type LinkEngine from './LinkEngine';
 
 import type { LinkEvent } from './LinkEvent';
@@ -40,14 +43,18 @@ export default class PollingState extends LinkState {
     return this;
   }
 
-  didEnterState(fromState: LinkState | null, engine: LinkEngine): void {
+  async didEnterState(
+    fromState: LinkState | null,
+    engine: LinkEngine,
+  ): Promise<void> {
     INFO('ACCOUNT-LINK', 'New State: Polling');
     const accountLink = this._accountLink.setStatus(this._targetStatus);
-    engine.genSetAccountLink(accountLink);
 
     this._pollingTimeout = setTimeout(() => {
       engine.genRefetchAccountLink();
     }, POLLING_DELAY_MS);
+
+    await AccountLinkMutator.genSet(accountLink);
   }
 
   willLeaveState(): void {

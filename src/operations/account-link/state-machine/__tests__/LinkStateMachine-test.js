@@ -1,4 +1,5 @@
 import AccountLink from 'common/lib/models/AccountLink';
+import AccountLinkMutator from 'common/lib/models/AccountLinkMutator';
 import ErrorState from '../ErrorState';
 import InitializingState from '../InitializingState';
 import LinkStateMachine from '../LinkStateMachine';
@@ -9,7 +10,16 @@ import SyncWithSourceState from '../SyncWithSourceState';
 
 import type { ID } from 'common/types/core';
 
-jest.mock('../../../../log-utils');
+jest
+  .mock('common/lib/models/AccountFetcher')
+  .mock('common/lib/models/AccountLinkFetcher')
+  .mock('common/lib/models/AccountLinkMutator')
+  .mock('common/lib/models/AccountMutator')
+  .mock('common/lib/models/ProviderFetcher')
+  .mock('common/lib/models/ProviderMutator')
+  .mock('common/lib/models/TransactionFetcher')
+  .mock('common/lib/models/TransactionMutator')
+  .mock('../../../../log-utils');
 
 class MockLinkEngine {
   _accountLinkID: ID;
@@ -21,7 +31,6 @@ class MockLinkEngine {
 
   genRefetchAccountLink = jest.fn();
   genRefreshAccountLink = jest.fn();
-  genSetAccountLink = jest.fn();
   genSetAccountLinkStatus = jest.fn();
   onLinkEvent = cb => {
     this._cb = cb;
@@ -359,8 +368,12 @@ beforeEach(() => {
 
   mockEngine.genRefetchAccountLink.mockReturnValue(Promise.resolve());
   mockEngine.genRefreshAccountLink.mockReturnValue(Promise.resolve());
-  mockEngine.genSetAccountLink.mockReturnValue(Promise.resolve());
   mockEngine.genSetAccountLinkStatus.mockReturnValue(Promise.resolve());
+
+  AccountLinkMutator.genDelete.mockClear();
+  AccountLinkMutator.genDeleteCollection.mockClear();
+  AccountLinkMutator.genSet.mockClear();
+  AccountLinkMutator.genSetCollection.mockClear();
 });
 
 test('starts at initial link state by default', () => {
@@ -505,10 +518,8 @@ test('updates the account link status when receiving pending login', () => {
   mockEngine.sendMockEvent(MOCK_EVENT.successToLogin);
   expect(machine.getCurrentState()).toBeInstanceOf(PollingState);
 
-  const genSetAccountLinkMockCalls = mockEngine.genSetAccountLink.mock.calls;
-
-  expect(genSetAccountLinkMockCalls).toHaveLength(1);
-  expect(genSetAccountLinkMockCalls[0][0].status).toBe(
+  expect(AccountLinkMutator.genSet.mock.calls).toHaveLength(1);
+  expect(AccountLinkMutator.genSet.mock.calls[0][0].status).toBe(
     'IN_PROGRESS / VERIFYING_CREDENTIALS',
   );
 });
@@ -526,10 +537,8 @@ test('marks account link as waiting for login form when pending user input with 
   mockEngine.sendMockEvent(MOCK_EVENT.loginToWaitingForLoginForm);
   expect(machine.getCurrentState()).toBeInstanceOf(PollingState);
 
-  const genSetAccountLinkMockCalls = mockEngine.genSetAccountLink.mock.calls;
-
-  expect(genSetAccountLinkMockCalls).toHaveLength(2);
-  expect(genSetAccountLinkMockCalls[1][0].status).toBe(
+  expect(AccountLinkMutator.genSet.mock.calls).toHaveLength(2);
+  expect(AccountLinkMutator.genSet.mock.calls[1][0].status).toBe(
     'MFA / WAITING_FOR_LOGIN_FORM',
   );
 });
@@ -547,10 +556,8 @@ test('updates the account link status when receiving pending user input', () => 
   mockEngine.sendMockEvent(MOCK_EVENT.waitingForLoginFormToPendingUserInput);
   expect(machine.getCurrentState()).toBeInstanceOf(PollingState);
 
-  const genSetAccountLinkMockCalls = mockEngine.genSetAccountLink.mock.calls;
-
-  expect(genSetAccountLinkMockCalls).toHaveLength(3);
-  expect(genSetAccountLinkMockCalls[2][0].status).toBe(
+  expect(AccountLinkMutator.genSet.mock.calls).toHaveLength(3);
+  expect(AccountLinkMutator.genSet.mock.calls[2][0].status).toBe(
     'MFA / PENDING_USER_INPUT',
   );
 });
@@ -567,10 +574,8 @@ test('marks account link as downloading when no additional status is in refresh 
   mockEngine.sendMockEvent(MOCK_EVENT.loginToDownloading);
   expect(machine.getCurrentState()).toBeInstanceOf(PollingState);
 
-  const genSetAccountLinkMockCalls = mockEngine.genSetAccountLink.mock.calls;
-
-  expect(genSetAccountLinkMockCalls).toHaveLength(2);
-  expect(genSetAccountLinkMockCalls[1][0].status).toBe(
+  expect(AccountLinkMutator.genSet.mock.calls).toHaveLength(2);
+  expect(AccountLinkMutator.genSet.mock.calls[1][0].status).toBe(
     'IN_PROGRESS / DOWNLOADING_DATA',
   );
 });
@@ -587,10 +592,8 @@ test('marks pending user input as failure if downloading in the background', () 
   mockEngine.sendMockEvent(MOCK_EVENT.loginToWaitingForLoginForm);
   expect(machine.getCurrentState()).toBeInstanceOf(LinkUpdateAndTerminateState);
 
-  const genSetAccountLinkMockCalls = mockEngine.genSetAccountLink.mock.calls;
-
-  expect(genSetAccountLinkMockCalls).toHaveLength(2);
-  expect(genSetAccountLinkMockCalls[1][0].status).toBe(
+  expect(AccountLinkMutator.genSet.mock.calls).toHaveLength(2);
+  expect(AccountLinkMutator.genSet.mock.calls[1][0].status).toBe(
     'FAILURE / USER_INPUT_REQUEST_IN_BACKGROUND',
   );
 });

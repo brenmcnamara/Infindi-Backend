@@ -1,5 +1,6 @@
 /* @flow */
 
+import AccountLinkMutator from 'common/lib/models/AccountLinkMutator';
 import LinkState from './LinkState';
 
 import { INFO } from '../../../log-utils';
@@ -35,6 +36,6 @@ export default class LinkUpdateAndTerminateState extends LinkState {
     INFO('ACCOUNT-LINK', 'New State: LinkUpdateAndTerminate');
 
     const accountLink = this._accountLink.setStatus(this._targetStatus);
-    await engine.genSetAccountLink(accountLink);
+    await AccountLinkMutator.genSet(accountLink);
   }
 }
