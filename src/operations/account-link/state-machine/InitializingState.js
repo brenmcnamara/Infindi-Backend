@@ -14,6 +14,13 @@ import type { LinkEvent } from './LinkEvent';
  * Enter this state when starting the linking process.
  */
 export default class InitializingState extends LinkState {
+  _forceLinking: boolean;
+
+  constructor(forceLinking: boolean) {
+    super();
+    this._forceLinking = forceLinking;
+  }
+
   calculateNextState(linkEvent: LinkEvent) {
     const errorState = LinkUtils.calculateStateForSuccessOrFailureEvent(
       linkEvent,
@@ -24,7 +31,7 @@ export default class InitializingState extends LinkState {
 
     if (linkEvent.type === 'UPDATE_ACCOUNT_LINK') {
       const {accountLink} = linkEvent;
-      if (accountLink.isLinking || accountLink.isInMFA) {
+      if (!this._forceLinking && (accountLink.isLinking || accountLink.isInMFA)) {
         return new LinkTerminateWithoutUpdatingState();
       }
 

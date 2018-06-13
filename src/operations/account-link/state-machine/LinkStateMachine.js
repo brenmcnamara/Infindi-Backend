@@ -13,31 +13,50 @@ import type { ID } from 'common/types/core';
 import type { LinkEvent } from './LinkEvent';
 
 export type LinkMode = 'FOREGROUND_UPDATE' | 'BACKGROUND_UPDATE';
+export type StateMachineProps = {
+  +accountLinkID: ID,
+  +engine: LinkEngine,
+  +mode: LinkMode,
+  +shouldForceLinking?: boolean,
+};
+
+type StateMachinePropsFull = {
+  +accountLinkID: ID,
+  +engine: LinkEngine,
+  +mode: LinkMode,
+  +shouldForceLinking: boolean,
+};
 
 /**
  * This is a state machine for managing the state of linking for a particular
  * account link.
  */
 export default class LinkStateMachine {
-  _accountLinkID: ID;
-  _engine: LinkEngine;
+  _props: StateMachinePropsFull;
   _currentState: LinkState;
-  _mode: LinkMode;
   _processingEventGuard: boolean = false;
 
-  constructor(accountLinkID: ID, mode: LinkMode, engine: LinkEngine) {
-    this._accountLinkID = accountLinkID;
-    this._currentState = new InitializingState();
-    this._engine = engine;
-    this._mode = mode;
+  static reconcileProps(props: StateMachineProps): StateMachinePropsFull {
+    return {
+      ...props,
+      shouldForceLinking: props.shouldForceLinking || false,
+    };
+  }
 
-    this._currentState.setAccountLinkID(accountLinkID);
-    this._currentState.setLinkMode(mode);
+  constructor(props: StateMachineProps) {
+    const fullProps = LinkStateMachine.reconcileProps(props);
+    const currentState = new InitializingState(fullProps.shouldForceLinking);
+
+    currentState.setAccountLinkID(props.accountLinkID);
+    currentState.setLinkMode(props.mode);
+
+    this._props = fullProps;
+    this._currentState = currentState;
   }
 
   initialize(): void {
-    this._engine.onLinkEvent(this._processEvent);
-    this._currentState.didEnterState(null, this._engine);
+    this._props.engine.onLinkEvent(this._processEvent);
+    this._currentState.didEnterState(null, this._props.engine);
   }
 
   _processEvent = (event: LinkEvent): void => {
@@ -53,15 +72,15 @@ export default class LinkStateMachine {
       return;
     }
 
-    nextState.setAccountLinkID(this._accountLinkID);
-    nextState.setLinkMode(this._mode);
+    nextState.setAccountLinkID(this._props.accountLinkID);
+    nextState.setLinkMode(this._props.mode);
 
     this._wrapInErrorHandler(() =>
-      currentState.willLeaveState(nextState, this._engine),
+      currentState.willLeaveState(nextState, this._props.engine),
     );
     this._currentState = nextState;
     this._wrapInErrorHandler(() =>
-      nextState.didEnterState(currentState, this._engine),
+      nextState.didEnterState(currentState, this._props.engine),
     );
     this._processingEventGuard = false;
   };
@@ -104,7 +123,7 @@ export default class LinkStateMachine {
         ? error.message || error.errorMessage || error.toString()
         : typeof error === 'string' ? error : 'Unknown error';
 
-    this._engine.sendEvent({
+    this._props.engine.sendEvent({
       errorType: 'INTERNAL',
       errorMessage,
       type: 'ERROR',
