@@ -1,4 +1,5 @@
 import AccountLink from 'common/lib/models/AccountLink';
+import AccountLinkFetcher from 'common/lib/models/AccountLinkFetcher';
 import AccountLinkMutator from 'common/lib/models/AccountLinkMutator';
 import ErrorState from '../ErrorState';
 import InitializingState from '../InitializingState';
@@ -31,7 +32,6 @@ class MockLinkEngine {
 
   genRefetchAccountLink = jest.fn();
   genRefreshAccountLink = jest.fn();
-  genSetAccountLinkStatus = jest.fn();
   onLinkEvent = cb => {
     this._cb = cb;
     return { remove: () => cb && (cb = null) };
@@ -110,7 +110,7 @@ const ACCOUNT_LINKS = {
     updatedAt: new Date(),
   }),
 
-  DownloadingToSyncing:  AccountLink.fromRaw({
+  DownloadingToSyncing: AccountLink.fromRaw({
     createdAt: new Date(),
     id: '0',
     modelType: 'AccountLink',
@@ -368,7 +368,6 @@ beforeEach(() => {
 
   mockEngine.genRefetchAccountLink.mockReturnValue(Promise.resolve());
   mockEngine.genRefreshAccountLink.mockReturnValue(Promise.resolve());
-  mockEngine.genSetAccountLinkStatus.mockReturnValue(Promise.resolve());
 
   AccountLinkMutator.genDelete.mockClear();
   AccountLinkMutator.genDeleteCollection.mockClear();
@@ -488,7 +487,12 @@ test('goes into error from polling state', () => {
   expect(machine.getCurrentState()).toBeInstanceOf(ErrorState);
 });
 
-test('updates account link status when going into error state', () => {
+test('updates account link status when going into error state', async () => {
+  expect.assertions(3);
+
+  const fetchAccountLink = Promise.resolve(ACCOUNT_LINKS.LoginToLogin);
+  AccountLinkFetcher.genNullthrows.mockReturnValue(fetchAccountLink);
+
   const machine = new LinkStateMachine(
     TEST_ACCOUNT_LINK_ID,
     'FOREGROUND_UPDATE',
@@ -496,13 +500,13 @@ test('updates account link status when going into error state', () => {
   );
   machine.initialize();
 
-  const genSetAccountLinkStatusMockCalls =
-    mockEngine.genSetAccountLinkStatus.mock.calls;
-
   mockEngine.sendMockEvent(MOCK_EVENT.randomError);
   expect(machine.getCurrentState()).toBeInstanceOf(ErrorState);
-  expect(genSetAccountLinkStatusMockCalls).toHaveLength(1);
-  expect(genSetAccountLinkStatusMockCalls[0][0]).toBe(
+
+  await fetchAccountLink;
+
+  expect(AccountLinkMutator.genSet.mock.calls).toHaveLength(1);
+  expect(AccountLinkMutator.genSet.mock.calls[0][0].status).toBe(
     'FAILURE / INTERNAL_SERVICE_FAILURE',
   );
 });
@@ -646,6 +650,8 @@ test('does not perform any refetches when leaving the polling state early', () =
 
 // eslint-disable-next-line max-len
 test('updates account link status to IN_PROGRESS / DOWNLOADING_FROM_SOURCE when sync starts', () => {
+  expect.assertions(3);
+
   const machine = new LinkStateMachine(
     TEST_ACCOUNT_LINK_ID,
     'BACKGROUND_UPDATE',
@@ -655,14 +661,14 @@ test('updates account link status to IN_PROGRESS / DOWNLOADING_FROM_SOURCE when 
 
   mockEngine.sendMockEvent(MOCK_EVENT.successToLogin);
   mockEngine.sendMockEvent(MOCK_EVENT.loginToDownloading);
+
+  AccountLinkMutator.genSet.mockClear();
+
   mockEngine.sendMockEvent(MOCK_EVENT.downloadingToSyncing);
   expect(machine.getCurrentState()).toBeInstanceOf(SyncWithSourceState);
 
-  const genSetAccountLinkStatusMockCalls =
-    mockEngine.genSetAccountLinkStatus.mock.calls;
-
-  expect(genSetAccountLinkStatusMockCalls).toHaveLength(1);
-  expect(genSetAccountLinkStatusMockCalls[0][0]).toBe(
+  expect(AccountLinkMutator.genSet.mock.calls).toHaveLength(1);
+  expect(AccountLinkMutator.genSet.mock.calls[0][0].status).toBe(
     'IN_PROGRESS / DOWNLOADING_FROM_SOURCE',
   );
 });

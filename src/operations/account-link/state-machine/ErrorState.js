@@ -1,5 +1,8 @@
 /* @flow */
 
+import AccountLinkFetcher from 'common/lib/models/AccountLinkFetcher';
+import AccountLinkMutator from 'common/lib/models/AccountLinkMutator';
+
 import LinkState from './LinkState';
 
 import { INFO } from '../../../log-utils';
@@ -26,6 +29,11 @@ export default class ErrorState extends LinkState {
   ): Promise<void> {
     INFO('ACCOUNT-LINK', 'New State: Error State');
 
-    await engine.genSetAccountLinkStatus('FAILURE / INTERNAL_SERVICE_FAILURE');
+    const accountLink = await AccountLinkFetcher.genNullthrows(
+      this.__accountLinkID,
+    );
+    AccountLinkMutator.genSet(
+      accountLink.setStatus('FAILURE / INTERNAL_SERVICE_FAILURE'),
+    );
   }
 }

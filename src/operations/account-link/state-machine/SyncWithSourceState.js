@@ -4,6 +4,7 @@ import * as Immutable from 'immutable';
 import * as YodleeManager from '../../../yodlee/yodlee-manager';
 import Account from 'common/lib/models/Account';
 import AccountFetcher from 'common/lib/models/AccountFetcher';
+import AccountLinkMutator from 'common/lib/models/AccountLinkMutator';
 import AccountMutator from 'common/lib/models/AccountMutator';
 import LinkState from './LinkState';
 import LinkUtils from './LinkUtils';
@@ -49,12 +50,15 @@ export default class SyncWithSourceState extends LinkState {
   ): Promise<void> {
     INFO('ACCOUNT-LINK', 'New State: SyncWithSourceState');
 
-    await engine.genSetAccountLinkStatus(
-      'IN_PROGRESS / DOWNLOADING_FROM_SOURCE',
+    await AccountLinkMutator.genSet(
+      this._accountLink.setStatus('IN_PROGRESS / DOWNLOADING_FROM_SOURCE'),
     );
 
     await this._genUpdateAccounts(this._accountLink);
-    await engine.genSetAccountLinkStatus('SUCCESS');
+
+    // TODO: May need to refetch the account link at this point. Could be
+    // stale after all the above operations have completed.
+    await AccountLinkMutator.genSet(this._accountLink.setStatus('SUCCESS'));
   }
 
   async _genUpdateAccounts(accountLink: AccountLink): Promise<void> {
@@ -226,8 +230,6 @@ export default class SyncWithSourceState extends LinkState {
           return [transaction.id, transaction];
         }),
     );
-
-    console.log('created new transactions');
 
     INFO(
       'ACCOUNT-LINK',

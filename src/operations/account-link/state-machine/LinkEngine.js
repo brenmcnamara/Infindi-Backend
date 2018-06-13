@@ -1,7 +1,6 @@
 /* @flow */
 
 import AccountLinkFetcher from 'common/lib/models/AccountLinkFetcher';
-import AccountLinkMutator from 'common/lib/models/AccountLinkMutator';
 
 import invariant from 'invariant';
 
@@ -11,9 +10,8 @@ import {
   genProviderAccountRefresh,
 } from '../../../yodlee/yodlee-manager';
 
-import type AccountLink, {
-  AccountLinkStatus,
-} from 'common/lib/models/AccountLink';
+import type AccountLink from 'common/lib/models/AccountLink';
+
 import type { ID } from 'common/types/core';
 import type { LinkEvent } from './LinkEvent';
 import type { ProviderAccount as YodleeProviderAccount } from 'common/types/yodlee-v1.0';
@@ -68,13 +66,6 @@ export default class LinkEngine {
       // the updates account link state from the link state.
       accountLink = accountLink.setYodlee(providerAccount);
       this.sendEvent({ accountLink, type: 'UPDATE_ACCOUNT_LINK' });
-    });
-  }
-
-  async genSetAccountLinkStatus(status: AccountLinkStatus): Promise<void> {
-    await this._errorHandlerAsync(async () => {
-      const accountLink = await this._genFetchAccountLink();
-      await AccountLinkMutator.genSet(accountLink.setStatus(status));
     });
   }
 
