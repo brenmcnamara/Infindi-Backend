@@ -148,8 +148,8 @@ export default class SyncWithSourceState extends LinkState {
     );
 
     await Promise.all([
-      //   AccountMutator.genSetCollection(settingAccounts),
-      //   AccountMutator.genDeleteCollection(deletingAccounts),
+        AccountMutator.genSetCollection(settingAccounts),
+        AccountMutator.genDeleteCollection(deletingAccounts),
       Promise.all(
         settingAccounts
           .map(account => this._genUpdateTransactions(account))
@@ -238,7 +238,7 @@ export default class SyncWithSourceState extends LinkState {
       } - Creating ${newTransactions.size} transaction(s)`,
     );
 
-    // await TransactionMutator.genSetCollection(newTransactions);
+    await TransactionMutator.genSetCollection(newTransactions);
   }
 }
 

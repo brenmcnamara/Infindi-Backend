@@ -39,6 +39,7 @@ function calculateStateForUpdatedAccountLink(
     case 'FAILURE / EXTERNAL_SERVICE_FAILURE':
     case 'FAILURE / INTERNAL_SERVICE_FAILURE':
     case 'FAILURE / MFA_FAILURE':
+    case 'FAILURE / TIMEOUT':
     case 'FAILURE / USER_INPUT_REQUEST_IN_BACKGROUND':
     case 'SUCCESS':
       return new LinkUpdateAndTerminateState(accountLink, status);
@@ -73,6 +74,10 @@ function calculateAccountLinkStatus(
   if (!refreshInfo.status) {
     return 'IN_PROGRESS / INITIALIZING';
   }
+  // } else if (isStatusCodeExternalServiceFailure(refreshInfo.statusCode)) {
+  //   return 'FAILURE / EXTERNAL_SERVICE_FAILURE';
+  // }
+
   if (refreshInfo.status === 'IN_PROGRESS') {
     return refreshInfo.additionalStatus === 'LOGIN_IN_PROGRESS'
       ? 'IN_PROGRESS / VERIFYING_CREDENTIALS'
@@ -95,9 +100,20 @@ function calculateAccountLinkStatus(
       ? 'FAILURE / MFA_FAILURE'
       : isLoginFailure
         ? 'FAILURE / BAD_CREDENTIALS'
-        : 'FAILURE / INTERNAL_SERVICE_FAILURE';
+        : refreshInfo.additionalStatus === 'REQUEST_TIME_OUT'
+          ? 'FAILURE / TIMEOUT'
+          : 'FAILURE / INTERNAL_SERVICE_FAILURE';
   }
   return 'IN_PROGRESS / DOWNLOADING_FROM_SOURCE';
+}
+
+function isStatusCodeExternalServiceFailure(statusCode: ?number): boolean {
+  if (typeof statusCode !== 'number') {
+    return false;
+  }
+  // You can find status codes here:
+  // https://developer.yodlee.com/Data_Model/Resource_Provider_Accounts
+  return statusCode >= 400 && statusCode < 800;
 }
 
 export default {
