@@ -34,7 +34,6 @@ export default class LinkUpdateAndTerminateState extends LinkState {
     engine: LinkEngine,
   ): Promise<void> {
     INFO('ACCOUNT-LINK', 'New State: LinkUpdateAndTerminate');
-    console.log(this._targetStatus);
 
     const accountLink = this._accountLink.setStatus(this._targetStatus);
     await AccountLinkMutator.genSet(accountLink);

@@ -78,12 +78,16 @@ function calculateAccountLinkStatus(
   if (refreshInfo.status === 'IN_PROGRESS') {
     return refreshInfo.additionalStatus === 'LOGIN_IN_PROGRESS'
       ? 'IN_PROGRESS / VERIFYING_CREDENTIALS'
+      // NOTE: Sometimes, yodlee has the USER_INPUT_REQUIRED status but
+      // still manages to login without a login form. We will check for
+      // foreground updates only after we are provided a login form, indicating
+      // that we need user intervention for sure.
       : refreshInfo.additionalStatus === 'USER_INPUT_REQUIRED'
-        ? linkMode === 'FOREGROUND_UPDATE'
-          ? loginForm
+        ? loginForm
+          ? linkMode === 'FOREGROUND_UPDATE'
             ? 'MFA / PENDING_USER_INPUT'
-            : 'MFA / WAITING_FOR_LOGIN_FORM'
-          : 'FAILURE / USER_INPUT_REQUEST_IN_BACKGROUND'
+            : 'FAILURE / USER_INPUT_REQUEST_IN_BACKGROUND'
+          : 'MFA / WAITING_FOR_LOGIN_FORM'
         : 'IN_PROGRESS / DOWNLOADING_DATA';
   }
   if (refreshInfo.status === 'FAILED') {

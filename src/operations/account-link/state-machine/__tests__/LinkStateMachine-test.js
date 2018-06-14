@@ -584,6 +584,24 @@ test('marks account link as downloading when no additional status is in refresh 
   );
 });
 
+test('allows status WAITING_FOR_LOGIN_FORM during BACKGROUND_UPDATE', () => {
+  const machine = new LinkStateMachine({
+    accountLinkID: TEST_ACCOUNT_LINK_ID,
+    engine: mockEngine,
+    mode: 'BACKGROUND_UPDATE',
+  });
+  machine.initialize();
+
+  mockEngine.sendMockEvent(MOCK_EVENT.successToLogin);
+  mockEngine.sendMockEvent(MOCK_EVENT.loginToWaitingForLoginForm);
+  expect(machine.getCurrentState()).toBeInstanceOf(PollingState);
+
+  expect(AccountLinkMutator.genSet.mock.calls).toHaveLength(2);
+  expect(AccountLinkMutator.genSet.mock.calls[1][0].status).toBe(
+    'MFA / WAITING_FOR_LOGIN_FORM',
+  );
+});
+
 test('marks pending user input as failure if downloading in the background', () => {
   const machine = new LinkStateMachine({
     accountLinkID: TEST_ACCOUNT_LINK_ID,
@@ -594,10 +612,11 @@ test('marks pending user input as failure if downloading in the background', () 
 
   mockEngine.sendMockEvent(MOCK_EVENT.successToLogin);
   mockEngine.sendMockEvent(MOCK_EVENT.loginToWaitingForLoginForm);
+  mockEngine.sendMockEvent(MOCK_EVENT.waitingForLoginFormToPendingUserInput);
   expect(machine.getCurrentState()).toBeInstanceOf(LinkUpdateAndTerminateState);
 
-  expect(AccountLinkMutator.genSet.mock.calls).toHaveLength(2);
-  expect(AccountLinkMutator.genSet.mock.calls[1][0].status).toBe(
+  expect(AccountLinkMutator.genSet.mock.calls).toHaveLength(3);
+  expect(AccountLinkMutator.genSet.mock.calls[2][0].status).toBe(
     'FAILURE / USER_INPUT_REQUEST_IN_BACKGROUND',
   );
 });
