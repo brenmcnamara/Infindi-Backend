@@ -1,7 +1,11 @@
 /* @flow */
 
+import * as Immutable from 'immutable';
+
 import invariant from 'invariant';
 import request from 'request';
+
+import type { ProviderOrderedCollection } from 'common/types/yodlee-v1.1';
 
 const BASE_URI = 'https://developer.api.yodlee.com/ysl';
 
@@ -72,8 +76,24 @@ async function genUserAuth(
   };
 }
 
+async function genFetchProviders(
+  auth: AuthPayload$CobrandAndUser,
+  limit: number,
+  offset: number,
+): Promise<ProviderOrderedCollection> {
+  const uri = `${BASE_URI}/providers?top=${limit}&top=${offset}`;
+  const response = await genGetRequest(auth, uri);
+  return Immutable.OrderedMap(
+    response.provider.map(provider => {
+      const providerID = String(provider.id);
+      return [providerID, provider];
+    }),
+  );
+}
+
 export default {
   genCobrandAuth,
+  genFetchProviders,
   genUserAuth,
 };
 

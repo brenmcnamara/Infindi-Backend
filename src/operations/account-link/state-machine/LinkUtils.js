@@ -74,9 +74,6 @@ function calculateAccountLinkStatus(
   if (!refreshInfo.status) {
     return 'IN_PROGRESS / INITIALIZING';
   }
-  // } else if (isStatusCodeExternalServiceFailure(refreshInfo.statusCode)) {
-  //   return 'FAILURE / EXTERNAL_SERVICE_FAILURE';
-  // }
 
   if (refreshInfo.status === 'IN_PROGRESS') {
     return refreshInfo.additionalStatus === 'LOGIN_IN_PROGRESS'

@@ -17,12 +17,13 @@ const USER_PASSWORD_BAD = 'blah';
 const YodleeClient = require('../build/yodlee/YodleeClient-V1.1').default;
 
 const chalk = require('chalk');
+const invariant = require('invariant');
 
 let cobrandAuth;
 
 // eslint-disable-next-line no-unused-vars
 let promise = Promise.resolve();
-let didPassAllTests = false;
+let didPassAllTests = true;
 
 promise = promise
   .then(() => {
@@ -33,7 +34,7 @@ promise = promise
   })
   .then(() => {
     console.log(chalk.red('Expected cobrand login failure to throw'));
-    didPassAllTests = true;
+    didPassAllTests = false;
   })
   .catch(error => {
     console.log(chalk.green('Cobrand auth failure detection was successful'));
@@ -51,7 +52,7 @@ promise = promise
   })
   .catch(error => {
     console.log(chalk.red('Cobrand login failed'));
-    didPassAllTests = true;
+    didPassAllTests = false;
     process.exit(1);
   })
 
@@ -63,7 +64,7 @@ promise = promise
   })
   .then(() => {
     console.log(chalk.red('Expected user login to fail'));
-    didPassAllTests = true;
+    didPassAllTests = false;
   })
   .catch(error => {
     console.log(chalk.green('User login failure succeeded'));
@@ -80,10 +81,48 @@ promise = promise
   })
   .catch(error => {
     console.log(chalk.red('User login failed', error.toString()));
-    didPassAllTests = true;
+    didPassAllTests = false;
     process.exit(1);
   })
 
   .then(() => {
-    process.exit(didPassAllTests ? 1 : 0);
+    console.log('\n--- TEST FETCH PROVIDERS ---');
+    const limit = 10;
+    const offset = 0;
+    return YodleeClient.genFetchProviders(cobrandAuth, limit, offset);
+  })
+  .then(providers => {
+    invariant(
+      providers.size === 10,
+      'Expecting genFetchProviders to fetch 10 providers. Only fetched %s',
+      providers.size
+    );
+    console.log(chalk.green('genFetchProviders success'));
+  })
+  .catch(error => {
+    console.log(chalk.red('genFetchProviders failed', error.toString()));
+    didPassAllTests = false;
+  })
+
+  .then(() => {
+    console.log('\n--- TEST FETCH PROVIDERS WITH INVALID LIMIT ---');
+    const limit = 501;
+    const offset = 0;
+    return YodleeClient.genFetchProviders(cobrandAuth, limit, offset);
+  })
+  .then(() => {
+    console.log(chalk.red('Expected genFetchProviders with invalid limit to fail'));
+    didPassAllTests = false;
+  })
+  .catch(error => {
+    if (error.errorCode === 'Y804') {
+      console.log(chalk.green('Successfully caught bad parameter for fetching providers'));
+    } else {
+      console.log(chalk.red(`Through unrecognized error: ${error.toString()}`));
+      didPassAllTests = false;
+    }
+  })
+
+  .then(() => {
+    process.exit(didPassAllTests ? 0 : 1);
   });
