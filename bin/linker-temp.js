@@ -15,14 +15,16 @@ const BMAC = {
 };
 
 const ALFI = {
+  CITI_CREDIT_CARD: '844e2d1b-e66d-43f8-87d5-abaf4627d639',
+  FIRST_REPUBLIC: 'b09f9c49-f324-4e4a-a79e-7a4285ba9bf9',
   VANGUARD: '2e740da3-c800-43f4-9d7b-a9b75fbd60ca',
   VANGUARD_RETIREMENT: '4dd72668-d4b7-428c-b1bb-0edc31f3877d',
   WELLS_FARGO: 'abb6f8d2-8847-4b3d-893f-276f2ba94959',
 };
 
-const engine = new LinkEngine(ALFI.WELLS_FARGO);
+const engine = new LinkEngine(ALFI.FIRST_REPUBLIC);
 const machine = new LinkStateMachine({
-  accountLinkID: ALFI.WELLS_FARGO,
+  accountLinkID: ALFI.FIRST_REPUBLIC,
   engine: engine,
   mode: 'FOREGROUND_UPDATE',
   shouldForceLinking: true,

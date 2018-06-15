@@ -78,11 +78,11 @@ function calculateAccountLinkStatus(
   if (refreshInfo.status === 'IN_PROGRESS') {
     return refreshInfo.additionalStatus === 'LOGIN_IN_PROGRESS'
       ? 'IN_PROGRESS / VERIFYING_CREDENTIALS'
-      // NOTE: Sometimes, yodlee has the USER_INPUT_REQUIRED status but
-      // still manages to login without a login form. We will check for
-      // foreground updates only after we are provided a login form, indicating
-      // that we need user intervention for sure.
-      : refreshInfo.additionalStatus === 'USER_INPUT_REQUIRED'
+      : // NOTE: Sometimes, yodlee has the USER_INPUT_REQUIRED status but
+        // still manages to login without a login form. We will check for
+        // foreground updates only after we are provided a login form, indicating
+        // that we need user intervention for sure.
+        refreshInfo.additionalStatus === 'USER_INPUT_REQUIRED'
         ? loginForm
           ? linkMode === 'FOREGROUND_UPDATE'
             ? 'MFA / PENDING_USER_INPUT'
@@ -103,7 +103,9 @@ function calculateAccountLinkStatus(
         ? 'FAILURE / BAD_CREDENTIALS'
         : refreshInfo.additionalStatus === 'REQUEST_TIME_OUT'
           ? 'FAILURE / TIMEOUT'
-          : 'FAILURE / INTERNAL_SERVICE_FAILURE';
+          : isStatusCodeExternalServiceFailure(refreshInfo.statusCode)
+            ? 'FAILURE / EXTERNAL_SERVICE_FAILURE'
+            : 'FAILURE / INTERNAL_SERVICE_FAILURE';
   }
   return 'IN_PROGRESS / DOWNLOADING_FROM_SOURCE';
 }
