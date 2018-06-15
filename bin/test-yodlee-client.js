@@ -14,6 +14,10 @@ const USER_PASSWORD = 'sbMembrenmcnamara3#123';
 const USER_LOGIN_NAME_BAD = 'blah';
 const USER_PASSWORD_BAD = 'blah';
 
+const PROVIDER_CHASE = '643';
+const PROVIDER_NAN = 'NOT-A-NUMBER';
+const PROVIDER_UNDEFINED = '11223344';
+
 const YodleeClient = require('../build/yodlee/YodleeClient-V1.1').default;
 
 const chalk = require('chalk');
@@ -83,6 +87,49 @@ promise = promise
     console.log(chalk.red('User login failed', error.toString()));
     didPassAllTests = false;
     process.exit(1);
+  })
+
+  .then(() => {
+    console.log('\n ---TEST FETCH PROVIDER ---');
+    return YodleeClient.genFetchProvider(cobrandAuth, PROVIDER_CHASE);
+  })
+  .then(provider => {
+    invariant(
+      provider,
+      'Expecting provider with id %s to exist',
+      PROVIDER_CHASE
+    );
+    console.log(chalk.green('Provider found!'));
+  })
+  .catch(error => {
+    console.log(chalk.red(`Fetching provider threw error: ${error}`));
+    didPassAllTests = false;
+  })
+
+  .then(() => {
+    console.log('\n ---TEST FETCH UNDEFINED PROVIDER ---');
+    return YodleeClient.genFetchProvider(cobrandAuth, PROVIDER_UNDEFINED);
+  })
+  .then(provider => {
+    invariant(
+      !provider,
+      'Expecting no provider to exist with id %s',
+      PROVIDER_UNDEFINED,
+    );
+    console.log(chalk.green('Success!'));
+  })
+  .catch(error => {
+    console.log(chalk.red(error.toString()));
+    didPassAllTests = false;
+  })
+
+  .then(() => {
+    console.log('\n--- TEST FETCH NAN PROVIDER ---');
+    return YodleeClient.genFetchProvider(cobrandAuth, PROVIDER_NAN);
+  })
+  .then(provider => {
+    invariant(!provider, 'Expecting provider to not exist');
+    console.log(chalk.green('Success!'));
   })
 
   .then(() => {

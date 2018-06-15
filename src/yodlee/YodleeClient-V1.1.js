@@ -5,7 +5,11 @@ import * as Immutable from 'immutable';
 import invariant from 'invariant';
 import request from 'request';
 
-import type { ProviderOrderedCollection } from 'common/types/yodlee-v1.1';
+import type { ID } from 'common/types/core';
+import type {
+  Provider,
+  ProviderOrderedCollection,
+} from 'common/types/yodlee-v1.1';
 
 const BASE_URI = 'https://developer.api.yodlee.com/ysl';
 
@@ -91,8 +95,26 @@ async function genFetchProviders(
   );
 }
 
+async function genFetchProvider(
+  auth: AuthPayload$CobrandAndUser,
+  providerID: ID,
+): Promise<Provider | null> {
+  const uri = `${BASE_URI}/providers/${providerID}`;
+  try {
+    const response = await genGetRequest(auth, uri);
+    return response.provider || null;
+  } catch (error) {
+    if (error.errorCode === 'Y806') {
+      // Invalid input, could happen if ID cannot be cast to a number.
+      return null;
+    }
+    throw error;
+  }
+}
+
 export default {
   genCobrandAuth,
+  genFetchProvider,
   genFetchProviders,
   genUserAuth,
 };
