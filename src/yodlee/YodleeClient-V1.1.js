@@ -8,12 +8,19 @@ import request from 'request';
 import type { ID } from 'common/types/core';
 import type {
   Provider,
+  ProviderAccount,
   ProviderOrderedCollection,
 } from 'common/types/yodlee-v1.1';
 
 const BASE_URI = 'https://developer.api.yodlee.com/ysl';
 
 type ErrorResponse = Object;
+
+// -----------------------------------------------------------------------------
+//
+// AUTHENTICATION
+//
+// -----------------------------------------------------------------------------
 
 export type AuthPayload = AuthPayload$Cobrand | AuthPayload$CobrandAndUser;
 
@@ -80,6 +87,12 @@ async function genUserAuth(
   };
 }
 
+// -----------------------------------------------------------------------------
+//
+// PROVIDERS
+//
+// -----------------------------------------------------------------------------
+
 async function genFetchProviders(
   auth: AuthPayload$CobrandAndUser,
   limit: number,
@@ -112,9 +125,31 @@ async function genFetchProvider(
   }
 }
 
+// -----------------------------------------------------------------------------
+//
+// PROVIDER ACCOUNTS
+//
+// -----------------------------------------------------------------------------
+
+async function genFetchProviderAccount(
+  auth: AuthPayload$CobrandAndUser,
+  providerAccountID: ID,
+): Promise<ProviderAccount | null> {
+  const uri = `${BASE_URI}/providerAccounts/${providerAccountID}`;
+  const response = await genGetRequest(auth, uri);
+  return response.providerAccount || null;
+}
+
+// -----------------------------------------------------------------------------
+//
+// EXPORT
+//
+// -----------------------------------------------------------------------------
+
 export default {
   genCobrandAuth,
   genFetchProvider,
+  genFetchProviderAccount,
   genFetchProviders,
   genUserAuth,
 };

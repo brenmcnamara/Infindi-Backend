@@ -24,6 +24,7 @@ const chalk = require('chalk');
 const invariant = require('invariant');
 
 let cobrandAuth;
+let userAuth;
 
 // eslint-disable-next-line no-unused-vars
 let promise = Promise.resolve();
@@ -66,7 +67,7 @@ promise = promise
   .then(() => {
     return YodleeClient.genUserAuth(cobrandAuth, USER_LOGIN_NAME_BAD, USER_PASSWORD_BAD);
   })
-  .then(() => {
+  .then(auth => {
     console.log(chalk.red('Expected user login to fail'));
     didPassAllTests = false;
   })
@@ -80,8 +81,9 @@ promise = promise
   .then(() => {
     return YodleeClient.genUserAuth(cobrandAuth, USER_LOGIN_NAME, USER_PASSWORD);
   })
-  .then(() => {
+  .then(auth => {
     console.log(chalk.green('User login successful'));
+    userAuth = auth;
   })
   .catch(error => {
     console.log(chalk.red('User login failed', error.toString()));
@@ -168,6 +170,20 @@ promise = promise
       console.log(chalk.red(`Through unrecognized error: ${error.toString()}`));
       didPassAllTests = false;
     }
+  })
+
+  .then(() => {
+    console.log('\n--- FETCH PROVIDER ACCOUNT ---');
+    const providerAccountID = '10956658';
+    return YodleeClient.genFetchProviderAccount(userAuth, providerAccountID);
+  })
+  .then(providerAccount => {
+    invariant(providerAccount, 'Expecting provider account to exist');
+    console.log(chalk.green('Success!'));
+  })
+  .catch(error => {
+    console.log(chalk.red(error.toString()));
+    didPassAllTests = false;
   })
 
   .then(() => {
