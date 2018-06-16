@@ -136,8 +136,15 @@ async function genFetchProviderAccount(
   providerAccountID: ID,
 ): Promise<ProviderAccount | null> {
   const uri = `${BASE_URI}/providerAccounts/${providerAccountID}`;
-  const response = await genGetRequest(auth, uri);
-  return response.providerAccount || null;
+  try {
+    const response = await genGetRequest(auth, uri);
+    return response.providerAccount || null;
+  } catch (error) {
+    if (error.errorCode === 'Y807' || error.errorCode === 'Y806') {
+      return null;
+    }
+    throw error;
+  }
 }
 
 // -----------------------------------------------------------------------------

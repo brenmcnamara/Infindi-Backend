@@ -187,5 +187,34 @@ promise = promise
   })
 
   .then(() => {
+    console.log('\n--- FETCH PROVIDER ACCOUNT NULL---');
+    const providerAccountID = '12345';
+    return YodleeClient.genFetchProviderAccount(userAuth, providerAccountID);
+  })
+  .then(providerAccount => {
+    invariant(providerAccount === null, 'Expecting provider account to be null');
+    console.log(chalk.green('Success!'));
+    didPassAllTests = false;
+  })
+  .catch(error => {
+    console.log(chalk.red(error.toString()));
+    didPassAllTests = false;
+  })
+
+  .then(() => {
+    console.log('\n--- FETCH PROVIDER ACCOUNT NAN---');
+    const providerAccountID = 'NOT_A_NUMBER';
+    return YodleeClient.genFetchProviderAccount(userAuth, providerAccountID);
+  })
+  .then(providerAccount => {
+    invariant(providerAccount === null, 'Expecting provider account to be null');
+    console.log(chalk.green('Success!'));
+  })
+  .catch(error => {
+    console.log(chalk.red(JSON.stringify(error)));
+    didPassAllTests = false;
+  })
+
+  .then(() => {
     process.exit(didPassAllTests ? 0 : 1);
   });
