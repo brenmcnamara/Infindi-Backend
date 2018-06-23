@@ -6,11 +6,11 @@ import type LinkEngine from './LinkEngine';
 
 import type { ID } from 'common/types/core';
 import type { LinkEvent } from './LinkEvent';
-import type { LinkMode } from './LinkStateMachine';
+import type { LinkPayload } from './LinkStateMachine';
 
 export default class LinkState {
   __accountLinkID: ID;
-  __linkMode: LinkMode;
+  __linkPayload: LinkPayload;
 
   // ---------------------------------------------------------------------------
   //
@@ -49,7 +49,7 @@ export default class LinkState {
     this.__accountLinkID = id;
   }
 
-  setLinkMode(mode: LinkMode): void {
-    this.__linkMode = mode;
+  setLinkPayload(payload: LinkPayload): void {
+    this.__linkPayload = payload;
   }
 }

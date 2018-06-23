@@ -37,7 +37,7 @@ export default class InitializingState extends LinkState {
 
       return LinkUtils.calculateStateForUpdatedAccountLink(
         linkEvent.accountLink,
-        this.__linkMode,
+        this.__linkPayload,
       );
     }
     return this;

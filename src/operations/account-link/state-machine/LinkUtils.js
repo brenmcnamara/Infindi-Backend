@@ -14,7 +14,7 @@ import type AccountLink, {
 import type LinkState from './LinkState';
 
 import type { LinkEvent } from './LinkEvent';
-import type { LinkMode } from './LinkStateMachine';
+import type { LinkPayload } from './LinkStateMachine';
 
 function calculateStateForSuccessOrFailureEvent(
   event: LinkEvent,
@@ -31,9 +31,9 @@ function calculateStateForSuccessOrFailureEvent(
 
 function calculateStateForUpdatedAccountLink(
   accountLink: AccountLink,
-  linkMode: LinkMode,
+  linkPayload: LinkPayload,
 ): LinkState {
-  const status = calculateAccountLinkStatus(accountLink, linkMode);
+  const status = calculateAccountLinkStatus(accountLink, linkPayload);
   switch (status) {
     case 'FAILURE / BAD_CREDENTIALS':
     case 'FAILURE / EXTERNAL_SERVICE_FAILURE':
@@ -61,7 +61,7 @@ function calculateStateForUpdatedAccountLink(
 
 function calculateAccountLinkStatus(
   accountLink: AccountLink,
-  linkMode: LinkMode,
+  linkPayload: LinkPayload,
 ): AccountLinkStatus {
   const { sourceOfTruth } = accountLink;
   invariant(
@@ -84,7 +84,7 @@ function calculateAccountLinkStatus(
         // that we need user intervention for sure.
         refreshInfo.additionalStatus === 'USER_INPUT_REQUIRED'
         ? loginForm
-          ? linkMode === 'FOREGROUND_UPDATE'
+          ? linkPayload.type === 'FOREGROUND_UPDATE'
             ? 'MFA / PENDING_USER_INPUT'
             : 'FAILURE / USER_INPUT_REQUEST_IN_BACKGROUND'
           : 'MFA / WAITING_FOR_LOGIN_FORM'

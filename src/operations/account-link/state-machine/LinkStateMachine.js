@@ -11,19 +11,23 @@ import type LinkState from './LinkState';
 
 import type { ID } from 'common/types/core';
 import type { LinkEvent } from './LinkEvent';
+import type { LoginForm as YodleeLoginForm } from 'common/types/yodlee-v1.0';
 
-export type LinkMode = 'FOREGROUND_UPDATE' | 'BACKGROUND_UPDATE';
+export type LinkPayload =
+  | {| +type: 'FOREGROUND_UPDATE' | 'BACKGROUND_UPDATE' |}
+  | {| +loginForm: YodleeLoginForm, +type: 'PERFORM_LOGIN' |};
+
 export type StateMachineProps = {
   +accountLinkID: ID,
   +engine: LinkEngine,
-  +mode: LinkMode,
+  +payload: LinkPayload,
   +shouldForceLinking?: boolean,
 };
 
 type StateMachinePropsFull = {
   +accountLinkID: ID,
   +engine: LinkEngine,
-  +mode: LinkMode,
+  +payload: LinkPayload,
   +shouldForceLinking: boolean,
 };
 
@@ -48,7 +52,7 @@ export default class LinkStateMachine {
     const currentState = new InitializingState(fullProps.shouldForceLinking);
 
     currentState.setAccountLinkID(props.accountLinkID);
-    currentState.setLinkMode(props.mode);
+    currentState.setLinkPayload(props.payload);
 
     this._props = fullProps;
     this._currentState = currentState;
@@ -73,7 +77,7 @@ export default class LinkStateMachine {
     }
 
     nextState.setAccountLinkID(this._props.accountLinkID);
-    nextState.setLinkMode(this._props.mode);
+    nextState.setLinkPayload(this._props.payload);
 
     this._wrapInErrorHandler(() =>
       currentState.willLeaveState(nextState, this._props.engine),

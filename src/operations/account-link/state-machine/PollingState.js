@@ -37,7 +37,7 @@ export default class PollingState extends LinkState {
     if (linkEvent.type === 'UPDATE_ACCOUNT_LINK') {
       return LinkUtils.calculateStateForUpdatedAccountLink(
         linkEvent.accountLink,
-        this.__linkMode,
+        this.__linkPayload,
       );
     }
     return this;

@@ -1,8 +1,10 @@
 require('./cli-setup');
 
-const LinkEngine = require('../build/operations/account-link/state-machine/LinkEngine').default;
+const LinkEngine = require('../build/operations/account-link/state-machine/LinkEngine')
+  .default;
 // eslint-disable-next-line max-len
-const LinkStateMachine = require('../build/operations/account-link/state-machine/LinkStateMachine').default;
+const LinkStateMachine = require('../build/operations/account-link/state-machine/LinkStateMachine')
+  .default;
 const YodleeManager = require('../build/yodlee/yodlee-manager');
 
 const BMAC = {
@@ -26,7 +28,7 @@ const engine = new LinkEngine(ALFI.FIRST_REPUBLIC);
 const machine = new LinkStateMachine({
   accountLinkID: ALFI.FIRST_REPUBLIC,
   engine: engine,
-  mode: 'FOREGROUND_UPDATE',
+  payload: { type: 'FOREGROUND_UPDATE' },
   shouldForceLinking: true,
 });
 
