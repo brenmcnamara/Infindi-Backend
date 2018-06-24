@@ -16,6 +16,50 @@ const BMAC = {
   WELLS_FARGO: '76fe9160-a415-4693-b8ff-1ea09153e332',
 };
 
+const LOGIN_FORMS = {
+  CHASE: {
+    row: [
+      {
+        field: [
+          {
+            maxLength: 32,
+            name: 'LOGIN',
+            valueEditable: true,
+            type: 'text',
+            value: 'DO NOT COMMIT LOGIN INFO',
+            id: 567,
+            isOptional: false,
+          },
+        ],
+        form: '0001',
+        fieldRowChoice: '0001',
+        id: 4710,
+        label: 'User ID',
+      },
+      {
+        field: [
+          {
+            name: 'PASSWORD',
+            valueEditable: true,
+            type: 'password',
+            value: 'DO NOT COMMIT PASSWORD',
+            id: 568,
+            isOptional: false,
+          },
+        ],
+        form: '0001',
+        fieldRowChoice: '0002',
+        id: 11976,
+        label: 'Password',
+      },
+    ],
+    id: 324,
+    forgetPasswordURL:
+      'https://chaseonline.chase.com/Public/ReIdentify/ReidentifyFilterView.aspx?COLLogon',
+    formType: 'login',
+  },
+};
+
 const ALFI = {
   CITI_CREDIT_CARD: '844e2d1b-e66d-43f8-87d5-abaf4627d639',
   FIRST_REPUBLIC: 'b09f9c49-f324-4e4a-a79e-7a4285ba9bf9',
@@ -24,11 +68,11 @@ const ALFI = {
   WELLS_FARGO: 'abb6f8d2-8847-4b3d-893f-276f2ba94959',
 };
 
-const engine = new LinkEngine(ALFI.FIRST_REPUBLIC);
+const engine = new LinkEngine(BMAC.CHASE);
 const machine = new LinkStateMachine({
-  accountLinkID: ALFI.FIRST_REPUBLIC,
+  accountLinkID: BMAC.CHASE,
   engine: engine,
-  payload: { type: 'FOREGROUND_UPDATE' },
+  payload: { loginForm: LOGIN_FORMS.CHASE, type: 'PERFORM_LOGIN' },
   shouldForceLinking: true,
 });
 
