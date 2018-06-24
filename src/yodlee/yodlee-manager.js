@@ -107,6 +107,11 @@ export const genAccountsForProviderAccount: GenAccountsForProviderAccount = over
   'genAccountsForProviderAccount',
 );
 
+type GenDeleteProviderAccount = (ID, ID) => Promise<void>;
+export const genDeleteProviderAccount: GenDeleteProviderAccount = overrideClientAsyncMethod(
+  'genDeleteProviderAccount',
+);
+
 type GenTransactions = (ID, ID) => Promise<Array<YodleeTransaction>>;
 export const genTransactions: GenTransactions = overrideClientAsyncMethod(
   'genTransactions',

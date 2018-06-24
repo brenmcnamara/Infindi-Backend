@@ -183,13 +183,12 @@ export default class YodleeClient {
   }
 
   genIsActiveSession(userSession: string): Promise<boolean> {
-    return this._genValidateCobrandLogin()
-      .then(() => {
-        const uri = `${BASE_URI}/user`;
-        return this._genGetRequest(userSession, uri)
-          .then(() => true)
-          .catch(() => false);
-      });
+    return this._genValidateCobrandLogin().then(() => {
+      const uri = `${BASE_URI}/user`;
+      return this._genGetRequest(userSession, uri)
+        .then(() => true)
+        .catch(() => false);
+    });
   }
 
   genLogoutUser(userSession: string): Promise<void> {
@@ -308,6 +307,18 @@ export default class YodleeClient {
         request,
       );
     });
+  }
+
+  genDeleteProviderAccount(
+    userSession: string,
+    providerAccountID: ID,
+  ): Promise<*> {
+    return this._genValidateCobrandLogin().then(() =>
+      this._genDeleteRequest(
+        userSession,
+        `${BASE_URI}/providerAccounts/${providerAccountID}`,
+      ),
+    );
   }
 
   genAccounts(userSession: string): Promise<Array<Account>> {
@@ -490,6 +501,47 @@ export default class YodleeClient {
           reject(error);
           return;
         }
+        let payload;
+        try {
+          payload = JSON.parse(serialized);
+        } catch (error) {
+          reject(error);
+          return;
+        }
+
+        if (payload.errorCode) {
+          reject((payload: ErrorResponse));
+          return;
+        }
+        resolve((payload: TResponse));
+      };
+      request(options, onComplete);
+    });
+  }
+
+  _genDeleteRequest<TResponse: Object>(
+    userSession: string | null,
+    uri: string,
+    body: Object = {},
+  ): Promise<TResponse> {
+    return new Promise((resolve, reject) => {
+      const options = {
+        body: JSON.stringify(body),
+        headers: this._getHeaders(userSession),
+        method: 'DELETE',
+        uri,
+      };
+
+      const onComplete = (
+        error: Error,
+        response: Object,
+        serialized: string,
+      ) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
         let payload;
         try {
           payload = JSON.parse(serialized);
