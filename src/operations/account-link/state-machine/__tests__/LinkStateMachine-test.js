@@ -1,3 +1,4 @@
+import * as YodleeManager from '../../../../yodlee/yodlee-manager';
 import AccountLink from 'common/lib/models/AccountLink';
 import AccountLinkFetcher from 'common/lib/models/AccountLinkFetcher';
 import AccountLinkMutator from 'common/lib/models/AccountLinkMutator';
@@ -7,6 +8,7 @@ import LinkStateMachine from '../LinkStateMachine';
 import LinkTerminateWithoutUpdatingState from '../LinkTerminateWithoutUpdatingState';
 import LinkUpdateAndTerminateState from '../LinkUpdateAndTerminateState';
 import PollingState from '../PollingState';
+import ProviderFetcher from 'common/lib/models/ProviderFetcher';
 import SyncWithSourceState from '../SyncWithSourceState';
 
 import type { ID } from 'common/types/core';
@@ -20,7 +22,8 @@ jest
   .mock('common/lib/models/ProviderMutator')
   .mock('common/lib/models/TransactionFetcher')
   .mock('common/lib/models/TransactionMutator')
-  .mock('../../../../log-utils');
+  .mock('../../../../log-utils')
+  .mock('../../../../yodlee/yodlee-manager');
 
 class MockLinkEngine {
   _accountLinkID: ID;
@@ -30,8 +33,10 @@ class MockLinkEngine {
     this._accountLinkID = accountLinkID;
   }
 
+  genFetchUserID = jest.fn();
   genRefetchAccountLink = jest.fn();
   genRefreshAccountLink = jest.fn();
+
   onLinkEvent = cb => {
     this._cb = cb;
     return { remove: () => cb && (cb = null) };
@@ -41,46 +46,90 @@ class MockLinkEngine {
 
 let mockEngine;
 
-const LOGIN_FORM = {
-  row: [
-    {
-      field: [
-        {
-          valueEditable: true,
-          type: 'text',
-          value: '',
-          id: 567,
-          isOptional: false,
-          maxLength: 32,
-          name: 'LOGIN',
-        },
-      ],
-      form: '0001',
-      fieldRowChoice: '0001',
-      id: 4710,
-      label: 'User ID',
-    },
-    {
-      field: [
-        {
-          name: 'PASSWORD',
-          valueEditable: true,
-          type: 'password',
-          value: '',
-          id: 568,
-          isOptional: false,
-        },
-      ],
-      form: '0001',
-      fieldRowChoice: '0002',
-      id: 11976,
-      label: 'Password',
-    },
-  ],
-  id: 324,
-  forgetPasswordURL:
-    'https://chaseonline.chase.com/Public/ReIdentify/ReidentifyFilterView.aspx?COLLogon',
-  formType: 'login',
+const LOGIN_FORMS = {
+  blank: {
+    row: [
+      {
+        field: [
+          {
+            valueEditable: true,
+            type: 'text',
+            value: '',
+            id: 567,
+            isOptional: false,
+            maxLength: 32,
+            name: 'LOGIN',
+          },
+        ],
+        form: '0001',
+        fieldRowChoice: '0001',
+        id: 4710,
+        label: 'User ID',
+      },
+      {
+        field: [
+          {
+            name: 'PASSWORD',
+            valueEditable: true,
+            type: 'password',
+            value: '',
+            id: 568,
+            isOptional: false,
+          },
+        ],
+        form: '0001',
+        fieldRowChoice: '0002',
+        id: 11976,
+        label: 'Password',
+      },
+    ],
+    id: 324,
+    forgetPasswordURL:
+      'https://chaseonline.chase.com/Public/ReIdentify/ReidentifyFilterView.aspx?COLLogon',
+    formType: 'login',
+  },
+
+  filledOut: {
+    row: [
+      {
+        field: [
+          {
+            valueEditable: true,
+            type: 'text',
+            value: 'MY USER NAME',
+            id: 567,
+            isOptional: false,
+            maxLength: 32,
+            name: 'LOGIN',
+          },
+        ],
+        form: '0001',
+        fieldRowChoice: '0001',
+        id: 4710,
+        label: 'User ID',
+      },
+      {
+        field: [
+          {
+            name: 'PASSWORD',
+            valueEditable: true,
+            type: 'password',
+            value: 'MY PASSWORD',
+            id: 568,
+            isOptional: false,
+          },
+        ],
+        form: '0001',
+        fieldRowChoice: '0002',
+        id: 11976,
+        label: 'Password',
+      },
+    ],
+    id: 324,
+    forgetPasswordURL:
+      'https://chaseonline.chase.com/Public/ReIdentify/ReidentifyFilterView.aspx?COLLogon',
+    formType: 'login',
+  },
 };
 
 const ACCOUNT_LINKS = {
@@ -88,8 +137,13 @@ const ACCOUNT_LINKS = {
     createdAt: new Date(),
     id: '0',
     modelType: 'AccountLink',
+    providerRef: {
+      pointerType: 'Provider',
+      refID: '0',
+      type: 'POINTER',
+    },
     sourceOfTruth: {
-      loginForm: LOGIN_FORM,
+      loginForm: LOGIN_FORMS.blank,
       providerAccount: {
         aggregationSource: 'USER',
         createdDate: '2018-05-10',
@@ -114,8 +168,13 @@ const ACCOUNT_LINKS = {
     createdAt: new Date(),
     id: '0',
     modelType: 'AccountLink',
+    providerRef: {
+      pointerType: 'Provider',
+      refID: '0',
+      type: 'POINTER',
+    },
     sourceOfTruth: {
-      loginForm: LOGIN_FORM,
+      loginForm: LOGIN_FORMS.blank,
       providerAccount: {
         aggregationSource: 'USER',
         createdDate: '2018-05-10',
@@ -140,8 +199,13 @@ const ACCOUNT_LINKS = {
     createdAt: new Date(),
     id: '0',
     modelType: 'AccountLink',
+    providerRef: {
+      pointerType: 'Provider',
+      refID: '0',
+      type: 'POINTER',
+    },
     sourceOfTruth: {
-      loginForm: LOGIN_FORM,
+      loginForm: LOGIN_FORMS.blank,
       providerAccount: {
         aggregationSource: 'USER',
         createdDate: '2018-05-10',
@@ -167,8 +231,13 @@ const ACCOUNT_LINKS = {
     createdAt: new Date(),
     id: '0',
     modelType: 'AccountLink',
+    providerRef: {
+      pointerType: 'Provider',
+      refID: '0',
+      type: 'POINTER',
+    },
     sourceOfTruth: {
-      loginForm: LOGIN_FORM,
+      loginForm: LOGIN_FORMS.blank,
       providerAccount: {
         aggregationSource: 'USER',
         createdDate: '2018-05-10',
@@ -193,8 +262,13 @@ const ACCOUNT_LINKS = {
     createdAt: new Date(),
     id: '0',
     modelType: 'AccountLink',
+    providerRef: {
+      pointerType: 'Provider',
+      refID: '0',
+      type: 'POINTER',
+    },
     sourceOfTruth: {
-      loginForm: LOGIN_FORM,
+      loginForm: LOGIN_FORMS.blank,
       providerAccount: {
         aggregationSource: 'USER',
         createdDate: '2018-05-10',
@@ -220,6 +294,11 @@ const ACCOUNT_LINKS = {
     createdAt: new Date(),
     id: '0',
     modelType: 'AccountLink',
+    providerRef: {
+      pointerType: 'Provider',
+      refID: '0',
+      type: 'POINTER',
+    },
     sourceOfTruth: {
       providerAccount: {
         aggregationSource: 'USER',
@@ -246,8 +325,13 @@ const ACCOUNT_LINKS = {
     createdAt: new Date(),
     id: '0',
     modelType: 'AccountLink',
+    providerRef: {
+      pointerType: 'Provider',
+      refID: '0',
+      type: 'POINTER',
+    },
     sourceOfTruth: {
-      loginForm: LOGIN_FORM,
+      loginForm: LOGIN_FORMS.blank,
       providerAccount: {
         aggregationSource: 'USER',
         createdDate: '2018-05-10',
@@ -273,8 +357,13 @@ const ACCOUNT_LINKS = {
     createdAt: new Date(),
     id: '0',
     modelType: 'AccountLink',
+    providerRef: {
+      pointerType: 'Provider',
+      refID: '0',
+      type: 'POINTER',
+    },
     sourceOfTruth: {
-      loginForm: LOGIN_FORM,
+      loginForm: LOGIN_FORMS.blank,
       providerAccount: {
         aggregationSource: 'USER',
         createdDate: '2018-05-10',
@@ -360,6 +449,7 @@ const MOCK_EVENT = {
 };
 
 const TEST_ACCOUNT_LINK_ID = '1';
+const TEST_USER_ID = '2';
 
 jest.useFakeTimers();
 
@@ -368,11 +458,14 @@ beforeEach(() => {
 
   mockEngine.genRefetchAccountLink.mockReturnValue(Promise.resolve());
   mockEngine.genRefreshAccountLink.mockReturnValue(Promise.resolve());
+  mockEngine.genFetchUserID.mockReturnValue(Promise.resolve(TEST_USER_ID));
 
   AccountLinkMutator.genDelete.mockClear();
   AccountLinkMutator.genDeleteCollection.mockClear();
   AccountLinkMutator.genSet.mockClear();
   AccountLinkMutator.genSetCollection.mockClear();
+
+  YodleeManager.genProviderLogin.mockClear();
 });
 
 test('starts at initial link state by default', () => {
@@ -394,6 +487,40 @@ test('will refresh the account after the state machine is initialized', () => {
 
   expect(mockEngine.genRefreshAccountLink.mock.calls).toHaveLength(1);
   expect(mockEngine.genRefreshAccountLink.mock.calls[0]).toHaveLength(0);
+});
+
+test('will login to provider after the state machine is initialized with login', async () => {
+  expect.assertions(4);
+
+  AccountLinkFetcher.genNullthrows.mockReturnValue(
+    Promise.resolve(ACCOUNT_LINKS.LoginToLogin),
+  );
+  ProviderFetcher.genNullthrows.mockReturnValue(
+    Promise.resolve({ sourceOfTruth: { type: 'YODLEE', value: {} } }),
+  );
+
+  // TODO: Would like to figure out how to better structure tests to avoid
+  // awkward async checks like this. Here we are mocking the implementation
+  // of the yodlee provider login call so that we can check when it is called
+  // and block the tests until we have called the method.
+  let resolveYodleeProviderLoginCall;
+  const waitForYodleeProviderLogin = new Promise(
+    resolve => (resolveYodleeProviderLoginCall = resolve),
+  );
+  YodleeManager.genProviderLogin.mockImplementation(
+    () => resolveYodleeProviderLoginCall() || Promise.resolve(),
+  );
+
+  const machine = new LinkStateMachine({
+    accountLinkID: TEST_ACCOUNT_LINK_ID,
+    engine: mockEngine,
+    payload: { loginForm: LOGIN_FORMS.filledOut, type: 'PERFORM_LOGIN' },
+  });
+  machine.initialize();
+
+  await waitForYodleeProviderLogin;
+
+  expect(YodleeManager.genProviderLogin.mock.calls).toHaveLength(1);
 });
 
 test('goes to polling state after receiving first update event', () => {
@@ -429,7 +556,7 @@ test('stays in polling state after receiving a non-terminal provider update', ()
   expect(machine.getCurrentState()).toBeInstanceOf(PollingState);
 });
 
-test('terminates link if starting linking with an account link that is already linking', () => {
+test('terminates link if initializing  with an account link that is already linking', () => {
   const machine = new LinkStateMachine({
     accountLinkID: TEST_ACCOUNT_LINK_ID,
     engine: mockEngine,

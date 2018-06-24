@@ -1,8 +1,13 @@
 /* @flow */
 
+import * as YodleeManager from '../../../yodlee/yodlee-manager';
+import AccountLinkFetcher from 'common/lib/models/AccountLinkFetcher';
 import LinkState from './LinkState';
 import LinkTerminateWithoutUpdatingState from './LinkTerminateWithoutUpdatingState';
 import LinkUtils from './LinkUtils';
+import ProviderFetcher from 'common/lib/models/ProviderFetcher';
+
+import invariant from 'invariant';
 
 import { INFO } from '../../../log-utils';
 
@@ -30,8 +35,11 @@ export default class InitializingState extends LinkState {
     }
 
     if (linkEvent.type === 'UPDATE_ACCOUNT_LINK') {
-      const {accountLink} = linkEvent;
-      if (!this._forceLinking && (accountLink.isLinking || accountLink.isInMFA)) {
+      const { accountLink } = linkEvent;
+      if (
+        !this._forceLinking &&
+        (accountLink.isLinking || accountLink.isInMFA)
+      ) {
         return new LinkTerminateWithoutUpdatingState();
       }
 
@@ -48,7 +56,43 @@ export default class InitializingState extends LinkState {
     engine: LinkEngine,
   ): Promise<void> {
     INFO('ACCOUNT-LINK', 'New State: Initializing');
-    await engine.genRefreshAccountLink();
+
+    const linkPayload = this.__linkPayload;
+
+    if (linkPayload.type === 'PERFORM_LOGIN') {
+      // STEP 1A: If we are logging in to a provider, send the login form to
+      // the source of truth.
+
+      const [userID, accountLink] = await Promise.all([
+        engine.genFetchUserID(),
+        AccountLinkFetcher.genNullthrows(this.__accountLinkID),
+      ]);
+
+      const { sourceOfTruth } = await ProviderFetcher.genNullthrows(
+        accountLink.providerRef.refID,
+      );
+
+      invariant(
+        sourceOfTruth.type === 'YODLEE',
+        'Expecting provider to come from yodlee: %s',
+        accountLink.providerRef.refID,
+      );
+
+      const yodleeProvider = {
+        ...sourceOfTruth.value,
+        loginForm: linkPayload.loginForm,
+      };
+
+      await YodleeManager.genProviderLogin(userID, yodleeProvider);
+    } else {
+      // STEP 1B: If we are not logging in, assume that we are resyncing the
+      // data of the account with an existing account.
+
+      await engine.genRefreshAccountLink();
+    }
+
+    // STEP 2: Get the updated account link data from the source and sync it
+    // with the data.
     await engine.genRefetchAccountLink();
   }
 }

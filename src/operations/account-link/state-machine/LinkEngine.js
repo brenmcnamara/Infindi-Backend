@@ -38,7 +38,7 @@ export default class LinkEngine {
       // Want to get the userID and providerID in sequence because when fetching
       // one of them, we fetch the other value as well. If we run them in
       // parallel, we may end up making an extra network call.
-      const userID = await this._genFetchUserID();
+      const userID = await this.genFetchUserID();
       const providerAccountID = await this._genFetchProviderAccountID();
       await genProviderAccountRefresh(userID, providerAccountID);
     });
@@ -50,7 +50,7 @@ export default class LinkEngine {
   async genRefetchAccountLink(): Promise<void> {
     await this._errorHandlerAsync(async () => {
       let accountLink = await this._genFetchAccountLink();
-      const userID = await this._genFetchUserID();
+      const userID = await this.genFetchUserID();
       const providerAccountID = await this._genFetchProviderAccountID();
       const providerAccount = await genProviderAccount(
         userID,
@@ -112,7 +112,7 @@ export default class LinkEngine {
     return this._providerAccountID;
   }
 
-  async _genFetchUserID(): Promise<ID> {
+  async genFetchUserID(): Promise<ID> {
     if (!this._userID) {
       await this._genFetchAccountLink();
     }

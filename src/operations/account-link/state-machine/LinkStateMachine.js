@@ -13,6 +13,11 @@ import type { ID } from 'common/types/core';
 import type { LinkEvent } from './LinkEvent';
 import type { LoginForm as YodleeLoginForm } from 'common/types/yodlee-v1.0';
 
+export type ChangeStateCallback = (
+  currentState: LinkState,
+  prevState: LinkState | null,
+) => void;
+
 export type LinkPayload =
   | {| +type: 'FOREGROUND_UPDATE' | 'BACKGROUND_UPDATE' |}
   | {| +loginForm: YodleeLoginForm, +type: 'PERFORM_LOGIN' |};
@@ -36,11 +41,12 @@ type StateMachinePropsFull = {
  * account link.
  */
 export default class LinkStateMachine {
+  _changeStateCallbacks: Array<ChangeStateCallback> = [];
   _props: StateMachinePropsFull;
   _currentState: LinkState;
   _processingEventGuard: boolean = false;
 
-  static reconcileProps(props: StateMachineProps): StateMachinePropsFull {
+  static calculateFullProps(props: StateMachineProps): StateMachinePropsFull {
     return {
       ...props,
       shouldForceLinking: props.shouldForceLinking || false,
@@ -48,7 +54,7 @@ export default class LinkStateMachine {
   }
 
   constructor(props: StateMachineProps) {
-    const fullProps = LinkStateMachine.reconcileProps(props);
+    const fullProps = LinkStateMachine.calculateFullProps(props);
     const currentState = new InitializingState(fullProps.shouldForceLinking);
 
     currentState.setAccountLinkID(props.accountLinkID);
@@ -58,8 +64,21 @@ export default class LinkStateMachine {
     this._currentState = currentState;
   }
 
+  onChangeState(callback: ChangeStateCallback): { remove: () => void } {
+    this._changeStateCallbacks.push(callback);
+    return {
+      remove: () => {
+        const index = this._changeStateCallbacks.indexOf(callback);
+        if (index >= 0) {
+          this._changeStateCallbacks.splice(index, 1);
+        }
+      },
+    };
+  }
+
   initialize(): void {
     this._props.engine.onLinkEvent(this._processEvent);
+    this._changeStateCallbacks.forEach(cb => cb(this._currentState, null));
     this._currentState.didEnterState(null, this._props.engine);
   }
 
@@ -83,6 +102,8 @@ export default class LinkStateMachine {
       currentState.willLeaveState(nextState, this._props.engine),
     );
     this._currentState = nextState;
+    this._changeStateCallbacks.forEach(cb => cb(nextState, currentState));
+
     this._wrapInErrorHandler(() =>
       nextState.didEnterState(currentState, this._props.engine),
     );
