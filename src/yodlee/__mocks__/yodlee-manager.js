@@ -8,6 +8,8 @@ export const genProviderLogin = jest.fn();
 
 export const genProviderAccounts = jest.fn();
 
+export const genDeleteProviderAccount = jest.fn();
+
 export const genProviderAccount = jest.fn();
 
 export const genAccountsForProviderAccount = jest.fn();
