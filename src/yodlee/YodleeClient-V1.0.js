@@ -542,6 +542,8 @@ export default class YodleeClient {
           return;
         }
 
+        serialized = serialized || '{}';
+        
         let payload;
         try {
           payload = JSON.parse(serialized);
