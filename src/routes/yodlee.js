@@ -168,6 +168,7 @@ router.get('/providers/search', performProviderSearch());
 function performTestProviderLogin(): RouteHandler {
   return handleError(async (req, res) => {
     const loginForm: ?YodleeLoginForm = req.body.loginForm;
+
     if (!loginForm) {
       const errorCode = 'infindi/bad-request';
       const errorMessage = '"loginForm" missing';

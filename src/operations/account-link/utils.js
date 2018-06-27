@@ -6,7 +6,6 @@ import AccountFetcher from 'common/lib/models/AccountFetcher';
 import AccountLink from 'common/lib/models/AccountLink';
 import AccountLinkFetcher from 'common/lib/models/AccountLinkFetcher';
 import AccountLinkMutator from 'common/lib/models/AccountLinkMutator';
-import Logger from './logger';
 import Transaction from 'common/lib/models/Transaction';
 import TransactionFetcher from 'common/lib/models/TransactionFetcher';
 import TransactionMutator from 'common/lib/models/TransactionMutator';
@@ -46,7 +45,6 @@ export function handleLinkingError(
         const newAccountLink = accountLink.setStatus(
           'FAILURE / INTERNAL_SERVICE_FAILURE',
         );
-        Logger.genStop(newAccountLink);
         return AccountLinkMutator.genSet(newAccountLink);
       })
       .catch(error => {
@@ -369,7 +367,12 @@ async function genYodleeCreateTransactions(
     );
 
     const newTransactions = newYodleeTransactions.map(yodleeTransaction =>
-      Transaction.createYodlee(yodleeTransaction, userID, accountID),
+      Transaction.createYodlee(
+        yodleeTransaction,
+        userID,
+        accountID,
+        accountLink.id,
+      ),
     );
     allNewTransactions.push.apply(allNewTransactions, newTransactions);
   }

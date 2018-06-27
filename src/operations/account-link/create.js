@@ -3,7 +3,6 @@
 import AccountLink from 'common/lib/models/AccountLink';
 import AccountLinkFetcher from 'common/lib/models/AccountLinkFetcher';
 import AccountLinkMutator from 'common/lib/models/AccountLinkMutator';
-import Logger from './logger';
 
 import invariant from 'invariant';
 
@@ -95,7 +94,6 @@ async function genYodleePerformLinkImpl(accountLinkID: ID): Promise<void> {
       errorMessage: 'Trying to wait for non-existent account link',
     };
   }
-  Logger.genStart(accountLink, 'MANUAL');
 
   const userID = accountLink.userRef.refID;
   INFO(
@@ -107,7 +105,6 @@ async function genYodleePerformLinkImpl(accountLinkID: ID): Promise<void> {
   while (newAccountLink.isLinking || newAccountLink.isInMFA) {
     await sleepForMillis(sleepTime);
     newAccountLink = await genYodleeLinkPass(userID, accountLinkID);
-    Logger.genUpdate(newAccountLink);
   }
 
   INFO('ACCOUNT-LINK', 'Yodlee has completed linking attempt');
@@ -138,7 +135,6 @@ async function genYodleePerformLinkImpl(accountLinkID: ID): Promise<void> {
 
   // Perform the linking + update here.
   await genUpdateLink(newAccountLink);
-  Logger.genStop(newAccountLink);
   INFO('ACCOUNT-LINK', 'Finished downloading account link data');
 }
 

@@ -79,7 +79,9 @@ export default class LinkStateMachine {
   initialize(): void {
     this._props.engine.onLinkEvent(this._processEvent);
     this._changeStateCallbacks.forEach(cb => cb(this._currentState, null));
-    this._currentState.didEnterState(null, this._props.engine);
+    this._wrapInErrorHandler(() =>
+      this._currentState.didEnterState(null, this._props.engine),
+    );
   }
 
   _processEvent = (event: LinkEvent): void => {

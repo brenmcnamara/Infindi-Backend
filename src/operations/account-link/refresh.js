@@ -2,7 +2,6 @@
 
 import AccountLinkFetcher from 'common/lib/models/AccountLinkFetcher';
 import AccountLinkMutator from 'common/lib/models/AccountLinkMutator';
-import Logger from './logger';
 
 import invariant from 'invariant';
 
@@ -48,7 +47,7 @@ async function genYodleeRefreshAccountLinkImpl(
   if (
     accountLink.status === 'FAILURE / USER_INPUT_REQUEST_IN_BACKGROUND' ||
     accountLink.isInMFA ||
-    (false && accountLink.isLinking && !force)
+    (accountLink.isLinking && !force)
   ) {
     INFO(
       'ACCOUNT-LINK',
@@ -58,7 +57,6 @@ async function genYodleeRefreshAccountLinkImpl(
     );
     return;
   }
-  Logger.genStart(accountLink, 'AUTO');
 
   const userID = accountLink.userRef.refID;
   const yodleeProviderAccount = getYodleeProviderAccount(accountLink);
@@ -80,7 +78,6 @@ async function genYodleeRefreshAccountLinkImpl(
       'FAILURE / USER_INPUT_REQUEST_IN_BACKGROUND',
     );
     await AccountLinkMutator.genSet(newAccountLink);
-    Logger.genStop(newAccountLink);
     return;
   }
   if (!newAccountLink.isLinkSuccess) {
@@ -90,12 +87,10 @@ async function genYodleeRefreshAccountLinkImpl(
         accountLink.id
       }. Account link status: ${newAccountLink.status}`,
     );
-    Logger.genStop(newAccountLink);
     return;
   }
   INFO('ACCOUNT-LINK', `Refresh completed for account link ${accountLink.id}`);
   await genYodleeUpdateLink(newAccountLink);
-  Logger.genStop(newAccountLink);
 }
 
 // -----------------------------------------------------------------------------

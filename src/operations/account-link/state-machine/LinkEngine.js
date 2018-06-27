@@ -14,7 +14,6 @@ import type AccountLink from 'common/lib/models/AccountLink';
 
 import type { ID } from 'common/types/core';
 import type { LinkEvent } from './LinkEvent';
-import type { ProviderAccount as YodleeProviderAccount } from 'common/types/yodlee-v1.0';
 
 export type EventEmitter = { remove: () => void };
 export type LinkEventCallback = (event: LinkEvent) => void;
@@ -27,6 +26,12 @@ export default class LinkEngine {
 
   constructor(accountLinkID: ID) {
     this._accountLinkID = accountLinkID;
+  }
+
+  // NOTE: Temporary workaround for login flow, until we move some of these
+  // methods out.
+  setProviderAccountID(providerAccountID: ID): void {
+    this._providerAccountID = providerAccountID;
   }
 
   /**
@@ -87,6 +92,8 @@ export default class LinkEngine {
   }
 
   async _genFetchAccountLink(): Promise<AccountLink> {
+    // STEP 1: Fetch the account link. Error out if it does not exist.
+
     const accountLinkID = this._accountLinkID;
     const accountLink = await AccountLinkFetcher.gen(this._accountLinkID);
     if (!accountLink) {
@@ -95,9 +102,32 @@ export default class LinkEngine {
       const toString = `[${errorCode}]: ${errorMessage}`;
       throw { errorCode, errorMessage, toString };
     }
-    const providerAccount = getYodleeProviderAccount(accountLink);
-    this._providerAccountID = String(providerAccount.id);
+
+    // STEP 2: Update any locale caches based on the account link.
+
     this._userID = accountLink.userRef.refID;
+
+    const { sourceOfTruth } = accountLink;
+    switch (sourceOfTruth.type) {
+      case 'EMPTY': {
+        break;
+      }
+
+      case 'YODLEE': {
+        const { providerAccount } = sourceOfTruth;
+        this._providerAccountID = String(providerAccount.id);
+        break;
+      }
+
+      default: {
+        invariant(
+          false,
+          'Unexpected account link source of truth: %s',
+          sourceOfTruth.type,
+        );
+      }
+    }
+
     return accountLink;
   }
 
@@ -143,15 +173,4 @@ export default class LinkEngine {
       ERROR('ACCOUNT-LINK', `Swallowing error: ${errorMessage}`);
     });
   }
-}
-
-function getYodleeProviderAccount(
-  accountLink: AccountLink,
-): YodleeProviderAccount {
-  const { sourceOfTruth } = accountLink;
-  invariant(
-    sourceOfTruth.type === 'YODLEE',
-    'Expecting source of truth to come from YODLEE',
-  );
-  return sourceOfTruth.providerAccount;
 }

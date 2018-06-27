@@ -33,6 +33,8 @@ class MockLinkEngine {
     this._accountLinkID = accountLinkID;
   }
 
+  setProviderAccountID = jest.fn();
+
   genFetchUserID = jest.fn();
   genRefetchAccountLink = jest.fn();
   genRefreshAccountLink = jest.fn();
@@ -456,6 +458,7 @@ jest.useFakeTimers();
 beforeEach(() => {
   mockEngine = new MockLinkEngine(TEST_ACCOUNT_LINK_ID);
 
+  mockEngine.setProviderAccountID.mockReturnValue(undefined);
   mockEngine.genRefetchAccountLink.mockReturnValue(Promise.resolve());
   mockEngine.genRefreshAccountLink.mockReturnValue(Promise.resolve());
   mockEngine.genFetchUserID.mockReturnValue(Promise.resolve(TEST_USER_ID));

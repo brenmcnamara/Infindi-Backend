@@ -44,6 +44,7 @@ function calculateStateForUpdatedAccountLink(
     case 'SUCCESS':
       return new LinkUpdateAndTerminateState(accountLink, status);
 
+    case 'EMPTY':
     case 'IN_PROGRESS / DOWNLOADING_DATA':
     case 'IN_PROGRESS / INITIALIZING':
     case 'IN_PROGRESS / VERIFYING_CREDENTIALS':
@@ -64,6 +65,11 @@ function calculateAccountLinkStatus(
   linkPayload: LinkPayload,
 ): AccountLinkStatus {
   const { sourceOfTruth } = accountLink;
+
+  if (sourceOfTruth.type === 'EMPTY') {
+    return 'EMPTY';
+  }
+
   invariant(
     sourceOfTruth.type === 'YODLEE',
     'Expecting account link source of truth to come from YODLEE',

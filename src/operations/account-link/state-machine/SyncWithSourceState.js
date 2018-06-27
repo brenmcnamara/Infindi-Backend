@@ -185,6 +185,7 @@ export default class SyncWithSourceState extends LinkState {
             yodleeTransaction,
             userID,
             account.id,
+            account.accountLinkRef.refID,
           );
           return [transaction.id, transaction];
         }),
@@ -195,7 +196,7 @@ export default class SyncWithSourceState extends LinkState {
           account.id
         } - Creating ${transactions.size} transaction(s)`,
       );
-      // await TransactionMutator.genSetCollection(transactions);
+      await TransactionMutator.genSetCollection(transactions);
       return;
     }
 
@@ -226,6 +227,7 @@ export default class SyncWithSourceState extends LinkState {
             yodleeTransaction,
             userID,
             account.id,
+            account.accountLinkRef.refID,
           );
           return [transaction.id, transaction];
         }),

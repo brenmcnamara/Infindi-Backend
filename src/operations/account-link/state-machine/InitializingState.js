@@ -38,6 +38,7 @@ export default class InitializingState extends LinkState {
       const { accountLink } = linkEvent;
       if (
         !this._forceLinking &&
+        this.__linkPayload.type !== 'PERFORM_LOGIN' &&
         (accountLink.isLinking || accountLink.isInMFA)
       ) {
         return new LinkTerminateWithoutUpdatingState();
@@ -83,7 +84,8 @@ export default class InitializingState extends LinkState {
         loginForm: linkPayload.loginForm,
       };
 
-      await YodleeManager.genProviderLogin(userID, yodleeProvider);
+      const response = await YodleeManager.genProviderLogin(userID, yodleeProvider);
+      engine.setProviderAccountID(String(response.providerAccountId));
     } else {
       // STEP 1B: If we are not logging in, assume that we are resyncing the
       // data of the account with an existing account.
