@@ -259,7 +259,7 @@ export default class YodleeClient {
         this._genGetRequest(userSession, `${BASE_URI}/providerAccounts`),
       )
       .then((response: ProviderAccountsResponse) => {
-        return response.providerAccount;
+        return response.providerAccount || [];
       });
   }
 
@@ -543,7 +543,7 @@ export default class YodleeClient {
         }
 
         serialized = serialized || '{}';
-        
+
         let payload;
         try {
           payload = JSON.parse(serialized);
