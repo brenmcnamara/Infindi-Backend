@@ -1,6 +1,5 @@
 /* @flow */
 
-import debug, { initialize as initializeDebug } from './debug';
 import express from 'express';
 import users, { initialize as initializeUsers } from './users';
 import yodlee, { initialize as initializeYodlee } from './yodlee';
@@ -10,7 +9,6 @@ const router = express.Router();
 export default router;
 
 export function initialize(): void {
-  initializeDebug();
   initializeUsers();
   initializeYodlee();
 
@@ -26,8 +24,4 @@ export function initialize(): void {
 
   router.use('/users', users);
   router.use('/yodlee', yodlee);
-
-  if (process.env.INCLUDE_DEBUG_ROUTES === 'true') {
-    router.use('/debug', debug);
-  }
 }
