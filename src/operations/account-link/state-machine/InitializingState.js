@@ -18,6 +18,9 @@ import type { LinkEvent } from './LinkEvent';
 /**
  * Enter this state when starting the linking process.
  */
+// TODO: Need to detect blank form and automatically dispatch an invalid
+// credentials state. Blank forms being sent through the yodlee api will
+// result in errors being thrown, which will put us in some unknown error state.
 export default class InitializingState extends LinkState {
   _forceLinking: boolean;
 

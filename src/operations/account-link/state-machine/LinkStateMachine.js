@@ -133,7 +133,7 @@ export default class LinkStateMachine {
 
   _handleCaughtError(error: mixed): void {
     // $FlowFixMe - This is fine
-    ERROR('ACCOUNT-LINK', `Error caught by link state machine\n${error.stack}`);
+    ERROR('ACCOUNT-LINK', `Error caught by link state machine\n${error}`);
 
     if (this._processingEventGuard) {
       ERROR(

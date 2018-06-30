@@ -1,7 +1,5 @@
 /* @flow */
 
-import Common from 'common';
-
 import bodyParser from 'body-parser';
 import express from 'express';
 import morgan from 'morgan';
@@ -11,8 +9,6 @@ import serveFavicon from 'serve-favicon';
 
 import { initialize as initializeJobRunner } from './job-runner';
 import { initialize as initializeYodleeManager } from './yodlee/yodlee-manager';
-
-const { ErrorUtils } = Common;
 
 const app = express();
 
@@ -35,8 +31,7 @@ export function initialize(): void {
   app.use((req, res) => {
     const errorCode = 'infindi/resource-not-found';
     const errorMessage = 'Resource not found';
-    const status = ErrorUtils.getStatusForErrorCode(errorCode);
-    res.status(status).json({ errorCode, errorMessage });
+    res.status(404).json({ errorCode, errorMessage });
     return;
   });
 

@@ -1,7 +1,5 @@
 /* @flow */
 
-import Common from 'common';
-
 import type { RouteHandler } from './middleware';
 
 export function handleError(
@@ -13,7 +11,7 @@ export function handleError(
       // Assume the route handler is operating via Promise.
       routeHandler(req, res, next).catch(error => {
         const infindiError = createError(error);
-        const status = Common.ErrorUtils.getStatusForErrorCode(error.errorCode);
+        const status = getStatusForError(error);
         res.status(status).json(infindiError);
       });
     } else {
@@ -39,7 +37,7 @@ function getStatusForError(error: Error): number {
     // This may not always be correct.
     return 401;
   }
-  return Common.ErrorUtils.getStatusForErrorCode(error.errorCode);
+  return 400;
 }
 
 function createError(error: Object) {

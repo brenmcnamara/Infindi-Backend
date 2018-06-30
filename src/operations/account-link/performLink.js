@@ -1,5 +1,6 @@
 /* @flow */
 
+import AccountLinkTestUtils from './test-utils';
 import LinkEngine from './state-machine/LinkEngine';
 import LinkStateMachine from './state-machine/LinkStateMachine';
 
@@ -15,6 +16,11 @@ export default function performLink(
   payload: LinkPayload,
   shouldForceLinking: boolean = false,
 ): void {
+  if (AccountLinkTestUtils.isTestAccountLinkID(accountLinkID)) {
+    AccountLinkTestUtils.genTestPerformLink(accountLinkID, payload);
+    return;
+  }
+
   const engine = new LinkEngine(accountLinkID);
   const machine = new LinkStateMachine({
     accountLinkID,

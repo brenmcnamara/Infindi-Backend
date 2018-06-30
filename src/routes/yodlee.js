@@ -3,6 +3,10 @@
 import AccountLink from 'common/lib/models/AccountLink';
 import AccountLinkFetcher from 'common/lib/models/AccountLinkFetcher';
 import AccountLinkMutator from 'common/lib/models/AccountLinkMutator';
+import AccountLinkOperations from '../operations/account-link';
+import AccountLinkTestUtils, {
+  TEST_YODLEE_PROVIDER_ID,
+} from '../operations/account-link/test-utils';
 import Provider from 'common/lib/models/Provider';
 import ProviderFetcher from 'common/lib/models/ProviderFetcher';
 import UserInfoFetcher from 'common/lib/models/UserInfoFetcher';
@@ -14,20 +18,13 @@ import { checkAuth } from '../middleware';
 import { createPointer } from 'common/lib/db-utils';
 import { DEBUG, INFO } from '../log-utils';
 import { genProviderAccountMFALogin } from '../yodlee/yodlee-manager';
-import {
-  genTestYodleePerformLink,
-  genTestYodleeProviderLogin,
-  genTestYodleeSubmitMFALoginForm,
-  genYodleePerformLink,
-  genYodleeProviderLogin,
-} from '../operations/account-link/create';
+import { genTestYodleeSubmitMFALoginForm } from '../operations/account-link/create';
 import { handleError } from '../route-utils';
 
 import type { ID } from 'common/types/core';
 import type {
   LoginForm as YodleeLoginForm,
   ProviderAccount as YodleeProviderAccount,
-  ProviderFull as YodleeProvider,
 } from 'common/types/yodlee-v1.0';
 import type { RouteHandler } from '../middleware';
 
@@ -66,14 +63,6 @@ const PROVIDER_IDS = [
   '12944', // LightStream
   '13960', // HSBC USA
   '3531', // Paypal
-];
-
-const TEST_YODLEE_PROVIDER_ID: ID = '0';
-const SUPPORTED_TEST_ACCOUNT_LINK_STATUSES = [
-  'SUCCESS',
-  'FAILURE / BAD_CREDENTIALS',
-  'FAILURE / INTERNAL_SERVICE_FAILURE',
-  'FAILURE / EXTERNAL_SERVICE_FAILURE',
 ];
 
 export function initialize(): void {
@@ -130,7 +119,10 @@ function performProviderSearch(): RouteHandler {
     const { isTestUser } = userInfo;
 
     if (query.trim().length === 0) {
-      const providers = (isTestUser ? [createTestYodleeProvider()] : [])
+      const providers = (isTestUser
+        ? [AccountLinkTestUtils.createTestProvider()]
+        : []
+      )
         .concat(getProviders())
         .slice(page * limit, limit);
       res.json({
@@ -142,7 +134,10 @@ function performProviderSearch(): RouteHandler {
     }
 
     const searchRegExp = new RegExp(query, 'i');
-    const providers = (isTestUser ? [createTestYodleeProvider()] : [])
+    const providers = (isTestUser
+      ? [AccountLinkTestUtils.createTestProvider()]
+      : []
+    )
       .concat(getProviders())
       .filter(p => searchRegExp.test(p.name))
       .slice(page * limit, limit);
@@ -165,65 +160,17 @@ router.get('/providers/search', performProviderSearch());
 //
 // -----------------------------------------------------------------------------
 
-function performTestProviderLogin(): RouteHandler {
-  return handleError(async (req, res) => {
-    const loginForm: ?YodleeLoginForm = req.body.loginForm;
-
-    if (!loginForm) {
-      const errorCode = 'infindi/bad-request';
-      const errorMessage = '"loginForm" missing';
-      const toString = () => `[${errorCode}]: ${errorMessage}`;
-      throw { errorCode, errorMessage, toString };
-    }
-
-    const userID: ID = req.decodedIDToken.uid;
-
-    let accountLink: AccountLink | null = await AccountLinkFetcher.genForUserAndProvider(
-      userID,
-      TEST_YODLEE_PROVIDER_ID,
-    );
-
-    if (accountLink && accountLink.isInMfa) {
-      res.json({ data: createPointer('AccountLink', accountLink.id) });
-      await genTestYodleeSubmitMFALoginForm(accountLink.id, loginForm);
-      return;
-    }
-
-    const provider = createTestYodleeProvider();
-    invariant(
-      provider.sourceOfTruth.type === 'YODLEE',
-      'Expecting test yodlee provider to come from YODLEE',
-    );
-
-    // $FlowFixMe - This is correct
-    const desiredStatus: AccountLinkStatus = loginForm.row[0].field[0].value;
-    // $FlowFixMe - This is correct
-    const mfaFormCount: '0' | '1' | '2' = loginForm.row[1].field[0].value;
-
-    if (!SUPPORTED_TEST_ACCOUNT_LINK_STATUSES.includes(desiredStatus)) {
-      const errorCode = 'infindi/bad-request';
-      const errorMessage = `Unsupported account link status: "${desiredStatus}"`;
-      const toString = `[${errorCode}]: ${errorMessage}`;
-      throw { errorCode, errorMessage, toString };
-    }
-
-    accountLink = await genTestYodleeProviderLogin(userID, {
-      ...provider.sourceOfTruth.value,
-      loginForm,
-    });
-
-    res.json({ data: createPointer('AccountLink', accountLink.id) });
-
-    await genTestYodleePerformLink(accountLink.id, desiredStatus, mfaFormCount);
-  });
-}
-
 function performProviderLogin(): RouteHandler {
   return handleError(async (req, res) => {
     DEBUG('YODLEE', 'Attempting to login with provider');
     const providerID: ID = req.params.providerID;
 
-    const provider = await ProviderFetcher.gen(providerID);
+    // STEP 1: Fetch the provider we are logging into.
+
+    const provider =
+      providerID === TEST_YODLEE_PROVIDER_ID
+        ? await Promise.resolve(AccountLinkTestUtils.createTestProvider())
+        : await ProviderFetcher.gen(providerID);
     if (!provider) {
       const errorCode = 'infindi/bad-request';
       const errorMessage = `Provider ${providerID} does not exist`;
@@ -237,7 +184,8 @@ function performProviderLogin(): RouteHandler {
       const toString = () => `[${errorCode}]: ${errorMessage}`;
       throw { errorCode, errorMessage, toString };
     }
-    const yodleeProvider = provider.sourceOfTruth.value;
+
+    // STEP 2: Fetch the login form for the provider.
 
     const loginForm: ?YodleeLoginForm = req.body.loginForm;
 
@@ -248,80 +196,103 @@ function performProviderLogin(): RouteHandler {
       throw { errorCode, errorMessage, toString };
     }
 
-    // TODO: We are assuming forms of type login are for starting a login and
-    // forms of type questionAndAnswer or token are for MFA. May need to correct
-    // this.
-    switch (loginForm.formType) {
-      case 'login': {
-        const userID: ID = req.decodedIDToken.uid;
-        const accountLink = await genYodleeProviderLogin(userID, {
-          ...yodleeProvider,
-          loginForm,
-        });
-        res.send({ data: createPointer('AccountLink', accountLink.id) });
+    // STEP 3: Fetch the account link (or create one if there is none).
 
-        INFO(
-          'YODLEE',
-          'Refresh info has been sent. Starting post-response linking',
-        );
-        genYodleePerformLink(accountLink.id);
-        break;
-      }
+    const userID: ID = req.decodedIDToken.uid;
+    let accountLink = await AccountLinkFetcher.genForUserAndProvider(
+      userID,
+      providerID,
+    );
 
-      case 'questionAndAnswer':
-      case 'token': {
-        const userID: ID = req.decodedIDToken.uid;
-        const accountLink = await AccountLinkFetcher.genForUserAndProvider(
-          userID,
-          providerID,
-        );
-        if (!accountLink) {
-          const errorCode = 'infindi/bad-request';
-          const errorMessage = `Expecting account link to exist for provider ${providerID}`;
-          const toString = () => `[${errorCode}]: ${errorMessage}`;
-          throw { errorCode, errorMessage, toString };
-        }
-        const providerAccount = getYodleeProviderAccount(accountLink);
-        const response = await genProviderAccountMFALogin(
-          userID,
-          String(providerAccount.id),
-          loginForm,
-        );
-        // Once we have successfully submitted MFA login form, we need to
-        // remove the currently cached login form from the account link.
-        // NOTE: There is a race condition here. At the time this is called,
-        // we are polling for the provider account in the background. It could
-        // be the case that in between submitting the MFA login and when this
-        // method is called, we get the new MFA login form, in which case, we
-        // would then overwrite it with this call, which is very bad. Should
-        // find a way around this.
-        await AccountLinkMutator.genSet(
-          accountLink.setStatus('MFA / WAITING_FOR_LOGIN_FORM'),
-        );
-        res.send({ data: response });
-        break;
-      }
-
-      default: {
-        const errorCode = 'infindi/server-error';
-        const errorMessage = `Cannot handle login forms of type ${
-          loginForm.formType
-        }`;
-        const toString = () => `[${errorCode}]: ${errorMessage}`;
-        throw { errorCode, errorMessage, toString };
-      }
+    if (!accountLink && providerID === TEST_YODLEE_PROVIDER_ID) {
+      accountLink = AccountLinkTestUtils.createTestAccountLink(userID);
+      await AccountLinkMutator.genSet(accountLink);
+    } else if (!accountLink) {
+      const accountLinkSourceOfTruth = { target: 'YODLEE', type: 'EMPTY' };
+      accountLink = AccountLink.create(
+        accountLinkSourceOfTruth,
+        userID,
+        providerID,
+        provider.name,
+      );
+      await AccountLinkMutator.genSet(accountLink);
     }
+
+    // STEP 4: Perform the login in the background.
+
+    const linkPayload = { loginForm, type: 'PERFORM_LOGIN' };
+    AccountLinkOperations.performLink(
+      accountLink.id,
+      linkPayload,
+      false, // shouldForceLinking
+    );
+    res.send({ data: createPointer('AccountLink', accountLink.id) });
   }, true);
 }
 
-router.post(`/providers/${TEST_YODLEE_PROVIDER_ID}/loginForm`, checkAuth());
-router.post(
-  `/providers/${TEST_YODLEE_PROVIDER_ID}/loginForm`,
-  performTestProviderLogin(),
-);
-
 router.post('/providers/:providerID/loginForm', checkAuth());
 router.post('/providers/:providerID/loginForm', performProviderLogin());
+
+// -----------------------------------------------------------------------------
+//
+// POST yodlee/providers/:providerID/mfa
+//
+// -----------------------------------------------------------------------------
+
+const performProviderMFA = (): RouteHandler =>
+  handleError(async (req, res) => {
+    // TODO: Need to check if this is a valid provider id.
+    const providerID: ID = req.params.providerID;
+
+    const mfaForm: ?YodleeLoginForm = req.body.mfaForm;
+    if (!mfaForm) {
+      const errorCode = 'infindi/bad-request';
+      const errorMessage = '"mfaForm" missing';
+      const toString = () => `[${errorCode}]: ${errorMessage}`;
+      throw { errorCode, errorMessage, toString };
+    }
+
+    const userID: ID = req.decodedIDToken.uid;
+
+    const accountLink = await AccountLinkFetcher.genForUserAndProvider(
+      userID,
+      providerID,
+    );
+    if (!accountLink) {
+      const errorCode = 'infindi/bad-request';
+      const errorMessage = `Expecting account link to exist for provider ${providerID}`;
+      const toString = () => `[${errorCode}]: ${errorMessage}`;
+      throw { errorCode, errorMessage, toString };
+    }
+
+    const providerAccount = getYodleeProviderAccount(accountLink);
+    const response =
+      providerID === TEST_YODLEE_PROVIDER_ID
+        ? await genTestYodleeSubmitMFALoginForm(accountLink.id, mfaForm)
+        : await genProviderAccountMFALogin(
+            userID,
+            String(providerAccount.id),
+            mfaForm,
+          );
+
+    // Once we have successfully submitted MFA login form, we need to
+    // remove the currently cached login form from the account link.
+    // NOTE: There is a race condition here. At the time this is called,
+    // we are polling for the provider account in the background. It could
+    // be the case that in between submitting the MFA login and when this
+    // method is called, we get the new MFA login form, in which case, we
+    // would then overwrite it with this call, which is very bad. Should
+    // find a way around this.
+    // await AccountLinkMutator.genSet(
+    //   accountLink.setStatus('MFA / WAITING_FOR_LOGIN_FORM'),
+    // );
+
+    // TODO: Why is the data the raw yodlee response?
+    res.send({ data: response });
+  }, true);
+
+router.post('/providers/:providerID/mfaForm', checkAuth());
+router.post('/providers/:providerID/mfaForm', performProviderMFA());
 
 // -----------------------------------------------------------------------------
 //
@@ -363,109 +334,4 @@ function getYodleeProviderAccount(
     'Expecting account link to come from YODLEE',
   );
   return accountLink.sourceOfTruth.providerAccount;
-}
-
-function createTestYodleeProvider(): Provider {
-  const now = new Date();
-  const initialLoginForm: YodleeLoginForm = {
-    formType: 'questionAndAnswer',
-    mfaInfoText: 'Configure the test login',
-    mfaInfoTitle: 'Test Properties',
-    mfaTimeout: 90000,
-    row: [
-      {
-        id: 'Row 1',
-        label: 'What condition are you testing?',
-        fieldRowChoice: '',
-        form: '',
-        field: [
-          {
-            id: 'field 1',
-            isOptional: false,
-            name: 'testCondition',
-            option: SUPPORTED_TEST_ACCOUNT_LINK_STATUSES.map(status => ({
-              displayText: status,
-              isSelected: 'false',
-              optionValue: status,
-            })),
-            type: 'option',
-            value: '',
-            valueEditable: 'true',
-          },
-        ],
-      },
-      {
-        id: 'Row 2',
-        label: 'How many MFA steps should there be?',
-        fieldRowChoice: '',
-        form: '',
-        field: [
-          {
-            id: 'field 2',
-            isOptional: false,
-            name: 'includeMFA',
-            option: [
-              {
-                displayText: '0',
-                isSelected: 'false',
-                optionValue: '0',
-              },
-              {
-                displayText: '1',
-                isSelected: 'false',
-                optionValue: '1',
-              },
-              {
-                displayText: '2',
-                isSelected: 'false',
-                optionValue: '2',
-              },
-            ],
-            type: 'option',
-            value: '',
-            valueEditable: 'true',
-          },
-        ],
-      },
-    ],
-  };
-
-  const yodleeProvider: YodleeProvider = {
-    additionalDataSet: [],
-    authType: 'MFA_CREDENTIALS',
-    baseUrl: 'https://www.chase.com/',
-    capability: [],
-    containerAttributes: {},
-    containerNames: [],
-    countryISOCode: 'US',
-    favicon: 'https://yodlee-1.hs.llnwd.net/v1/FAVICON/FAV_643.PNG',
-    id: 0,
-    isAutoRefreshEnabled: true,
-    languageISOCode: 'EN',
-    lastModified: '2018-02-05T12:29:48Z',
-    loginForm: initialLoginForm,
-    loginUrl: 'https://chaseonline.chase.com/Logon.aspx?LOB=Yodlee',
-    logo: 'https://yodlee-1.hs.llnwd.net/v1/LOGO/LOGO_643_1_1.PNG',
-    name: 'Test Login',
-    oAuthSite: false,
-    primaryLanguageISOCode: 'EN',
-    status: 'Supported',
-  };
-
-  const raw = {
-    createdAt: now,
-    id: TEST_YODLEE_PROVIDER_ID,
-    isDeprecated: false,
-    modelType: 'Provider',
-    sourceOfTruth: {
-      type: 'YODLEE',
-      value: yodleeProvider,
-    },
-    quirkCount: 0,
-    quirks: [],
-    type: 'MODEL',
-    updatedAt: now,
-  };
-
-  return Provider.fromRaw(raw);
 }
