@@ -15,6 +15,9 @@ export default class LinkTerminateWithoutUpdatingState extends LinkState {
   }
 
   didEnterState(): void {
-    INFO('ACCOUNT-LINK', 'New State: LinkTerminateWithoutUpdating');
+    INFO(
+      'ACCOUNT-LINK',
+      `LinkID=${this.__accountLinkID} New State: LinkTerminateWithoutUpdating`,
+    );
   }
 }

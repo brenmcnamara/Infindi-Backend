@@ -47,7 +47,7 @@ export default class PollingState extends LinkState {
     fromState: LinkState | null,
     engine: LinkEngine,
   ): Promise<void> {
-    INFO('ACCOUNT-LINK', 'New State: Polling');
+    INFO('ACCOUNT-LINK', `LinkID=${this.__accountLinkID} New State: Polling`);
     const accountLink = this._accountLink.setStatus(this._targetStatus);
 
     this._pollingTimeout = setTimeout(() => {

@@ -27,7 +27,10 @@ export default class ErrorState extends LinkState {
     fromState: LinkState | null,
     engine: LinkEngine,
   ): Promise<void> {
-    INFO('ACCOUNT-LINK', 'New State: Error State');
+    INFO(
+      'ACCOUNT-LINK',
+      `LinkID=${this.__accountLinkID} New State: Error State`,
+    );
 
     const accountLink = await AccountLinkFetcher.genNullthrows(
       this.__accountLinkID,

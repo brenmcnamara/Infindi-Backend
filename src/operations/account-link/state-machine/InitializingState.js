@@ -59,7 +59,10 @@ export default class InitializingState extends LinkState {
     fromState: LinkState | null,
     engine: LinkEngine,
   ): Promise<void> {
-    INFO('ACCOUNT-LINK', 'New State: Initializing');
+    INFO(
+      'ACCOUNT-LINK',
+      `LinkID=${this.__accountLinkID} New State: Initializing`,
+    );
 
     const linkPayload = this.__linkPayload;
 
@@ -87,7 +90,10 @@ export default class InitializingState extends LinkState {
         loginForm: linkPayload.loginForm,
       };
 
-      const response = await YodleeManager.genProviderLogin(userID, yodleeProvider);
+      const response = await YodleeManager.genProviderLogin(
+        userID,
+        yodleeProvider,
+      );
       engine.setProviderAccountID(String(response.providerAccountId));
     } else {
       // STEP 1B: If we are not logging in, assume that we are resyncing the

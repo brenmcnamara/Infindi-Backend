@@ -48,7 +48,10 @@ export default class SyncWithSourceState extends LinkState {
     fromState: LinkState | null,
     engine: LinkEngine,
   ): Promise<void> {
-    INFO('ACCOUNT-LINK', 'New State: SyncWithSourceState');
+    INFO(
+      'ACCOUNT-LINK',
+      `LinkID=${this.__accountLinkID} New State: SyncWithSourceState`,
+    );
 
     await AccountLinkMutator.genSet(
       this._accountLink.setStatus('IN_PROGRESS / DOWNLOADING_FROM_SOURCE'),
