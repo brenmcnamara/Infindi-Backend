@@ -1,13 +1,14 @@
 /* @flow */
 
+import AccountLink from 'common/lib/models/AccountLink';
+import AccountLinkOperations from './operations/account-link';
 import FirebaseAdmin from 'firebase-admin';
-import UserInfo from 'common/lib/models/UserInfo';
 
 import invariant from 'invariant';
 import uuid from 'uuid/v4';
 
 import { ERROR, INFO } from './log-utils';
-import { genYodleeRefreshAccountLinksForUser } from './operations/account-link/refresh';
+import { TEST_YODLEE_PROVIDER_ID } from './operations/account-link/test-utils';
 
 import type { ModelStub } from 'common/types/core';
 
@@ -31,10 +32,17 @@ export function initialize(): void {
 const jobs: Array<Job> = [
   {
     genRun: async () => {
-      const users = await genFetchAllUsers();
-      await Promise.all(
-        users.map(user => genYodleeRefreshAccountLinksForUser(user.id)),
-      );
+      const accountLinks = await genFetchAllAccountLinks();
+      for (const accountLink of accountLinks) {
+        if (accountLink.providerRef.refID === TEST_YODLEE_PROVIDER_ID) {
+          continue;
+        }
+        AccountLinkOperations.performLink(
+          accountLink.id,
+          { type: 'BACKGROUND_UPDATE' },
+          true, // shouldForceLinking
+        );
+      }
     },
 
     name: 'RefreshAllAccounts',
@@ -135,11 +143,11 @@ function scheduleJob(job: Job): void {
   }, jobRunAtMillis - nowMillis);
 }
 
-async function genFetchAllUsers(): Promise<Array<UserInfo>> {
-  const snapshot = await UserInfo.FirebaseCollectionUNSAFE.get();
+async function genFetchAllAccountLinks(): Promise<Array<AccountLink>> {
+  const snapshot = await AccountLink.FirebaseCollectionUNSAFE.get();
   return snapshot.docs
     .filter(doc => doc.exists)
-    .map(doc => UserInfo.fromRaw(doc.data()));
+    .map(doc => AccountLink.fromRaw(doc.data()));
 }
 
 function runAtPTCTime(hour: number, minute: number) {

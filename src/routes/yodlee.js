@@ -18,7 +18,6 @@ import { checkAuth } from '../middleware';
 import { createPointer } from 'common/lib/db-utils';
 import { DEBUG, INFO } from '../log-utils';
 import { genProviderAccountMFALogin } from '../yodlee/yodlee-manager';
-import { genTestYodleeSubmitMFALoginForm } from '../operations/account-link/create';
 import { handleError } from '../route-utils';
 
 import type { ID } from 'common/types/core';
@@ -268,7 +267,7 @@ const performProviderMFA = (): RouteHandler =>
     const providerAccount = getYodleeProviderAccount(accountLink);
     const response =
       providerID === TEST_YODLEE_PROVIDER_ID
-        ? await genTestYodleeSubmitMFALoginForm(accountLink.id, mfaForm)
+        ? await AccountLinkTestUtils.genTestMFALogin(accountLink.id, mfaForm)
         : await genProviderAccountMFALogin(
             userID,
             String(providerAccount.id),
