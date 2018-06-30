@@ -274,20 +274,7 @@ const performProviderMFA = (): RouteHandler =>
             mfaForm,
           );
 
-    // Once we have successfully submitted MFA login form, we need to
-    // remove the currently cached login form from the account link.
-    // NOTE: There is a race condition here. At the time this is called,
-    // we are polling for the provider account in the background. It could
-    // be the case that in between submitting the MFA login and when this
-    // method is called, we get the new MFA login form, in which case, we
-    // would then overwrite it with this call, which is very bad. Should
-    // find a way around this.
-    // await AccountLinkMutator.genSet(
-    //   accountLink.setStatus('MFA / WAITING_FOR_LOGIN_FORM'),
-    // );
-
-    // TODO: Why is the data the raw yodlee response?
-    res.send({ data: response });
+    res.send({ data: createPointer('AccountLink', accountLink.id) });
   }, true);
 
 router.post('/providers/:providerID/mfaForm', checkAuth());
