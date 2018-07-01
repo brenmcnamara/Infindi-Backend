@@ -59,9 +59,38 @@ function extractOptionalString(obj: Object, key: string): string | null {
   return value;
 }
 
+function extractOptionalObject(obj: Object, key: string): Object | null {
+  const value = obj[key];
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value !== 'object') {
+    throw FindiError.fromRaw({
+      errorCode: 'CORE / INVALID_ARGUMENT',
+      errorMessage: `Expecting object to contain property "${key}" of type string: ${
+        obj[key]
+      }`,
+    });
+  }
+  return value;
+}
+
+function extractObject(obj: Object, key: string): Object {
+  const value = extractOptionalObject(obj, key);
+  if (value === null) {
+    throw FindiError.fromRaw({
+      errorCode: 'CORE / INVALID_ARGUMENT',
+      errorMessage: `Expecting object to contain property "${key}" of type object`,
+    });
+  }
+  return value;
+}
+
 export default {
   extractNumber,
+  extractObject,
   extractOptionalNumber,
+  extractOptionalObject,
   extractOptionalString,
   extractString,
 };

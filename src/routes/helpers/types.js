@@ -21,6 +21,12 @@ export type GetRequest<TParams: Object, TQuery: Object> = Request<
   {||},
 >;
 
+export type PostRequest<
+  TParams: Object,
+  TQuery: Object,
+  TBody: Object,
+> = Request<TParams, TQuery, TBody>;
+
 export type Response<TBody: Object> = {
   body: TBody,
 };

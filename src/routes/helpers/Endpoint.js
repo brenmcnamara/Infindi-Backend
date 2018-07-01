@@ -9,8 +9,8 @@ import { handleError } from './express-utils';
 
 import type { DecodedIDToken } from 'common/types/firebase-admin';
 import type {
-  GetRequest,
   Permissions,
+  Request,
   RequestAuthentication,
   Response,
   RouteHandler,
@@ -25,7 +25,7 @@ import type { ID } from 'common/types/core';
  * (3) Add typing and validation to the contents of the request.
  */
 export default class GetEndpoint<
-  TRequest: GetRequest<*, *>,
+  TRequest: Request<*, *, *>,
   TResponse: Response<*>,
 > {
   // ---------------------------------------------------------------------------
@@ -79,6 +79,15 @@ export default class GetEndpoint<
   // ---------------------------------------------------------------------------
 
   _authentication: RequestAuthentication | null;
+
+  __getAuthentication(): RequestAuthentication {
+    invariant(
+      this._authentication,
+      'Expecting authentication to be defined for endpoint: %s',
+      this.constructor.path,
+    );
+    return this._authentication;
+  }
 
   __getUserID(): ID {
     invariant(

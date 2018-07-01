@@ -45,11 +45,11 @@ function getStatusForFindiError(error: FindiError): number {
     case 'CORE / RESOURCE_NOT_FOUND':
       return 404;
 
-    case 'CORE / CODE_ERROR':
     case 'CORE / CRITIAL_ERROR_REQUIRES_IMMEDIATE_ADMIN_ATTENTION':
     case 'CORE / EXTERNAL_SERVICE_DENIED':
     case 'CORE / EXTERNAL_SERVICE_ERROR':
     case 'CORE / INCORRECT_EXTERNAL_SERVICE_CALL':
+    case 'CORE / LOGICAL_ERROR':
     case 'CORE / NETWORK_ERROR':
     case 'CORE / UNKNOWN_ERROR':
     default:

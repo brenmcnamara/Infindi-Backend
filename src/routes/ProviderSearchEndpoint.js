@@ -1,7 +1,7 @@
 /* @flow */
 
+import Endpoint from './helpers/Endpoint';
 import Extractor from './helpers/Extractor';
-import GetEndpoint from './helpers/GetEndpoint';
 import Provider from 'common/lib/models/Provider';
 import ProviderFetcher from 'common/lib/models/ProviderFetcher';
 
@@ -57,7 +57,7 @@ const PROVIDER_IDS = [
   '3531', // Paypal
 ];
 
-export default class ProviderSearchEndpoint extends GetEndpoint<
+export default class ProviderSearchEndpoint extends Endpoint<
   Request,
   Response,
 > {

@@ -1,33 +1,33 @@
 /* @flow */
 
+import ProviderLoginFormEndpoint from './ProviderLoginFormEndpoint';
+import ProviderMFAFormEndpoint from './ProviderMFAFormEndpoint';
 import ProviderSearchEndpoint from './ProviderSearchEndpoint';
+import UserCreateEndpoint from './UserCreateEndpoint';
 
 import express from 'express';
-import users, { initialize as initializeUsers } from './users';
-import yodlee, { initialize as initializeYodlee } from './yodlee';
+
+import type Endpoint from './helpers/Endpoint';
 
 const router = express.Router();
 
 export default router;
 
 export function initialize(): void {
-  initializeUsers();
-  initializeYodlee();
-
-  // $FlowFixMe - Look into this later.
-  router.get('/status', (req, res) => {
-    res.json({ status: 'OK' });
-  });
-
-  // $FlowFixMe - Look into this later.
-  router.get('/_ah/health', (req, res) => {
-    res.json({ status: 'OK' });
-  });
-
-  router.use('/users', users);
-  router.use('/yodlee', yodlee);
-
-
-  const providerSearchEndpoint = new ProviderSearchEndpoint();
-  router.get(ProviderSearchEndpoint.path, providerSearchEndpoint.getHandle());
+  ExpressAdapter.createPostEndpoint(ProviderLoginFormEndpoint);
+  ExpressAdapter.createPostEndpoint(ProviderMFAFormEndpoint);
+  ExpressAdapter.createGetEndpoint(ProviderSearchEndpoint);
+  ExpressAdapter.createPostEndpoint(UserCreateEndpoint);
 }
+
+const ExpressAdapter = {
+  createGetEndpoint(EndpointCtor: Class<Endpoint<any, any>>) {
+    const endpoint = new EndpointCtor();
+    router.get(EndpointCtor.path, endpoint.getHandle());
+  },
+
+  createPostEndpoint(EndpointCtor: Class<Endpoint<any, any>>) {
+    const endpoint = new EndpointCtor();
+    router.post(EndpointCtor.path, endpoint.getHandle());
+  },
+};
