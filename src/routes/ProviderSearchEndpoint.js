@@ -88,9 +88,18 @@ export default class ProviderSearchEndpoint extends GetEndpoint<
   // override
   async __genResponse(request: Request): Promise<Response> {
     const providers = await this._genFetchAndCacheAllProviders();
+    const providersSubset =
+      request.query.limit === Infinity
+        ? providers.filter(isProviderSupported)
+        : providers
+            .filter(isProviderSupported)
+            .slice(
+              request.query.page * request.query.limit,
+              request.query.limit,
+            );
 
     const body = {
-      providers: providers.map(p => p.toRaw()),
+      providers: providersSubset.map(p => p.toRaw()),
     };
 
     return { body };
@@ -108,4 +117,15 @@ export default class ProviderSearchEndpoint extends GetEndpoint<
     this._providers = providers;
     return this._providers;
   }
+}
+
+function isProviderSupported(provider: Provider): boolean {
+  if (provider.quirkCount > 0) {
+    return false;
+  }
+  return (
+    provider.sourceOfTruth.type !== 'YODLEE' ||
+    provider.sourceOfTruth.value.authType === 'CREDENTIALS' ||
+    provider.sourceOfTruth.value.authType === 'MFA_CREDENTIALS'
+  );
 }
