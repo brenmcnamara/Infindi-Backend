@@ -2,7 +2,7 @@
 
 import FindiError from 'common/lib/FindiError';
 
-import type { RouteHandler } from './middleware';
+import type { RouteHandler } from './types';
 
 export function handleError(
   routeHandler: RouteHandler,

@@ -1,5 +1,7 @@
 /* @flow */
 
+import ProviderSearchEndpoint from './ProviderSearchEndpoint';
+
 import express from 'express';
 import users, { initialize as initializeUsers } from './users';
 import yodlee, { initialize as initializeYodlee } from './yodlee';
@@ -24,4 +26,8 @@ export function initialize(): void {
 
   router.use('/users', users);
   router.use('/yodlee', yodlee);
+
+
+  const providerSearchEndpoint = new ProviderSearchEndpoint();
+  router.get(ProviderSearchEndpoint.path, providerSearchEndpoint.getHandle());
 }
