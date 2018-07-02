@@ -1,11 +1,10 @@
 /* @flow */
 
-import AccountLinkTestUtils from '../operations/account-link/test-utils';
 import Endpoint from './helpers/Endpoint';
 import Extractor from './helpers/Extractor';
 import Provider from 'common/lib/models/Provider';
-import ProviderFetcher from 'common/lib/models/ProviderFetcher';
-import UserInfoFetcher from 'common/lib/models/UserInfoFetcher';
+
+import genProviders from '../web-service/genProviders';
 
 import type { GetRequest, Response as ResponseTemplate } from './helpers/types';
 import type { ProviderRaw } from 'common/lib/models/Provider';
@@ -25,39 +24,6 @@ type RequestQuery = {|
 type ResponseBody = {
   providers: Array<ProviderRaw>,
 };
-
-const PROVIDER_IDS = [
-  '643', // CHASE
-  '5', // WELLS FARGO
-  '12938', // CITI CARDS
-  '1603', // CITI BANKING
-  '7000', // CAPITAL ONE
-  '458', // FIRST REPUBLIC
-  '20719', // MORGAN STANLEY
-  '10710', // DISCOVER
-  '12171', // LENDING CLUB
-  '12', // AMERICAN EXPRESS
-  '10017', // BARCLAYCARD US
-  '98', // Vanguard
-  '2852', // Bank of America
-  '21', // Charles Schwab
-  '15052', // Technology Credit Union
-  '13843', // Optum Bank
-  '2162', // PNC Bank
-  '3278', // USAA
-  '492', // FIDELITY
-  '291', // TD Ameritrade
-  '18061', // GS Bank / Marcus
-  '9565', // Ally Bank
-  '2383', // SunTrust Bank
-  '4132', // TD BANK
-  '19632', // Navient
-  '3589', // Sallie Mae
-  '9749', // Prosper
-  '12944', // LightStream
-  '13960', // HSBC USA
-  '3531', // Paypal
-];
 
 export default class ProviderSearchEndpoint extends Endpoint<
   Request,
@@ -89,57 +55,17 @@ export default class ProviderSearchEndpoint extends Endpoint<
 
   // override
   async __genResponse(request: Request): Promise<Response> {
-    const { userID } = this.__getAuthentication();
-
-    const [user, providers] = await Promise.all([
-      UserInfoFetcher.genNullthrows(userID),
-      this._genFetchAndCacheAllProviders(),
-    ]);
-
-    const { isTestUser } = user;
-    const prependedProvider = isTestUser
-      ? [AccountLinkTestUtils.createTestProvider()]
-      : [];
-
-    const providersSubset = prependedProvider.concat(
-      request.query.limit === Infinity
-        ? providers.filter(isProviderSupported)
-        : providers
-            .filter(isProviderSupported)
-            .slice(
-              request.query.page * request.query.limit,
-              request.query.limit,
-            ),
+    const providers = await genProviders(
+      this.__getAuthentication(),
+      request.query.limit,
+      request.query.page,
+      request.query.search,
     );
 
     const body = {
-      providers: providersSubset.map(p => p.toRaw()),
+      providers: providers.map(p => p.toRaw()),
     };
 
     return { body };
   }
-
-  async _genFetchAndCacheAllProviders(): Promise<Array<Provider>> {
-    if (this._providers.length > 0) {
-      return this._providers;
-    }
-
-    const providers = await Promise.all(
-      PROVIDER_IDS.map(providerID => ProviderFetcher.genNullthrows(providerID)),
-    );
-
-    this._providers = providers;
-    return this._providers;
-  }
-}
-
-function isProviderSupported(provider: Provider): boolean {
-  if (provider.quirkCount > 0) {
-    return false;
-  }
-  return (
-    provider.sourceOfTruth.type !== 'YODLEE' ||
-    provider.sourceOfTruth.value.authType === 'CREDENTIALS' ||
-    provider.sourceOfTruth.value.authType === 'MFA_CREDENTIALS'
-  );
 }
