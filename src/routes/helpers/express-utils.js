@@ -2,6 +2,8 @@
 
 import FindiError from 'common/lib/FindiError';
 
+import { ERROR, INFO } from '../../log-utils';
+
 import type { RouteHandler } from './types';
 
 export function handleError(
@@ -14,14 +16,25 @@ export function handleError(
       routeHandler(req, res, next).catch(error => {
         const findiError = FindiError.fromUnknownEntity(error);
         const status = getStatusForFindiError(findiError);
-        res.status(status).json({error: findiError.toRaw()});
+        if (status >= 500) {
+          ERROR('Routing', `Caught server error: ${findiError.toString()}`);
+        } else {
+          INFO('Routing', `Caught user error: ${findiError.toString()}`);
+        }
+        res.status(status).json({ error: findiError.toRaw() });
       });
     } else {
       try {
         routeHandler(req, res, next);
       } catch (error) {
         const findiError = FindiError.fromUnknownEntity(error);
+
         const status = getStatusForFindiError(error);
+        if (status >= 500) {
+          ERROR('Routing', `Caught server error: ${findiError.toString()}`);
+        } else {
+          INFO('Routing', `Caught user error: ${findiError.toString()}`);
+        }
         res.status(status).json(findiError.toRaw());
       }
     }

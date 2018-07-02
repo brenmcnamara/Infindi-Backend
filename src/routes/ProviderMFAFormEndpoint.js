@@ -58,7 +58,7 @@ export default class ProviderMFAFormEndpoint extends Endpoint<
 
   // override
   static __calculateRequestForExpressRequest(req: Object): Request {
-    const providerID = Extractor.extractString(req.query, 'providerID');
+    const providerID = Extractor.extractString(req.params, 'providerID');
 
     // TODO: Need to find a good way to deep-validate this.
     const mfaForm: YodleeLoginForm = req.body.mfaForm;
