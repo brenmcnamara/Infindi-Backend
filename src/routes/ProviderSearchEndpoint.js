@@ -1,9 +1,11 @@
 /* @flow */
 
+import AccountLinkTestUtils from '../operations/account-link/test-utils';
 import Endpoint from './helpers/Endpoint';
 import Extractor from './helpers/Extractor';
 import Provider from 'common/lib/models/Provider';
 import ProviderFetcher from 'common/lib/models/ProviderFetcher';
+import UserInfoFetcher from 'common/lib/models/UserInfoFetcher';
 
 import type { GetRequest, Response as ResponseTemplate } from './helpers/types';
 import type { ProviderRaw } from 'common/lib/models/Provider';
@@ -87,8 +89,19 @@ export default class ProviderSearchEndpoint extends Endpoint<
 
   // override
   async __genResponse(request: Request): Promise<Response> {
-    const providers = await this._genFetchAndCacheAllProviders();
-    const providersSubset =
+    const { userID } = this.__getAuthentication();
+
+    const [user, providers] = await Promise.all([
+      UserInfoFetcher.genNullthrows(userID),
+      this._genFetchAndCacheAllProviders(),
+    ]);
+
+    const { isTestUser } = user;
+    const prependedProvider = isTestUser
+      ? [AccountLinkTestUtils.createTestProvider()]
+      : [];
+
+    const providersSubset = prependedProvider.concat(
       request.query.limit === Infinity
         ? providers.filter(isProviderSupported)
         : providers
@@ -96,7 +109,8 @@ export default class ProviderSearchEndpoint extends Endpoint<
             .slice(
               request.query.page * request.query.limit,
               request.query.limit,
-            );
+            ),
+    );
 
     const body = {
       providers: providersSubset.map(p => p.toRaw()),
