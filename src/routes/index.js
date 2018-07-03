@@ -2,7 +2,7 @@
 
 import ProviderLoginFormEndpoint from './ProviderLoginFormEndpoint';
 import ProviderMFAFormEndpoint from './ProviderMFAFormEndpoint';
-import ProviderSearchEndpoint from './ProviderSearchEndpoint';
+import ProviderQueryEndpoint from './ProviderQueryEndpoint';
 import UserCreateEndpoint from './UserCreateEndpoint';
 
 import express from 'express';
@@ -16,7 +16,7 @@ export default router;
 export function initialize(): void {
   ExpressAdapter.createPostEndpoint(ProviderLoginFormEndpoint);
   ExpressAdapter.createPostEndpoint(ProviderMFAFormEndpoint);
-  ExpressAdapter.createGetEndpoint(ProviderSearchEndpoint);
+  ExpressAdapter.createGetEndpoint(ProviderQueryEndpoint);
   ExpressAdapter.createPostEndpoint(UserCreateEndpoint);
 }
 

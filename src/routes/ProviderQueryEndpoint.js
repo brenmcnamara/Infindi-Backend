@@ -4,7 +4,7 @@ import Endpoint from './helpers/Endpoint';
 import Extractor from './helpers/Extractor';
 import Provider from 'common/lib/models/Provider';
 
-import genFetchProviders from '../web-service/genFetchProviders';
+import genQueryProviders from '../web-service/genQueryProviders';
 
 import type { GetRequest, Response as ResponseTemplate } from './helpers/types';
 import type { ProviderRaw } from 'common/lib/models/Provider';
@@ -25,14 +25,14 @@ type ResponseBody = {
   providers: Array<ProviderRaw>,
 };
 
-export default class ProviderSearchEndpoint extends Endpoint<
+export default class ProviderQueryEndpoint extends Endpoint<
   Request,
   Response,
 > {
   _providers: Array<Provider> = [];
 
   // override
-  static path = '/v1/providers/search';
+  static path = '/v1/providers/query';
 
   // override
   static permissions = { type: 'PERMISSION_REQUIRED' };
@@ -55,7 +55,7 @@ export default class ProviderSearchEndpoint extends Endpoint<
 
   // override
   async __genResponse(request: Request): Promise<Response> {
-    const providers = await genFetchProviders(
+    const providers = await genQueryProviders(
       this.__getAuthentication(),
       request.query.search,
       request.query.limit,
