@@ -42,7 +42,7 @@ const PROVIDER_IDS = [
 
 let _providers: Array<Provider> = [];
 
-export default (async function genProviders(
+export default (async function genFetchProviders(
   auth: RequestAuthentication,
   limit: number,
   page: number,

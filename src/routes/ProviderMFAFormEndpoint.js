@@ -1,26 +1,14 @@
 /* @flow */
 
-import AccountLinkFetcher from 'common/lib/models/AccountLinkFetcher';
-import AccountLinkTestUtils, {
-  TEST_YODLEE_PROVIDER_ID,
-} from '../operations/account-link/test-utils';
 import Endpoint from './helpers/Endpoint';
 import Extractor from './helpers/Extractor';
 import FindiError from 'common/lib/FindiError';
 import Provider from 'common/lib/models/Provider';
 
-import invariant from 'invariant';
-
-import { createPointer } from 'common/lib/db-utils';
-import { genProviderAccountMFALogin } from '../yodlee/yodlee-manager';
-
-import type AccountLink from 'common/lib/models/AccountLink';
+import genSetProviderMFAForm from '../web-service/genSetProviderMFAForm';
 
 import type { ID, Pointer } from 'common/types/core';
-import type {
-  LoginForm as YodleeLoginForm,
-  ProviderAccount as YodleeProviderAccount,
-} from 'common/types/yodlee-v1.0';
+import type { LoginForm as YodleeLoginForm } from 'common/types/yodlee-v1.0';
 import type {
   PostRequest,
   Response as ResponseTemplate,
@@ -84,46 +72,12 @@ export default class ProviderMFAFormEndpoint extends Endpoint<
     // TODO: Need to check if this is a valid provider id.
     const { providerID } = request.params;
     const { mfaForm } = request.body;
-    const { userID } = this.__getAuthentication();
 
-    const accountLink = await AccountLinkFetcher.genForUserAndProvider(
-      userID,
+    const accountLinkRef = await genSetProviderMFAForm(
+      this.__getAuthentication(),
       providerID,
+      mfaForm,
     );
-    if (!accountLink) {
-      throw FindiError.fromRaw({
-        errorCode: 'CORE / RESOURCE_NOT_FOUND',
-        errorMessage: `Could not find AccountLink for user ${userID} and provider ${providerID}`,
-      });
-    }
-
-    const providerAccount = getYodleeProviderAccount(accountLink);
-    if (providerID === TEST_YODLEE_PROVIDER_ID) {
-      await AccountLinkTestUtils.genTestMFALogin(accountLink.id, mfaForm);
-    } else {
-      await genProviderAccountMFALogin(
-        userID,
-        String(providerAccount.id),
-        mfaForm,
-      );
-    }
-
-    return { body: createPointer('AccountLink', accountLink.id) };
+    return { body: { accountLinkRef } };
   }
-}
-
-// -----------------------------------------------------------------------------
-//
-// UTILITIES
-//
-// -----------------------------------------------------------------------------
-
-function getYodleeProviderAccount(
-  accountLink: AccountLink,
-): YodleeProviderAccount {
-  invariant(
-    accountLink.sourceOfTruth.type === 'YODLEE',
-    'Expecting account link to come from YODLEE',
-  );
-  return accountLink.sourceOfTruth.providerAccount;
 }

@@ -1,0 +1,69 @@
+/* @flow */
+
+import AccountLinkFetcher from 'common/lib/models/AccountLinkFetcher';
+import AccountLinkTestUtils, {
+  TEST_YODLEE_PROVIDER_ID,
+} from '../operations/account-link/test-utils';
+import FindiError from 'common/lib/FindiError';
+
+import invariant from 'invariant';
+
+import { createPointer } from 'common/lib/db-utils';
+import { genProviderAccountMFALogin } from '../yodlee/yodlee-manager';
+
+import type AccountLink from 'common/lib/models/AccountLink';
+
+import type { ID, Pointer } from 'common/types/core';
+import type {
+  LoginForm as YodleeLoginForm,
+  ProviderAccount as YodleeProviderAccount,
+} from 'common/types/yodlee-v1.0';
+import type { RequestAuthentication } from '../routes/helpers/types';
+
+export default (async function genSetProviderMFAForm(
+  auth: RequestAuthentication,
+  providerID: ID,
+  mfaForm: YodleeLoginForm,
+): Promise<Pointer<'AccountLink'>> {
+  const { userID } = auth;
+
+  const accountLink = await AccountLinkFetcher.genForUserAndProvider(
+    userID,
+    providerID,
+  );
+  if (!accountLink) {
+    throw FindiError.fromRaw({
+      errorCode: 'CORE / RESOURCE_NOT_FOUND',
+      errorMessage: `Could not find AccountLink for user ${userID} and provider ${providerID}`,
+    });
+  }
+
+  const providerAccount = getYodleeProviderAccount(accountLink);
+  if (providerID === TEST_YODLEE_PROVIDER_ID) {
+    await AccountLinkTestUtils.genTestMFALogin(accountLink.id, mfaForm);
+  } else {
+    await genProviderAccountMFALogin(
+      userID,
+      String(providerAccount.id),
+      mfaForm,
+    );
+  }
+
+  return createPointer(accountLink.id);
+});
+
+// -----------------------------------------------------------------------------
+//
+// UTILITIES
+//
+// -----------------------------------------------------------------------------
+
+function getYodleeProviderAccount(
+  accountLink: AccountLink,
+): YodleeProviderAccount {
+  invariant(
+    accountLink.sourceOfTruth.type === 'YODLEE',
+    'Expecting account link to come from YODLEE',
+  );
+  return accountLink.sourceOfTruth.providerAccount;
+}

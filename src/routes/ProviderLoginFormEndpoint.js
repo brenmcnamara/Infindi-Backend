@@ -1,19 +1,12 @@
 /* @flow */
 
-import AccountLink from 'common/lib/models/AccountLink';
-import AccountLinkFetcher from 'common/lib/models/AccountLinkFetcher';
-import AccountLinkMutator from 'common/lib/models/AccountLinkMutator';
-import AccountLinkOperations from '../operations/account-link';
-import AccountLinkTestUtils, {
-  TEST_YODLEE_PROVIDER_ID,
-} from '../operations/account-link/test-utils';
 import Endpoint from './helpers/Endpoint';
 import Extractor from './helpers/Extractor';
 import FindiError from 'common/lib/FindiError';
 import Provider from 'common/lib/models/Provider';
-import ProviderFetcher from 'common/lib/models/ProviderFetcher';
 
-import { createPointer } from 'common/lib/db-utils';
+import genSetProviderLoginForm from '../web-service/genSetProviderLoginForm';
+
 import { DEBUG } from '../log-utils';
 
 import type { ID, Pointer } from 'common/types/core';
@@ -80,60 +73,13 @@ export default class ProviderLoginFormEndpoint extends Endpoint<
   async __genResponse(request: Request): Promise<Response> {
     DEBUG('YODLEE', 'Attempting to login with provider');
     const { providerID } = request.params;
-
-    // STEP 1: Fetch the provider we are logging into.
-
-    const provider =
-      providerID === TEST_YODLEE_PROVIDER_ID
-        ? await Promise.resolve(AccountLinkTestUtils.createTestProvider())
-        : await ProviderFetcher.genNullthrows(providerID);
-
-    if (provider.sourceOfTruth.type !== 'YODLEE') {
-      const errorCode = 'infindi/bad-request';
-      const errorMessage = `Provider ${providerID} must come from YODLEE`;
-      const toString = () => `[${errorCode}]: ${errorMessage}`;
-      throw { errorCode, errorMessage, toString };
-    }
-
-    // STEP 2: Fetch the login form for the provider.
-
     const { loginForm } = request.body;
 
-    // STEP 3: Fetch the account link (or create one if there is none).
-
-    const { userID } = this.__getAuthentication();
-    let accountLink = await AccountLinkFetcher.genForUserAndProvider(
-      userID,
+    const accountLinkRef = await genSetProviderLoginForm(
+      this.__getAuthentication(),
       providerID,
+      loginForm,
     );
-
-    if (!accountLink && providerID === TEST_YODLEE_PROVIDER_ID) {
-      accountLink = AccountLinkTestUtils.createTestAccountLink(userID);
-      await AccountLinkMutator.genSet(accountLink);
-    } else if (!accountLink) {
-      const accountLinkSourceOfTruth = { target: 'YODLEE', type: 'EMPTY' };
-      accountLink = AccountLink.create(
-        accountLinkSourceOfTruth,
-        userID,
-        providerID,
-        provider.name,
-      );
-      await AccountLinkMutator.genSet(accountLink);
-    }
-
-    // STEP 4: Perform the login in the background.
-
-    const linkPayload = { loginForm, type: 'PERFORM_LOGIN' };
-    AccountLinkOperations.performLink(
-      accountLink.id,
-      linkPayload,
-      false, // shouldForceLinking
-    );
-
-    return {
-      body: {
-        accountLinkRef: createPointer('AccountLink', accountLink.id),
-      },
-    };
+    return { body: { accountLinkRef } };
   }
 }

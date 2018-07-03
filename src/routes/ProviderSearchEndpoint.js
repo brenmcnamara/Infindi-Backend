@@ -4,7 +4,7 @@ import Endpoint from './helpers/Endpoint';
 import Extractor from './helpers/Extractor';
 import Provider from 'common/lib/models/Provider';
 
-import genProviders from '../web-service/genProviders';
+import genFetchProviders from '../web-service/genFetchProviders';
 
 import type { GetRequest, Response as ResponseTemplate } from './helpers/types';
 import type { ProviderRaw } from 'common/lib/models/Provider';
@@ -55,7 +55,7 @@ export default class ProviderSearchEndpoint extends Endpoint<
 
   // override
   async __genResponse(request: Request): Promise<Response> {
-    const providers = await genProviders(
+    const providers = await genFetchProviders(
       this.__getAuthentication(),
       request.query.limit,
       request.query.page,
