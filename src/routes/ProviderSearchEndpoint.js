@@ -57,9 +57,9 @@ export default class ProviderSearchEndpoint extends Endpoint<
   async __genResponse(request: Request): Promise<Response> {
     const providers = await genFetchProviders(
       this.__getAuthentication(),
+      request.query.search,
       request.query.limit,
       request.query.page,
-      request.query.search,
     );
 
     const body = {

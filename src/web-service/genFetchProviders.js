@@ -44,9 +44,9 @@ let _providers: Array<Provider> = [];
 
 export default (async function genFetchProviders(
   auth: RequestAuthentication,
+  search: string,
   limit: number,
   page: number,
-  search: string,
 ): Promise<Array<Provider>> {
   const { userID } = auth;
 
