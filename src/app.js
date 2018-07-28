@@ -6,7 +6,7 @@ import bodyParser from 'body-parser';
 import express from 'express';
 import morgan from 'morgan';
 import path from 'path';
-import routes, { initialize as initializeRoutes } from './routes';
+import routes, { initialize as initializeRoutes } from './express-routes';
 import serveFavicon from 'serve-favicon';
 
 import { initialize as initializeJobRunner } from './job-runner';
