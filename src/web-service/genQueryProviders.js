@@ -5,7 +5,7 @@ import Provider from 'common/lib/models/Provider';
 import ProviderFetcher from 'common/lib/models/ProviderFetcher';
 import UserInfoFetcher from 'common/lib/models/UserInfoFetcher';
 
-import type { RequestAuthentication } from '../routes/helpers/types';
+import type { RequestAuthentication } from '../express-routes/helpers/types';
 
 const PROVIDER_IDS = [
   '643', // CHASE

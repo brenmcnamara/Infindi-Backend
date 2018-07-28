@@ -14,7 +14,7 @@ import { createPointer } from 'common/lib/db-utils';
 
 import type { ID, Pointer } from 'common/types/core';
 import type { LoginForm as YodleeLoginForm } from 'common/types/yodlee-v1.0';
-import type { RequestAuthentication } from '../routes/helpers/types';
+import type { RequestAuthentication } from '../express-routes/helpers/types';
 
 export default (async function genSetProviderLoginForm(
   auth: RequestAuthentication,

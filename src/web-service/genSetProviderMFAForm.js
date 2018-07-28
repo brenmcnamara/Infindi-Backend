@@ -18,7 +18,7 @@ import type {
   LoginForm as YodleeLoginForm,
   ProviderAccount as YodleeProviderAccount,
 } from 'common/types/yodlee-v1.0';
-import type { RequestAuthentication } from '../routes/helpers/types';
+import type { RequestAuthentication } from '../express-routes/helpers/types';
 
 export default (async function genSetProviderMFAForm(
   auth: RequestAuthentication,
