@@ -7,7 +7,7 @@ require('./cli-setup');
 // script will automatically do so.
 
 const FirebaseAdmin = require('firebase-admin');
-const YodleeManager = require('../build/yodlee/yodlee-manager');
+const YodleeManager = require('../build/yodlee/YodleeManager-V1.0').default;
 
 const providerAccountToUser = {};
 

@@ -1,7 +1,6 @@
 /* @flow */
 
 import * as Immutable from 'immutable';
-import * as YodleeManager from '../../../yodlee/yodlee-manager';
 import Account from 'common/lib/models/Account';
 import AccountFetcher from 'common/lib/models/AccountFetcher';
 import AccountLinkMutator from 'common/lib/models/AccountLinkMutator';
@@ -11,6 +10,7 @@ import LinkUtils from './LinkUtils';
 import Transaction from 'common/lib/models/Transaction';
 import TransactionFetcher from 'common/lib/models/TransactionFetcher';
 import TransactionMutator from 'common/lib/models/TransactionMutator';
+import YodleeManager from '../../../yodlee/YodleeManager-V1.0';
 
 import invariant from 'invariant';
 import nullthrows from 'nullthrows';

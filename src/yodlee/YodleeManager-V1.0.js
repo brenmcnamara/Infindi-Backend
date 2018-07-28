@@ -44,7 +44,7 @@ const RETRY_TIMEOUT = 500;
 //
 // -----------------------------------------------------------------------------
 
-export function initialize(): void {
+function initialize(): void {
   const cobrandLogin = process.env.YODLEE_COBRAND_LOGIN;
   invariant(
     cobrandLogin,
@@ -76,44 +76,43 @@ export function initialize(): void {
 // -----------------------------------------------------------------------------
 
 type GenProviders = (ID, number, number) => Promise<Array<Provider>>;
-export const genProviders: GenProviders = overrideClientAsyncMethod(
+const genProviders: GenProviders = overrideClientAsyncMethod(
   'genProviders',
 );
 
 type GenProviderFull = (ID, ID) => Promise<ProviderFull | null>;
-export const genProviderFull: GenProviderFull = overrideClientAsyncMethod(
+const genProviderFull: GenProviderFull = overrideClientAsyncMethod(
   'genProviderFull',
 );
 
 type GenProviderLogin = (ID, ProviderFull) => Promise<ProviderLoginResponse>;
-export const genProviderLogin: GenProviderLogin = overrideClientAsyncMethod(
+const genProviderLogin: GenProviderLogin = overrideClientAsyncMethod(
   'genProviderLogin',
 );
 
-// TODO: This should be genFetchProviderAccount
 type GenProviderAccounts = ID => Promise<Array<ProviderAccount>>;
-export const genProviderAccounts: GenProviderAccounts = overrideClientAsyncMethod(
+const genProviderAccounts: GenProviderAccounts = overrideClientAsyncMethod(
   'genProviderAccounts',
 );
 
 type GenProviderAccount = (ID, ID) => Promise<ProviderAccount | null>;
-export const genProviderAccount: GenProviderAccount = overrideClientAsyncMethod(
+const genProviderAccount: GenProviderAccount = overrideClientAsyncMethod(
   'genProviderAccount',
 );
 
 type GenAccountsForProviderAccount = (ID, ID) => Promise<Array<YodleeAccount>>;
 // eslint-disable-next-line max-len
-export const genAccountsForProviderAccount: GenAccountsForProviderAccount = overrideClientAsyncMethod(
+const genAccountsForProviderAccount: GenAccountsForProviderAccount = overrideClientAsyncMethod(
   'genAccountsForProviderAccount',
 );
 
 type GenDeleteProviderAccount = (ID, ID) => Promise<void>;
-export const genDeleteProviderAccount: GenDeleteProviderAccount = overrideClientAsyncMethod(
+const genDeleteProviderAccount: GenDeleteProviderAccount = overrideClientAsyncMethod(
   'genDeleteProviderAccount',
 );
 
 type GenTransactions = (ID, ID) => Promise<Array<YodleeTransaction>>;
-export const genTransactions: GenTransactions = overrideClientAsyncMethod(
+const genTransactions: GenTransactions = overrideClientAsyncMethod(
   'genTransactions',
 );
 
@@ -122,17 +121,17 @@ type GenTransactionsFromDate = (
   ID,
   Date,
 ) => Promise<Array<YodleeTransaction>>;
-export const genTransactionsFromDate: GenTransactionsFromDate = overrideClientAsyncMethod(
+const genTransactionsFromDate: GenTransactionsFromDate = overrideClientAsyncMethod(
   'genTransactionsFromDate',
 );
 
 type GenProviderAccountRefresh = (ID, ID) => Promise<ProviderAccount | null>;
-export const genProviderAccountRefresh: GenProviderAccountRefresh = overrideClientAsyncMethod(
+const genProviderAccountRefresh: GenProviderAccountRefresh = overrideClientAsyncMethod(
   'genProviderAccountRefresh',
 );
 
 type GenProviderAccountMFALogin = (ID, ID, LoginForm) => Promise<*>;
-export const genProviderAccountMFALogin: GenProviderAccountMFALogin = overrideClientAsyncMethod(
+const genProviderAccountMFALogin: GenProviderAccountMFALogin = overrideClientAsyncMethod(
   'genProviderAccountMFALogin',
 );
 
@@ -259,3 +258,18 @@ function genSleepForMS(millis: number): Promise<void> {
     }, millis);
   });
 }
+
+export default {
+  genAccountsForProviderAccount,
+  genDeleteProviderAccount,
+  genProviderAccount,
+  genProviderAccountMFALogin,
+  genProviderAccountRefresh,
+  genProviderAccounts,
+  genProviderFull,
+  genProviderLogin,
+  genProviders,
+  genTransactions,
+  genTransactionsFromDate,
+  initialize,
+};

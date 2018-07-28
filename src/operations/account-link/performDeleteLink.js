@@ -1,12 +1,12 @@
 /* @flow */
 
-import * as YodleeManager from '../../yodlee/yodlee-manager';
 import AccountFetcher from 'common/lib/models/AccountFetcher';
 import AccountLinkFetcher from 'common/lib/models/AccountLinkFetcher';
 import AccountLinkMutator from 'common/lib/models/AccountLinkMutator';
 import AccountMutator from 'common/lib/models/AccountMutator';
 import TransactionFetcher from 'common/lib/models/TransactionFetcher';
 import TransactionMutator from 'common/lib/models/TransactionMutator';
+import YodleeManager from '../../yodlee/YodleeManager-V1.0';
 
 import invariant from 'invariant';
 

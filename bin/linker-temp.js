@@ -5,7 +5,7 @@ const LinkEngine = require('../build/operations/account-link/state-machine/LinkE
 // eslint-disable-next-line max-len
 const LinkStateMachine = require('../build/operations/account-link/state-machine/LinkStateMachine')
   .default;
-const YodleeManager = require('../build/yodlee/yodlee-manager');
+const YodleeManager = require('../build/yodlee/YodleeManager-V1.0').default;
 
 const BMAC = {
   CHASE: 'bc54e92e-1128-4671-bf5d-0d80af7c011a',

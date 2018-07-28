@@ -1,5 +1,7 @@
 /* @flow */
 
+import YodleeManager from './yodlee/YodleeManager-V1.0';
+
 import bodyParser from 'body-parser';
 import express from 'express';
 import morgan from 'morgan';
@@ -8,7 +10,6 @@ import routes, { initialize as initializeRoutes } from './routes';
 import serveFavicon from 'serve-favicon';
 
 import { initialize as initializeJobRunner } from './job-runner';
-import { initialize as initializeYodleeManager } from './yodlee/yodlee-manager';
 
 const app = express();
 
@@ -49,5 +50,5 @@ export function initialize(): void {
 
   initializeRoutes();
   initializeJobRunner();
-  initializeYodleeManager();
+  YodleeManager.initialize();
 }

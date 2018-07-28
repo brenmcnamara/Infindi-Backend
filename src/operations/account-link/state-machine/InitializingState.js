@@ -1,11 +1,11 @@
 /* @flow */
 
-import * as YodleeManager from '../../../yodlee/yodlee-manager';
 import AccountLinkFetcher from 'common/lib/models/AccountLinkFetcher';
 import LinkState from './LinkState';
 import LinkTerminateWithoutUpdatingState from './LinkTerminateWithoutUpdatingState';
 import LinkUtils from './LinkUtils';
 import ProviderFetcher from 'common/lib/models/ProviderFetcher';
+import YodleeManager from '../../../yodlee/YodleeManager-V1.0';
 
 import invariant from 'invariant';
 

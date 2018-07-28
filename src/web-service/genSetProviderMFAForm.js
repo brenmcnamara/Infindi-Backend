@@ -5,11 +5,11 @@ import AccountLinkTestUtils, {
   TEST_YODLEE_PROVIDER_ID,
 } from '../operations/account-link/test-utils';
 import FindiError from 'common/lib/FindiError';
+import YodleeManager from '../yodlee/YodleeManager-V1.0';
 
 import invariant from 'invariant';
 
 import { createPointer } from 'common/lib/db-utils';
-import { genProviderAccountMFALogin } from '../yodlee/yodlee-manager';
 
 import type AccountLink from 'common/lib/models/AccountLink';
 
@@ -42,7 +42,7 @@ export default (async function genSetProviderMFAForm(
   if (providerID === TEST_YODLEE_PROVIDER_ID) {
     await AccountLinkTestUtils.genTestMFALogin(accountLink.id, mfaForm);
   } else {
-    await genProviderAccountMFALogin(
+    await YodleeManager.genProviderAccountMFALogin(
       userID,
       String(providerAccount.id),
       mfaForm,

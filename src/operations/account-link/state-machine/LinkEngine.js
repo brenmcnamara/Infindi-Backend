@@ -1,14 +1,11 @@
 /* @flow */
 
 import AccountLinkFetcher from 'common/lib/models/AccountLinkFetcher';
+import YodleeManager from '../../../yodlee/YodleeManager-V1.0';
 
 import invariant from 'invariant';
 
 import { ERROR } from '../../../log-utils';
-import {
-  genProviderAccount,
-  genProviderAccountRefresh,
-} from '../../../yodlee/yodlee-manager';
 
 import type AccountLink from 'common/lib/models/AccountLink';
 
@@ -45,7 +42,7 @@ export default class LinkEngine {
       // parallel, we may end up making an extra network call.
       const userID = await this.genFetchUserID();
       const providerAccountID = await this._genFetchProviderAccountID();
-      await genProviderAccountRefresh(userID, providerAccountID);
+      await YodleeManager.genProviderAccountRefresh(userID, providerAccountID);
     });
   }
 
@@ -57,7 +54,7 @@ export default class LinkEngine {
       let accountLink = await this._genFetchAccountLink();
       const userID = await this.genFetchUserID();
       const providerAccountID = await this._genFetchProviderAccountID();
-      const providerAccount = await genProviderAccount(
+      const providerAccount = await YodleeManager.genProviderAccount(
         userID,
         providerAccountID,
       );
