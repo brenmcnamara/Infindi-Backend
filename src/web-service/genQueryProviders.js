@@ -60,11 +60,18 @@ export default (async function genQueryProviders(
     ? [AccountLinkTestUtils.createTestProvider()]
     : [];
 
-  return prependedProvider.concat(
-    limit === Infinity
-      ? providers.filter(isProviderSupported)
-      : providers.filter(isProviderSupported).slice(page * limit, limit),
-  );
+  console.log('matching');
+  const matchedProviders = prependedProvider
+    .concat(providers)
+    .filter(isProviderSupported)
+    .filter(
+      provider =>
+        search.length === 0 || provider.name.toLowerCase().includes(search.toLowerCase()),
+    );
+  console.log('done trying to match');
+  return limit === Infinity
+    ? matchedProviders
+    : matchedProviders.slice(page * limit, limit);
 });
 
 async function genFetchAndCacheAllProviders(): Promise<Array<Provider>> {
