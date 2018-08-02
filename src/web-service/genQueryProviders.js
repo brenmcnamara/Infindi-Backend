@@ -60,7 +60,6 @@ export default (async function genQueryProviders(
     ? [AccountLinkTestUtils.createTestProvider()]
     : [];
 
-  console.log('matching');
   const matchedProviders = prependedProvider
     .concat(providers)
     .filter(isProviderSupported)
@@ -68,7 +67,6 @@ export default (async function genQueryProviders(
       provider =>
         search.length === 0 || provider.name.toLowerCase().includes(search.toLowerCase()),
     );
-  console.log('done trying to match');
   return limit === Infinity
     ? matchedProviders
     : matchedProviders.slice(page * limit, limit);
