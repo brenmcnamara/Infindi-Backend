@@ -97,6 +97,10 @@ function calculateAccountLinkStatus(
         : 'IN_PROGRESS / DOWNLOADING_DATA';
   }
   if (refreshInfo.status === 'FAILED') {
+    if (refreshInfo.statusMessage === 'INTERNAL_ERROR') {
+      return 'FAILURE / EXTERNAL_SERVICE_FAILURE';
+    }
+
     const isMFAFailure =
       refreshInfo.statusMessage ===
       'MFA_INFO_NOT_PROVIDED_IN_REAL_TIME_BY_USER_VIA_APP';
