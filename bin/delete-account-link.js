@@ -4,6 +4,15 @@ require('./cli-setup');
 
 const AccountLinkOperations = require('../build/operations/account-link').default;
 
-const ACCOUNT_LINK_ID = 'ea485d0b-aba4-4a6e-9f46-638a3bcee7fd';
+const chalk = require('chalk');
+const minimist = require('minimist');
 
-AccountLinkOperations.performDeleteLink(ACCOUNT_LINK_ID);
+const argv = minimist(process.argv.slice(2));
+const accountLinkID = argv.accountLinkID;
+
+if (!accountLinkID) {
+  console.log(chalk.red('You must provide argument --accountLinkID=<accountLinkID>'));
+  process.exit(1);
+}
+
+AccountLinkOperations.performDeleteLink(accountLinkID);
