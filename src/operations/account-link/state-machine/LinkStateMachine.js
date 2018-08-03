@@ -150,6 +150,7 @@ export default class LinkStateMachine {
         ? error.message || error.errorMessage || error.toString()
         : typeof error === 'string' ? error : 'Unknown error';
 
+    console.log(errorMessage, error.stack);
     this._props.engine.sendEvent({
       errorType: 'INTERNAL',
       errorMessage,

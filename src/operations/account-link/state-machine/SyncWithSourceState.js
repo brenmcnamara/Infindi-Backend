@@ -3,6 +3,7 @@
 import * as Immutable from 'immutable';
 import Account from 'common/lib/models/Account';
 import AccountFetcher from 'common/lib/models/AccountFetcher';
+import AccountQuery from 'common/lib/models/AccountQuery';
 import AccountLinkMutator from 'common/lib/models/AccountLinkMutator';
 import AccountMutator from 'common/lib/models/AccountMutator';
 import LinkState from './LinkState';
@@ -68,8 +69,8 @@ export default class SyncWithSourceState extends LinkState {
     const providerAccountID = getProviderAccountID(accountLink);
     const userID = accountLink.userRef.refID;
 
-    const staleAccounts: AccountCollection = await AccountFetcher.genCollectionFromAccountLink(
-      accountLink.id,
+    const staleAccounts: AccountCollection = await AccountFetcher.genQuery(
+      AccountQuery.forAccountLink(accountLink.id),
     );
 
     const yodleeAccounts = await YodleeManager.genAccountsForProviderAccount(

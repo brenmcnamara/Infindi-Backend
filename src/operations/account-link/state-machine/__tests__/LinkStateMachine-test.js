@@ -1,4 +1,3 @@
-import * as YodleeManager from '../../../../yodlee/yodlee-manager';
 import AccountLink from 'common/lib/models/AccountLink';
 import AccountLinkFetcher from 'common/lib/models/AccountLinkFetcher';
 import AccountLinkMutator from 'common/lib/models/AccountLinkMutator';
@@ -10,6 +9,7 @@ import LinkUpdateAndTerminateState from '../LinkUpdateAndTerminateState';
 import PollingState from '../PollingState';
 import ProviderFetcher from 'common/lib/models/ProviderFetcher';
 import SyncWithSourceState from '../SyncWithSourceState';
+import YodleeManager from '../../../../yodlee/YodleeManager-V1.0';
 
 import type { ID } from 'common/types/core';
 
@@ -23,7 +23,7 @@ jest
   .mock('common/lib/models/TransactionFetcher')
   .mock('common/lib/models/TransactionMutator')
   .mock('../../../../log-utils')
-  .mock('../../../../yodlee/yodlee-manager');
+  .mock('../../../../yodlee/YodleeManager-V1.0');
 
 class MockLinkEngine {
   _accountLinkID: ID;
@@ -44,6 +44,7 @@ class MockLinkEngine {
     return { remove: () => cb && (cb = null) };
   };
   sendMockEvent = linkEvent => this._cb && this._cb(linkEvent);
+  sendEvent = jest.fn();
 }
 
 let mockEngine;
@@ -164,6 +165,10 @@ const ACCOUNT_LINKS = {
     status: 'IN_PROGRESS / DOWNLOADING_DATA',
     type: 'MODEL',
     updatedAt: new Date(),
+    userRef: {
+      refID: 0,
+      type: 'POINTER',
+    },
   }),
 
   DownloadingToSyncing: AccountLink.fromRaw({
@@ -195,6 +200,10 @@ const ACCOUNT_LINKS = {
     status: 'IN_PROGRESS / DOWNLOADING_DATA',
     type: 'MODEL',
     updatedAt: new Date(),
+    userRef: {
+      refID: 0,
+      type: 'POINTER',
+    },
   }),
 
   LoginToBadCredentials: AccountLink.fromRaw({
@@ -227,6 +236,10 @@ const ACCOUNT_LINKS = {
     status: 'IN_PROGRESS / VERIFYING_CREDENTIALS',
     type: 'MODEL',
     updatedAt: new Date(),
+    userRef: {
+      refID: 0,
+      type: 'POINTER',
+    },
   }),
 
   LoginToDownloading: AccountLink.fromRaw({
@@ -258,6 +271,10 @@ const ACCOUNT_LINKS = {
     status: 'IN_PROGRESS / VERIFYING_CREDENTIALS',
     type: 'MODEL',
     updatedAt: new Date(),
+    userRef: {
+      refID: 0,
+      type: 'POINTER',
+    },
   }),
 
   LoginToLogin: AccountLink.fromRaw({
@@ -290,6 +307,10 @@ const ACCOUNT_LINKS = {
     status: 'IN_PROGRESS / VERIFYING_CREDENTIALS',
     type: 'MODEL',
     updatedAt: new Date(),
+    userRef: {
+      refID: 0,
+      type: 'POINTER',
+    },
   }),
 
   LoginToWaitingForLoginForm: AccountLink.fromRaw({
@@ -321,6 +342,10 @@ const ACCOUNT_LINKS = {
     status: 'IN_PROGRESS / VERIFYING_CREDENTIALS',
     type: 'MODEL',
     updatedAt: new Date(),
+    userRef: {
+      refID: 0,
+      type: 'POINTER',
+    },
   }),
 
   SuccessToLogin: AccountLink.fromRaw({
@@ -353,6 +378,10 @@ const ACCOUNT_LINKS = {
     status: 'SUCCESS',
     type: 'MODEL',
     updatedAt: new Date(),
+    userRef: {
+      refID: 0,
+      type: 'POINTER',
+    },
   }),
 
   WaitingForLoginFormToPendingUserInput: AccountLink.fromRaw({
@@ -385,6 +414,10 @@ const ACCOUNT_LINKS = {
     status: 'MFA / WAITING_FOR_LOGIN_FORM',
     type: 'MODEL',
     updatedAt: new Date(),
+    userRef: {
+      refID: 0,
+      type: 'POINTER',
+    },
   }),
 };
 
@@ -493,7 +526,7 @@ test('will refresh the account after the state machine is initialized', () => {
 });
 
 test('will login to provider after the state machine is initialized with login', async () => {
-  expect.assertions(4);
+  expect.assertions(2);
 
   AccountLinkFetcher.genNullthrows.mockReturnValue(
     Promise.resolve(ACCOUNT_LINKS.LoginToLogin),
@@ -510,9 +543,10 @@ test('will login to provider after the state machine is initialized with login',
   const waitForYodleeProviderLogin = new Promise(
     resolve => (resolveYodleeProviderLoginCall = resolve),
   );
-  YodleeManager.genProviderLogin.mockImplementation(
-    () => resolveYodleeProviderLoginCall() || Promise.resolve(),
-  );
+  YodleeManager.genProviderLogin.mockImplementation(() => {
+    resolveYodleeProviderLoginCall();
+    return Promise.resolve({providerAccountId: 0});
+  });
 
   const machine = new LinkStateMachine({
     accountLinkID: TEST_ACCOUNT_LINK_ID,

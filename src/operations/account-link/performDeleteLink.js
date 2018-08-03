@@ -4,6 +4,7 @@ import AccountFetcher from 'common/lib/models/AccountFetcher';
 import AccountLinkFetcher from 'common/lib/models/AccountLinkFetcher';
 import AccountLinkMutator from 'common/lib/models/AccountLinkMutator';
 import AccountMutator from 'common/lib/models/AccountMutator';
+import AccountQuery from 'common/lib/models/AccountQuery';
 import TransactionFetcher from 'common/lib/models/TransactionFetcher';
 import TransactionMutator from 'common/lib/models/TransactionMutator';
 import YodleeManager from '../../yodlee/YodleeManager-V1.0';
@@ -134,8 +135,8 @@ async function genDeleteLinkYodlee(
   // STEP 2: Find and delete all accounts for the account link, including at
   // the source of truth.
 
-  const accounts = await AccountFetcher.genCollectionFromAccountLink(
-    accountLinkID,
+  const accounts = await AccountFetcher.genQuery(
+    AccountQuery.forAccountLink(accountLinkID),
   );
   INFO(
     'ACCOUNT-LINK',
