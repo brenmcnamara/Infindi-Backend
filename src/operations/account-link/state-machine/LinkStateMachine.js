@@ -1,5 +1,6 @@
 /* @flow */
 
+import FindiError from 'common/lib/FindiError';
 import InitializingState from './InitializingState';
 
 import invariant from 'invariant';
@@ -132,8 +133,11 @@ export default class LinkStateMachine {
   }
 
   _handleCaughtError(error: mixed): void {
-    // $FlowFixMe - This is fine
-    ERROR('ACCOUNT-LINK', `Error caught by link state machine\n${error}`);
+    const findiError = FindiError.fromUnknownEntity(error);
+    ERROR(
+      'ACCOUNT-LINK',
+      `Error caught by link state machine\n${findiError.toString()}`,
+    );
 
     if (this._processingEventGuard) {
       ERROR(
@@ -144,13 +148,9 @@ export default class LinkStateMachine {
       this._processingEventGuard = false;
     }
 
-    // $FlowFixMe - This is correct
-    const errorMessage: string =
-      error && typeof error === 'object'
-        ? error.message || error.errorMessage || error.toString()
-        : typeof error === 'string' ? error : 'Unknown error';
+    const errorMessage: string = findiError.toString();
 
-    console.log(errorMessage, error.stack);
+    // TODO: Replace error type and error message with standardized FindiError
     this._props.engine.sendEvent({
       errorType: 'INTERNAL',
       errorMessage,

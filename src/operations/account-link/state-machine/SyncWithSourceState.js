@@ -11,6 +11,7 @@ import LinkUtils from './LinkUtils';
 import Transaction from 'common/lib/models/Transaction';
 import TransactionFetcher from 'common/lib/models/TransactionFetcher';
 import TransactionMutator from 'common/lib/models/TransactionMutator';
+import TransactionQuery from 'common/lib/models/TransactionQuery';
 import YodleeManager from '../../../yodlee/YodleeManager-V1.0';
 
 import invariant from 'invariant';
@@ -69,8 +70,8 @@ export default class SyncWithSourceState extends LinkState {
     const providerAccountID = getProviderAccountID(accountLink);
     const userID = accountLink.userRef.refID;
 
-    const staleAccounts: AccountCollection = await AccountFetcher.genQuery(
-      AccountQuery.forAccountLink(accountLink.id),
+    const staleAccounts: AccountCollection = await AccountFetcher.genCollectionQuery(
+      AccountQuery.Collection.forAccountLink(accountLink.id),
     );
 
     const yodleeAccounts = await YodleeManager.genAccountsForProviderAccount(
@@ -166,9 +167,8 @@ export default class SyncWithSourceState extends LinkState {
     const userID = account.userRef.refID;
     const yodleeAccountID = getYodleeAccountID(account);
 
-    const collection = await TransactionFetcher.genOrderedCollectionForAccount(
-      account.id,
-      1, // limit
+    const collection = await TransactionFetcher.genOrderedCollectionQuery(
+      TransactionQuery.OrderedCollection.forAccount(account.id, 1 /* limit */),
     );
 
     // NOTE: Because transaction dates are rounded to the nearest date, there

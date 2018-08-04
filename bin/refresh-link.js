@@ -4,8 +4,7 @@
 
 require('./cli-setup');
 
-const AccountLinkFetcher = require('common/lib/models/AccountLinkFetcher')
-  .default;
+const AccountLinkFetcher = require('common/lib/models/AccountLinkFetcher').default;
 const AccountLinkRefreshOperations = require('../build/operations/account-link/refresh');
 
 const chalk = require('chalk');

@@ -7,6 +7,7 @@ import AccountMutator from 'common/lib/models/AccountMutator';
 import AccountQuery from 'common/lib/models/AccountQuery';
 import TransactionFetcher from 'common/lib/models/TransactionFetcher';
 import TransactionMutator from 'common/lib/models/TransactionMutator';
+import TransactionQuery from 'common/lib/models/TransactionQuery';
 import YodleeManager from '../../yodlee/YodleeManager-V1.0';
 
 import invariant from 'invariant';
@@ -122,10 +123,13 @@ async function genDeleteLinkYodlee(
   // STEP 2: Find and delete all transactions for the account link, including
   // at the source of truth.
 
-  const transactions = await TransactionFetcher.genOrderedCollectionForAccountLink(
-    accountLinkID,
-    Infinity, // limit
+  const transactions = await TransactionFetcher.genOrderedCollectionQuery(
+    TransactionQuery.OrderedCollection.forAccountLink(
+      accountLinkID,
+      Infinity /* limit */,
+    ),
   );
+
   INFO(
     'ACCOUNT-LINK',
     `ID=${accountLinkID}. Deleting ${transactions.size} transaction(s)`,
@@ -135,8 +139,8 @@ async function genDeleteLinkYodlee(
   // STEP 2: Find and delete all accounts for the account link, including at
   // the source of truth.
 
-  const accounts = await AccountFetcher.genQuery(
-    AccountQuery.forAccountLink(accountLinkID),
+  const accounts = await AccountFetcher.genCollectionQuery(
+    AccountQuery.Collection.forAccountLink(accountLinkID),
   );
   INFO(
     'ACCOUNT-LINK',

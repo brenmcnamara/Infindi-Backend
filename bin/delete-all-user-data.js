@@ -32,7 +32,9 @@ if (!userID) {
 // -----------------------------------------------------------------------------
 
 genValidateUserExists(userID)
-  .then(() => AccountLinkFetcher.genQuery(AccountLinkQuery.forUser(userID)))
+  .then(() => AccountLinkFetcher.genCollectionQuery(
+    AccountLinkQuery.Collection.forUser(userID))
+  )
   .then(accountLinks => {
     accountLinks.forEach(accountLink => {
       performDeleteLink(accountLink.id);

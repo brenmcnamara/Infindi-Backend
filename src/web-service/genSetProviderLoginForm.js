@@ -4,6 +4,7 @@ import AccountLink from 'common/lib/models/AccountLink';
 import AccountLinkFetcher from 'common/lib/models/AccountLinkFetcher';
 import AccountLinkMutator from 'common/lib/models/AccountLinkMutator';
 import AccountLinkOperations from '../operations/account-link';
+import AccountLinkQuery from 'common/lib/models/AccountLinkQuery';
 import AccountLinkTestUtils, {
   TEST_YODLEE_PROVIDER_ID,
 } from '../operations/account-link/test-utils';
@@ -36,9 +37,8 @@ export default (async function genSetProviderLoginForm(
 
   const { userID } = auth;
 
-  let accountLink = await AccountLinkFetcher.genForUserAndProvider(
-    userID,
-    providerID,
+  let accountLink = await AccountLinkFetcher.genSingleQuery(
+    AccountLinkQuery.Single.forUserAndProvider(userID, providerID),
   );
 
   if (!accountLink && providerID === TEST_YODLEE_PROVIDER_ID) {

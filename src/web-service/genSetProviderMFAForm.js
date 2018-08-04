@@ -1,6 +1,7 @@
 /* @flow */
 
 import AccountLinkFetcher from 'common/lib/models/AccountLinkFetcher';
+import AccountLinkQuery from 'common/lib/models/AccountLinkQuery';
 import AccountLinkTestUtils, {
   TEST_YODLEE_PROVIDER_ID,
 } from '../operations/account-link/test-utils';
@@ -27,9 +28,8 @@ export default (async function genSetProviderMFAForm(
 ): Promise<Pointer<'AccountLink'>> {
   const { userID } = auth;
 
-  const accountLink = await AccountLinkFetcher.genForUserAndProvider(
-    userID,
-    providerID,
+  const accountLink = await AccountLinkFetcher.genSingleQuery(
+    AccountLinkQuery.Single.forUserAndProvider(userID, providerID),
   );
   if (!accountLink) {
     throw FindiError.fromRaw({
