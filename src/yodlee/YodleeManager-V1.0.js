@@ -1,6 +1,7 @@
 /* @flow */
 
 import YodleeClient from './YodleeClient-V1.0';
+import YodleeCredentialsFetcher from 'common/lib/models/YodleeCredentialsFetcher';
 
 import invariant from 'invariant';
 
@@ -8,7 +9,6 @@ import {
   createSemaphore,
   wrapInSemaphoreRequest,
 } from '../SingleThreadSemaphore';
-import { genFetchYodleeCredentials } from 'common/lib/models/YodleeCredentials';
 import { DEBUG, INFO } from '../log-utils';
 
 import type { ID } from 'common/types/core';
@@ -76,9 +76,7 @@ function initialize(): void {
 // -----------------------------------------------------------------------------
 
 type GenProviders = (ID, number, number) => Promise<Array<Provider>>;
-const genProviders: GenProviders = overrideClientAsyncMethod(
-  'genProviders',
-);
+const genProviders: GenProviders = overrideClientAsyncMethod('genProviders');
 
 type GenProviderFull = (ID, ID) => Promise<ProviderFull | null>;
 const genProviderFull: GenProviderFull = overrideClientAsyncMethod(
@@ -195,7 +193,8 @@ function getYodleeUserSession(userID: ID): string {
 }
 
 async function genCheckAndRefreshYodleeUserSession(userID: ID): Promise<void> {
-  const credentials = await genFetchYodleeCredentials(userID);
+  const credentials = await YodleeCredentialsFetcher.genNullthrows(userID);
+
   await genWaitForCobrandLogin;
   const yodleeClient = getYodleeClient();
 

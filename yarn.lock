@@ -1583,7 +1583,7 @@ commander@^2.11.0, commander@^2.9.0:
 
 "common@git+https://86f8b449cd778036c88467e637378b2e328bf08a@github.com/brenmcnamara/infindi-common.git":
   version "1.0.0"
-  resolved "git+https://86f8b449cd778036c88467e637378b2e328bf08a@github.com/brenmcnamara/infindi-common.git#429eba489866dad8266816ff64bb8fcd6d5a731d"
+  resolved "git+https://86f8b449cd778036c88467e637378b2e328bf08a@github.com/brenmcnamara/infindi-common.git#220bee53e78814e3680c03d67b427e7ae0fb19aa"
   dependencies:
     flow-bin "^0.73.0"
     immutable "^3.8.2"
