@@ -50,6 +50,7 @@ export function handleError(
 function getStatusForFindiError(error: FindiError): number {
   switch (error.errorCode) {
     case 'CORE / INVALID_ARGUMENT':
+    case 'CORE / VALIDATION_ERROR':
       return 400;
 
     case 'CORE / PERMISSION_DENIED':
