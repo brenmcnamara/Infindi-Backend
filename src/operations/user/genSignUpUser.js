@@ -101,6 +101,16 @@ async function genSignUpUser(signUpForm: SignUpForm): Promise<UserInfo> {
     const userInfo = await genSignUpUserImpl(signUpForm);
     return userInfo;
   } catch (error) {
+    if (
+      FindiError.isMaybeFirebaseError(error) &&
+      error.code === 'auth/email-already-exists'
+    ) {
+      throw FindiError.fromRaw({
+        errorCode: 'CORE / VALIDATION_ERROR',
+        errorMessage: 'This email address already exists',
+      });
+    }
+
     const findiError = FindiError.fromUnknownEntity(error);
     ERROR('USER-SIGNUP', findiError.toString());
     throw findiError;
