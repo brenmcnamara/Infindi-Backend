@@ -4,7 +4,7 @@ require('./cli-setup');
 
 const chalk = require('chalk');
 const minimist = require('minimist');
-const performDeleteUser = require('../build/operations/user/performDeleteUser');
+const performDeleteUser = require('../build/operations/user/performDeleteUser').default;
 
 const argv = minimist(process.argv.slice(2));
 const userID = argv.userID;

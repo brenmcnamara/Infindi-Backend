@@ -10,6 +10,7 @@ import YodleeCredentialsMutator from 'common/lib/models/YodleeCredentialsMutator
 
 import invariant from 'invariant';
 
+import { ERROR, INFO } from '../../log-utils';
 import { validateSignUpForm } from 'common/lib/models/Auth';
 
 import type { ID } from 'common/types/core';
@@ -31,6 +32,8 @@ const TEST_YODLEE_CREDENTIALS = [
 async function genSignUpUserImpl(signUpForm: SignUpForm): Promise<UserInfo> {
   // TODO: This function assumed we are in sandbox mode and needs to be
   // rewritten once we are out of sandbox mode.
+
+  INFO('USER-SIGNUP', 'Signing up new user');
 
   const signUpFormValidation = validateSignUpForm(signUpForm);
   if (signUpFormValidation.type === 'NOT_VALID') {
@@ -76,15 +79,20 @@ async function genSignUpUserImpl(signUpForm: SignUpForm): Promise<UserInfo> {
   );
   const userID: ID = firebaseUser.uid;
 
+  INFO('USER-SIGNUP', `Created firebase user with id: ${userID}`);
+
   const yodleeCredentials = YodleeCredentials.fromLoginNameAndPassword(
     userID,
     availableYodleeTestCredentials[0].loginName,
     availableYodleeTestCredentials[0].password,
   );
   await YodleeCredentialsMutator.genSet(yodleeCredentials);
+  INFO('USER-SIGNUP', `userID=${userID} Created yodlee credentials`);
 
   const userInfo = UserInfo.fromSignUpForm(userID, signUpForm);
   await UserInfoMutator.genSet(userInfo);
+  INFO('USER-SIGNUP', `userID=${userID} Created userInfo`);
+
   return userInfo;
 }
 
@@ -93,7 +101,9 @@ async function genSignUpUser(signUpForm: SignUpForm): Promise<UserInfo> {
     const userInfo = await genSignUpUserImpl(signUpForm);
     return userInfo;
   } catch (error) {
-    throw FindiError.fromUnknownEntity(error);
+    const findiError = FindiError.fromUnknownEntity(error);
+    ERROR('USER-SIGNUP', findiError.toString());
+    throw findiError;
   }
 }
 
