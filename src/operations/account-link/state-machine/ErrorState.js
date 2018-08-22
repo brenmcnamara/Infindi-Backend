@@ -7,16 +7,17 @@ import LinkState from './LinkState';
 
 import { INFO } from '../../../log-utils';
 
+import type FindiError from 'common/lib/FindiError';
 import type LinkEngine from './LinkEngine';
 
 import type { LinkEvent } from './LinkEvent';
 
 export default class ErrorState extends LinkState {
-  _errorMessage: string;
+  _error: FindiError;
 
-  constructor(errorMessage: string) {
+  constructor(error: FindiError) {
     super();
-    this._errorMessage = errorMessage;
+    this._error = error;
   }
 
   calculateNextState(event: LinkEvent): LinkState {

@@ -21,7 +21,7 @@ function calculateStateForSuccessOrFailureEvent(
 ): LinkState | null {
   switch (event.type) {
     case 'ERROR':
-      return new ErrorState(event.errorMessage);
+      return new ErrorState(event.error);
 
     case 'FORCE_TERMINATE_LINKING':
       return new LinkTerminateWithoutUpdatingState();

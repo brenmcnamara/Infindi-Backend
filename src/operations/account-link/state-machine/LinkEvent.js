@@ -1,6 +1,7 @@
 /* @flow */
 
 import type AccountLink from 'common/lib/models/AccountLink';
+import type FindiError from 'common/lib/FindiError';
 
 export type LinkEvent =
   | LinkEvent$Error
@@ -13,8 +14,8 @@ type LinkEvent$UpdateAccountLink = {
 };
 
 type LinkEvent$Error = {
+  error: FindiError,
   errorType: 'INTERNAL',
-  errorMessage: string,
   type: 'ERROR',
 };
 

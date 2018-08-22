@@ -1,6 +1,7 @@
 /* @flow */
 
 import AccountLinkFetcher from 'common/lib/models/AccountLinkFetcher';
+import FindiError from 'common/lib/FindiError';
 import YodleeManager from '../../../yodlee/YodleeManager-V1.0';
 
 import invariant from 'invariant';
@@ -59,10 +60,10 @@ export default class LinkEngine {
         providerAccountID,
       );
       if (!providerAccount) {
-        const errorCode = 'infindi/resource-not-found';
-        const errorMessage = `Could not find providerAccount for id: ${providerAccountID}`;
-        const toString = `[${errorCode}]: ${errorMessage}`;
-        throw { errorCode, errorMessage, toString };
+        throw FindiError.fromRaw({
+          errorCode: 'CORE / RESOURCE_NOT_FOUND',
+          errorMessage: `Could not find providerAccount with id: ${providerAccountID}`,
+        });
       }
       // TODO: Should we send this to firebase at this point? Need to get
       // the updates account link state from the link state.
@@ -94,10 +95,10 @@ export default class LinkEngine {
     const accountLinkID = this._accountLinkID;
     const accountLink = await AccountLinkFetcher.gen(this._accountLinkID);
     if (!accountLink) {
-      const errorCode = 'infindi/resource-not-found';
-      const errorMessage = `Could not find account link: ${accountLinkID}`;
-      const toString = `[${errorCode}]: ${errorMessage}`;
-      throw { errorCode, errorMessage, toString };
+      throw FindiError.fromRaw({
+        errorCode: 'CORE / RESOURCE_NOT_FOUND',
+        errorMessage: `Could not find accountLink with id: ${accountLinkID}`,
+      });
     }
 
     // STEP 2: Update any locale caches based on the account link.
@@ -134,7 +135,8 @@ export default class LinkEngine {
     }
     invariant(
       this._providerAccountID,
-      'Expecting _genFetchAccountLink to cache providerAccountID',
+      'Expecting _genFetchAccountLink to cache providerAccountID: (accountLink=%s)',
+      this._accountLinkID,
     );
     return this._providerAccountID;
   }
@@ -149,15 +151,16 @@ export default class LinkEngine {
 
   _errorHandlerAsync(cb: () => Promise<void>): Promise<void> {
     return cb().catch(error => {
+      const findiError = FindiError.fromUnknownEntity(error);
       // TODO: Proper error detection here. Where is the error coming from?
       // Is there anything from the error that we can parse out to discover
       // what kind of error it is?
       const linkEvent = {
+        error: findiError,
         errorType: 'INTERNAL',
-        errorMessage: error.toString(),
         type: 'ERROR',
       };
-      ERROR('ACCOUNT-LINK', error.toString());
+      ERROR('ACCOUNT-LINK', findiError.toString());
       // TODO: Should not be calling private method from outside scope.
       this.sendEvent(linkEvent);
     });

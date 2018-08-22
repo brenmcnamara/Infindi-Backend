@@ -147,13 +147,10 @@ export default class LinkStateMachine {
       );
       this._processingEventGuard = false;
     }
-
-    const errorMessage: string = findiError.toString();
-
     // TODO: Replace error type and error message with standardized FindiError
     this._props.engine.sendEvent({
+      error: findiError,
       errorType: 'INTERNAL',
-      errorMessage,
       type: 'ERROR',
     });
   }
