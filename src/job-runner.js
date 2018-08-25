@@ -144,6 +144,7 @@ function scheduleJob(job: Job): void {
 }
 
 async function genFetchAllAccountLinks(): Promise<Array<AccountLink>> {
+  // TODO: Migrate this to new ModelCollectionQuery
   const snapshot = await AccountLink.FirebaseCollectionUNSAFE.get();
   return snapshot.docs
     .filter(doc => doc.exists)

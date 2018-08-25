@@ -210,6 +210,7 @@ export default class SyncWithSourceState extends LinkState {
       approximateLatestTransaction.transactionDate,
     );
 
+    // TODO: Migrate this to use ModelOrderedCollectionQuery.
     const doesYodleeTransactionExist = await Promise.all(
       yodleeTransactions.map(yodleeTransaction =>
         Transaction.FirebaseCollectionUNSAFE.where(

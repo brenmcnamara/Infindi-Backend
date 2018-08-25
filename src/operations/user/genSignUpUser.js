@@ -43,8 +43,11 @@ async function genSignUpUserImpl(signUpForm: SignUpForm): Promise<UserInfo> {
   // Figure out which test yodlee credentials are still available.
   // TODO: FIREBASE_DEPENDENCY
   // eslint-disable-next-line max-len
-  const queryAllYodleeCredentials: ModelCollectionQuery =
-    YodleeCredentials.FirebaseCollectionUNSAFE;
+  const queryAllYodleeCredentials: ModelCollectionQuery = {
+    handle: YodleeCredentials.FirebaseCollectionUNSAFE,
+    type: 'COLLECTION_QUERY',
+  };
+
   const usedYodleeCredentials = await YodleeCredentialsFetcher.genCollectionQuery(
     queryAllYodleeCredentials,
   );
