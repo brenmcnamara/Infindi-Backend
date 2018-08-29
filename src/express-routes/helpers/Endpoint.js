@@ -149,7 +149,7 @@ export default class Endpoint<TRequest: Object, TResponse: Object> {
       );
       this._authentication = authentication;
 
-      const request = this.constructor.__calculateRequestForExpressRequest(req);
+      const request = this.constructor.__calculateRequest(req);
       await this.constructor.__genValidateRequest(request);
       const response = await this.__genResponse(request);
       res.status(200).json({ data: response });

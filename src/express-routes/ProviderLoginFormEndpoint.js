@@ -34,7 +34,7 @@ export default class ProviderLoginFormEndpoint extends Endpoint<
   static permissions = { type: 'PERMISSION_REQUIRED' };
 
   // override
-  static __calculateRequestForExpressRequest(req: Object): Request {
+  static __calculateRequest(req: Object): Request {
     const providerID = Extractor.extractString(req.params, 'providerID');
 
     // TODO: Need to find a good way to deep-validate this.

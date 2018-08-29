@@ -25,7 +25,7 @@ export default class UserCreateEndpoint extends Endpoint<Request, Response> {
   static permissions = { type: 'NO_PERMISSION_REQUIRED' };
 
   // override
-  static __calculateRequestForExpressRequest(req: Object): Request {
+  static __calculateRequest(req: Object): Request {
     const signUpForm = Extractor.extractObject(req.body, 'signUpForm');
     return { signUpForm };
   }
