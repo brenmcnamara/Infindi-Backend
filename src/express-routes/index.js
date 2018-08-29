@@ -23,11 +23,11 @@ export function initialize(): void {
 const ExpressAdapter = {
   createGetEndpoint(EndpointCtor: Class<Endpoint<any, any>>) {
     const endpoint = new EndpointCtor();
-    router.get(EndpointCtor.path, endpoint.getHandle());
+    router.get(EndpointCtor.path, endpoint.getExpressHandle());
   },
 
   createPostEndpoint(EndpointCtor: Class<Endpoint<any, any>>) {
     const endpoint = new EndpointCtor();
-    router.post(EndpointCtor.path, endpoint.getHandle());
+    router.post(EndpointCtor.path, endpoint.getExpressHandle());
   },
 };

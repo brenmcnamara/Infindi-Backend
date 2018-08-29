@@ -1,5 +1,7 @@
 /* @flow */
 
+/* eslint-disable max-len */
+
 import FindiError from 'common/lib/FindiError';
 import FirebaseAdmin from 'firebase-admin';
 
@@ -9,11 +11,9 @@ import { handleError } from './express-utils';
 
 import type { DecodedIDToken } from 'common/types/firebase-admin';
 import type {
+  ExpressRouteHandler,
   Permissions,
-  Request,
   RequestAuthentication,
-  Response,
-  RouteHandler,
 } from './types';
 import type { ID } from 'common/types/core';
 
@@ -24,10 +24,7 @@ import type { ID } from 'common/types/core';
  * (2) Maintain consistency across all endpoints.
  * (3) Add typing and validation to the contents of the request.
  */
-export default class GetEndpoint<
-  TRequest: Request<*, *, *>,
-  TResponse: Response<*>,
-> {
+export default class Endpoint<TRequest: Object, TResponse: Object> {
   // ---------------------------------------------------------------------------
   //
   // MUST OVERRIDE
@@ -37,11 +34,10 @@ export default class GetEndpoint<
   static permissions: Permissions;
   static path: string;
 
-  static __calculateRequestForExpressRequest(req: Object): TRequest {
+  static __calculateRequest(expressRequest: Object): TRequest {
     return invariant(
       false,
-      // eslint-disable-next-line max-len
-      'Expecting subclass of GetEndpoint to override static method __calculateRequestForExpressRequest: %s',
+      'Expecting subclass of GetEndpoint to override static method __calculateRequestt: %s',
       this.path,
     );
   }
@@ -108,6 +104,7 @@ export default class GetEndpoint<
       }
 
       case 'PERMISSION_REQUIRED': {
+        // TODO: FIREBASE_DEPENDENCY
         const Auth = FirebaseAdmin.auth();
         const idToken = expressReq.get('Authorization');
         if (!idToken) {
@@ -143,7 +140,7 @@ export default class GetEndpoint<
     return this.constructor.path;
   }
 
-  getHandle(): RouteHandler {
+  getExpressHandle(): ExpressRouteHandler {
     return handleError(async (req, res) => {
       const { permissions } = this.constructor;
       const authentication = await this.constructor._genAuthenticate(
@@ -155,7 +152,7 @@ export default class GetEndpoint<
       const request = this.constructor.__calculateRequestForExpressRequest(req);
       await this.constructor.__genValidateRequest(request);
       const response = await this.__genResponse(request);
-      res.status(200).json({ data: response.body });
+      res.status(200).json({ data: response });
     }, true);
   }
 }

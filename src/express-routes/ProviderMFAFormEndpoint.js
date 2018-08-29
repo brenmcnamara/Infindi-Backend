@@ -9,26 +9,12 @@ import genSetProviderMFAForm from '../web-service/genSetProviderMFAForm';
 
 import type { ID, Pointer } from 'common/types/core';
 import type { LoginForm as YodleeLoginForm } from 'common/types/yodlee-v1.0';
-import type {
-  PostRequest,
-  Response as ResponseTemplate,
-} from './helpers/types';
 
-export type Request = PostRequest<RequestParams, RequestQuery, RequestBody>;
-
-export type Response = ResponseTemplate<ResponseBody>;
-
-type RequestBody = {
-  mfaForm: YodleeLoginForm,
-};
-
-type RequestParams = {
+export type Request = {
   providerID: ID,
 };
 
-type RequestQuery = {};
-
-type ResponseBody = {
+export type Response = {
   accountLinkRef: Pointer<'AccountLink'>,
 };
 
@@ -60,24 +46,18 @@ export default class ProviderMFAFormEndpoint extends Endpoint<
       });
     }
 
-    return {
-      body: { mfaForm },
-      query: {},
-      params: { providerID },
-    };
+    return { mfaForm, providerID };
   }
 
   // override
   async __genResponse(request: Request): Promise<Response> {
-    // TODO: Need to check if this is a valid provider id.
-    const { providerID } = request.params;
-    const { mfaForm } = request.body;
+    const { mfaForm, providerID } = request;
 
     const accountLinkRef = await genSetProviderMFAForm(
       this.__getAuthentication(),
       providerID,
       mfaForm,
     );
-    return { body: { accountLinkRef } };
+    return { accountLinkRef };
   }
 }
