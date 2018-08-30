@@ -108,7 +108,7 @@ async function genRunJob(job: Job): Promise<void> {
 
   // STEP 3: SEND THE RESULTS OF THE JOB RUN TO FIREBASE.
   const nowAfterJobRun = new Date();
-  const newJobRun = {
+  const newJobRun: JobRun = {
     ...jobRun,
     endedAt: nowAfterJobRun,
     errorMessage,

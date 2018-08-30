@@ -4,12 +4,12 @@ import FindiError from 'common/lib/FindiError';
 
 import { ERROR, INFO } from '../../log-utils';
 
-import type { RouteHandler } from './types';
+import type { ExpressRouteHandler } from './types';
 
 export function handleError(
-  routeHandler: RouteHandler,
+  routeHandler: ExpressRouteHandler,
   isAsync: boolean = false,
-): RouteHandler {
+): ExpressRouteHandler {
   return (req, res, next) => {
     if (isAsync) {
       // Assume the route handler is operating via Promise.

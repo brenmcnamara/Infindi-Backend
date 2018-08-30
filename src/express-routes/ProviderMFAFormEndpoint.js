@@ -10,9 +10,10 @@ import genSetProviderMFAForm from '../web-service/genSetProviderMFAForm';
 import type { ID, Pointer } from 'common/types/core';
 import type { LoginForm as YodleeLoginForm } from 'common/types/yodlee-v1.0';
 
-export type Request = {
-  providerID: ID,
-};
+export type Request = {|
+  +mfaForm: YodleeLoginForm,
+  +providerID: ID,
+|};
 
 export type Response = {
   accountLinkRef: Pointer<'AccountLink'>,
