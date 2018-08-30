@@ -1,5 +1,6 @@
 /* @flow */
 
+import AccountLinkDeleteEndpoint from './AccountLinkDeleteEndpoint';
 import ProviderLoginFormEndpoint from './ProviderLoginFormEndpoint';
 import ProviderMFAFormEndpoint from './ProviderMFAFormEndpoint';
 import ProviderQueryEndpoint from './ProviderQueryEndpoint';
@@ -14,6 +15,7 @@ const router = express.Router();
 export default router;
 
 export function initialize(): void {
+  ExpressAdapter.createDeleteEndpoint(AccountLinkDeleteEndpoint);
   ExpressAdapter.createPostEndpoint(ProviderLoginFormEndpoint);
   ExpressAdapter.createPostEndpoint(ProviderMFAFormEndpoint);
   ExpressAdapter.createGetEndpoint(ProviderQueryEndpoint);
@@ -21,6 +23,11 @@ export function initialize(): void {
 }
 
 const ExpressAdapter = {
+  createDeleteEndpoint(EndpointCtor: Class<Endpoint<any, any>>) {
+    const endpoint = new EndpointCtor();
+    router.delete(EndpointCtor.path, endpoint.getExpressHandle());
+  },
+
   createGetEndpoint(EndpointCtor: Class<Endpoint<any, any>>) {
     const endpoint = new EndpointCtor();
     router.get(EndpointCtor.path, endpoint.getExpressHandle());

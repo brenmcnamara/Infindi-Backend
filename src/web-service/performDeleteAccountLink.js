@@ -2,8 +2,8 @@
 
 import performDeleteLink from '../operations/account-link/performDeleteLink';
 
-export default function performDeleteAccountLink(
-  accountLinkID: ID,
-): Promise<void> {
+import type { ID } from 'common/types/core';
+
+export default function performDeleteAccountLink(accountLinkID: ID): void {
   performDeleteLink(accountLinkID);
 }
