@@ -294,6 +294,7 @@ function genGetRequest<TResponse: Object>(
   });
 }
 
+// eslint-disable-next-line no-unused-vars
 function genPutRequest<TResponse: Object>(
   auth: AuthPayload,
   uri: string,
@@ -363,6 +364,7 @@ function getHeaders(auth: AuthPayload | null) {
   }
 }
 
+// eslint-disable-next-line no-unused-vars
 function createYMDFromString(str: YMDString): YearMonthDay {
   const serializedComponents = str.split('-');
   if (serializedComponents.length !== 3) {
