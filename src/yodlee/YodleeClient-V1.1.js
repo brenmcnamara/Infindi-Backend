@@ -1,6 +1,12 @@
 /* @flow */
 
+/**
+ * This module is a client-side abstraction to the Yodlee API. Docs can be
+ * viewed here: https://developer.yodlee.com/apidocs/index.php
+ */
+
 import * as Immutable from 'immutable';
+import YearMonthDay from 'common/lib/YearMonthDay';
 
 import invariant from 'invariant';
 import request from 'request';
@@ -10,6 +16,8 @@ import type {
   Provider,
   ProviderAccount,
   ProviderOrderedCollection,
+  Transaction,
+  YMDString,
 } from 'common/types/yodlee-v1.1';
 
 const BASE_URI = 'https://developer.api.yodlee.com/ysl';
@@ -100,6 +108,7 @@ async function genFetchProviders(
 ): Promise<ProviderOrderedCollection> {
   const uri = `${BASE_URI}/providers?top=${limit}&top=${offset}`;
   const response = await genGetRequest(auth, uri);
+  // $FlowFixMe - Flow is being dumb.
   return Immutable.OrderedMap(
     response.provider.map(provider => {
       const providerID = String(provider.id);
@@ -147,6 +156,52 @@ async function genFetchProviderAccount(
   }
 }
 
+async function genFetchProviderAccounts(
+  auth: AuthPayload$CobrandAndUser,
+): Promise<Array<ProviderAccount>> {
+  const uri = `${BASE_URI}/providerAccounts`;
+  const response = await genGetRequest(auth, uri);
+  return response.providerAccount || [];
+}
+
+// -----------------------------------------------------------------------------
+//
+// TRANSACTIONS
+//
+// -----------------------------------------------------------------------------
+
+export type TransactionQuery = {
+  limit: number,
+  offset?: number,
+  startDate?: YearMonthDay,
+};
+
+const DEFAULT_TRANSACTION_QUERY = { limit: 20 };
+
+function createTransactionURI(
+  providerAccountID: ID,
+  query: TransactionQuery,
+): string {
+  const queryComponents = [
+    `top=${query.limit}`,
+    query.offset ? `skip=${query.offset}` : null,
+    query.startDate ? `fromDate=${createStringFromYMD(query.startDate)}` : null,
+  ].filter(Boolean);
+  return `${BASE_URI}/transactions?accountId=${providerAccountID}&${queryComponents.join(
+    '&',
+  )}`;
+}
+
+async function genFetchTransactions(
+  auth: AuthPayload$CobrandAndUser,
+  providerAccountID: ID,
+  query: TransactionQuery = DEFAULT_TRANSACTION_QUERY,
+): Promise<Array<Transaction>> {
+  const uri = createTransactionURI(providerAccountID, query);
+  const response = await genGetRequest(auth, uri);
+  return response.transaction || [];
+}
+
 // -----------------------------------------------------------------------------
 //
 // EXPORT
@@ -157,7 +212,9 @@ export default {
   genCobrandAuth,
   genFetchProvider,
   genFetchProviderAccount,
+  genFetchProviderAccounts,
   genFetchProviders,
+  genFetchTransactions,
   genUserAuth,
 };
 
@@ -304,4 +361,23 @@ function getHeaders(auth: AuthPayload | null) {
     default:
       invariant(false, 'Unrecognized auth payload: %s', auth.type);
   }
+}
+
+function createYMDFromString(str: YMDString): YearMonthDay {
+  const serializedComponents = str.split('-');
+  if (serializedComponents.length !== 3) {
+    throw Error('Expecting string to be in format: YYYY-MM-DD');
+  }
+  const [year, month, day] = serializedComponents.map(str => parseInt(str, 10));
+  if (Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day)) {
+    throw Error('Expecting string to be in format: YYYY-MM-DD');
+  }
+  return YearMonthDay.create(year, month - 1, day);
+}
+
+function createStringFromYMD(ymd: YearMonthDay): YMDString {
+  const monthFormatted =
+    ymd.month < 10 ? `0${ymd.month + 1}` : `${ymd.month + 1}`;
+  const dayFormatted = ymd.day < 10 ? `0${ymd.day}` : `${ymd.day}`;
+  return `${ymd.year}-${monthFormatted}-${dayFormatted}`;
 }
