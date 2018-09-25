@@ -1,5 +1,5 @@
-// flow-typed signature: b05e537bad42ff86b772c9d6c8677154
-// flow-typed version: 5123ba71af/firebase_v4.x.x/flow_>=v0.34.x
+// flow-typed signature: 957d92b80c0e58047ab324d07668abf2
+// flow-typed version: 63cba5e9af/firebase_v4.x.x/flow_>=v0.34.x
 
 /* @flow */
 /** ** firebase ****/
@@ -479,8 +479,8 @@ declare interface $npm$firebase$firestore$QueryListenOptions {
   includeMetadataChanges: boolean;
   includeQueryMetadataChanges: boolean;
 }
-declare type $npm$firebase$firestore$observer = (snapshot: $npm$firebase$firestore$DocumentSnapshot) => void;
-declare type $npm$firebase$firestore$observerError = (error: $npm$firebase$Error) => void;
+declare type $npm$firebase$firestore$observer = (snapshot: $npm$firebase$firestore$DocumentSnapshot) => void | Promise<void>;
+declare type $npm$firebase$firestore$observerError = (error: $npm$firebase$Error) => void | Promise<void>;
 
 declare class $npm$firebase$firestore$Query {
   firestore: $npm$firebase$firestore$Firestore;
