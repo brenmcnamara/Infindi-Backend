@@ -14,9 +14,9 @@ const USER_PASSWORD = 'sbMembrenmcnamara3#123';
 const USER_LOGIN_NAME_BAD = 'blah';
 const USER_PASSWORD_BAD = 'blah';
 
-const PROVIDER_CHASE = '643';
 const PROVIDER_NAN = 'NOT-A-NUMBER';
 const PROVIDER_UNDEFINED = '11223344';
+const PROVIDER_WELLS_FARGO = '5';
 
 const YodleeClient = require('../build/yodlee/YodleeClient-V1.1').default;
 
@@ -93,13 +93,13 @@ promise = promise
 
   .then(() => {
     console.log('\n ---TEST FETCH PROVIDER ---');
-    return YodleeClient.genFetchProvider(cobrandAuth, PROVIDER_CHASE);
+    return YodleeClient.genFetchProvider(cobrandAuth, PROVIDER_WELLS_FARGO);
   })
   .then(provider => {
     invariant(
       provider,
       'Expecting provider with id %s to exist',
-      PROVIDER_CHASE
+      PROVIDER_WELLS_FARGO
     );
     console.log(chalk.green('Provider found!'));
   })
