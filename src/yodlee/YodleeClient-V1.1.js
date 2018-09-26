@@ -5,7 +5,6 @@
  * viewed here: https://developer.yodlee.com/apidocs/index.php
  */
 
-import * as Immutable from 'immutable';
 import YearMonthDay from 'common/lib/YearMonthDay';
 
 import invariant from 'invariant';
@@ -17,7 +16,6 @@ import type {
   Account,
   Provider,
   ProviderAccount,
-  ProviderOrderedCollection,
   Transaction,
   YMDString,
 } from 'common/types/yodlee-v1.1';
@@ -103,20 +101,23 @@ async function genUserAuth(
 //
 // -----------------------------------------------------------------------------
 
+export type ProviderQuery = {
+  limit: number,
+  offset?: number,
+};
+
+const DEFAULT_PROVIDER_QUERY = { limit: 20 };
+
 async function genFetchProviders(
   auth: AuthPayload$CobrandAndUser,
-  limit: number,
-  offset: number,
-): Promise<ProviderOrderedCollection> {
+  query: ProviderQuery = DEFAULT_PROVIDER_QUERY,
+): Promise<Array<Provider>> {
+  const { limit } = query;
+  const offset = query.offset || 0;
+
   const uri = `${BASE_URI}/providers?top=${limit}&top=${offset}`;
   const response = await genGetRequest(auth, uri);
-  // $FlowFixMe - Flow is being dumb.
-  return Immutable.OrderedMap(
-    response.provider.map(provider => {
-      const providerID = String(provider.id);
-      return [providerID, provider];
-    }),
-  );
+  return response.provider;
 }
 
 async function genFetchProvider(
@@ -126,7 +127,7 @@ async function genFetchProvider(
   const uri = `${BASE_URI}/providers/${providerID}`;
   try {
     const response = await genGetRequest(auth, uri);
-    return response.provider || null;
+    return response.provider ? response.provider[0] : null;
   } catch (error) {
     if (error.errorCode === 'Y806') {
       // Invalid input, could happen if ID cannot be cast to a number.
@@ -149,7 +150,7 @@ async function genFetchProviderAccount(
   const uri = `${BASE_URI}/providerAccounts/${providerAccountID}`;
   try {
     const response = await genGetRequest(auth, uri);
-    return response.providerAccount || null;
+    return response.providerAccount ? response.providerAccount[0] : null;
   } catch (error) {
     if (error.errorCode === 'Y807' || error.errorCode === 'Y806') {
       return null;
@@ -189,7 +190,7 @@ async function genFetchAccount(
   const uri = `${BASE_URI}/accounts/${accountID}?container=${accountContainer}`;
   try {
     const response = await genGetRequest(auth, uri);
-    return response.account;
+    return response.account ? response.account[0] : null;
   } catch (error) {
     if (error.errorCode === 'Y807' || error.errorCode === 'Y806') {
       return null;

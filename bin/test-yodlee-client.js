@@ -124,6 +124,7 @@ promise = promise
     return YodleeClient.genFetchProvider(cobrandAuth, PROVIDER_WELLS_FARGO);
   })
   .then(provider => {
+    console.log(Object.keys(provider));
     invariant(
       provider,
       'Expecting provider with id %s to exist',
@@ -164,13 +165,13 @@ promise = promise
 
   .then(() => {
     console.log('\n--- TEST FETCH PROVIDERS ---');
-    const limit = 10;
-    const offset = 0;
-    return YodleeClient.genFetchProviders(cobrandAuth, limit, offset);
+    const query = { limit: 10, offset: 0 };
+    return YodleeClient.genFetchProviders(cobrandAuth, query);
   })
   .then(providers => {
+    console.log(Object.keys(providers[0]));
     invariant(
-      providers.size === 10,
+      providers.length === 10,
       'Expecting genFetchProviders to fetch 10 providers. Only fetched %s',
       providers.size,
     );
@@ -183,9 +184,8 @@ promise = promise
 
   .then(() => {
     console.log('\n--- TEST FETCH PROVIDERS WITH INVALID LIMIT ---');
-    const limit = 501;
-    const offset = 0;
-    return YodleeClient.genFetchProviders(cobrandAuth, limit, offset);
+    const query = { limit: 501, offset: 0 };
+    return YodleeClient.genFetchProviders(cobrandAuth, query);
   })
   .then(() => {
     console.log(
