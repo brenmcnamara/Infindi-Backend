@@ -13,6 +13,8 @@ import request from 'request';
 
 import type { ID } from 'common/types/core';
 import type {
+  AccountContainer,
+  Account,
   Provider,
   ProviderAccount,
   ProviderOrderedCollection,
@@ -164,6 +166,46 @@ async function genFetchProviderAccounts(
   return response.providerAccount || [];
 }
 
+// TODO: NO_AUTOMATED_TESTING
+async function genDeleteProviderAccount(
+  auth: AuthPayload$CobrandAndUser,
+  providerAccountID: ID,
+): Promise<void> {
+  const uri = `${BASE_URI}/providerAccounts/${providerAccountID}`;
+  await genDeleteRequest(auth, uri);
+}
+
+// -----------------------------------------------------------------------------
+//
+// ACCOUNTS
+//
+// -----------------------------------------------------------------------------
+
+async function genFetchAccount(
+  auth: AuthPayload$CobrandAndUser,
+  accountID: ID,
+  accountContainer: AccountContainer,
+): Promise<Account | null> {
+  const uri = `${BASE_URI}/accounts/${accountID}?container=${accountContainer}`;
+  try {
+    const response = await genGetRequest(auth, uri);
+    return response.account;
+  } catch (error) {
+    if (error.errorCode === 'Y807' || error.errorCode === 'Y806') {
+      return null;
+    }
+    throw error;
+  }
+}
+
+async function genFetchAccounts(
+  auth: AuthPayload$CobrandAndUser,
+): Promise<Array<Account>> {
+  const uri = `${BASE_URI}/accounts`;
+  const response = await genGetRequest(auth, uri);
+  return response.account;
+}
+
 // -----------------------------------------------------------------------------
 //
 // TRANSACTIONS
@@ -210,6 +252,9 @@ async function genFetchTransactions(
 
 export default {
   genCobrandAuth,
+  genDeleteProviderAccount,
+  genFetchAccount,
+  genFetchAccounts,
   genFetchProvider,
   genFetchProviderAccount,
   genFetchProviderAccounts,
@@ -223,6 +268,45 @@ export default {
 // UTILITIES
 //
 // -----------------------------------------------------------------------------
+
+function genDeleteRequest<TResponse: Object>(
+  auth: AuthPayload | null,
+  uri: string,
+  body: Object = {},
+): Promise<TResponse> {
+  return new Promise((resolve, reject) => {
+    const options = {
+      body: JSON.stringify(body),
+      headers: getHeaders(auth),
+      method: 'DELETE',
+      uri,
+    };
+
+    const onComplete = (error: Error, response: Object, serialized: string) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      serialized = serialized || '{}';
+
+      let payload;
+      try {
+        payload = JSON.parse(serialized);
+      } catch (error) {
+        reject(error);
+        return;
+      }
+
+      if (payload.errorCode) {
+        reject((payload: ErrorResponse));
+        return;
+      }
+      resolve((payload: TResponse));
+    };
+    request(options, onComplete);
+  });
+}
 
 function genPostRequest<TResponse: Object>(
   auth: AuthPayload | null,

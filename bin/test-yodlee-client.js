@@ -19,12 +19,14 @@ const PROVIDER_NAN = 'NOT-A-NUMBER';
 const PROVIDER_UNDEFINED = '11223344';
 const PROVIDER_WELLS_FARGO = '5';
 
-// TODO: Account id for fetching provider acccounts and for fetching
-// transactions are not in sync.
 const PROVIDER_ACCOUNT_ID = '10350735';
-const PROVIDER_ACCOUNT_ID_FOR_TRANSACTIONS = '11427574';
 const PROVIDER_ACCOUNT_ID_BAD = '12345';
 const PROVIDER_ACCOUNT_ID_NAN = 'hello World';
+
+const ACCOUNT_ID = '11427574';
+const ACCOUNT_CONTAINER = 'creditCard';
+const ACCOUNT_ID_BAD = '12345';
+const ACCOUNT_ID_NAN = 'HELLO WORLD';
 
 const TRANSACTION_FETCH_MAX_LIMIT = 500;
 
@@ -272,11 +274,69 @@ promise = promise
   // to have a temp user that never links with any accounts.
 
   .then(() => {
-    console.log('\n--- FETCH TRANSACTIONS BY PROVIDER ACCOUNT ---');
-    return YodleeClient.genFetchTransactions(
+    console.log('\n--- FETCH ACCOUNT ---');
+    return YodleeClient.genFetchAccount(
       userAuth,
-      PROVIDER_ACCOUNT_ID_FOR_TRANSACTIONS,
+      ACCOUNT_ID,
+      ACCOUNT_CONTAINER,
     );
+  })
+  .then(account => {
+    invariant(account, 'Expecting account to exist: %s', ACCOUNT_ID);
+    console.log(chalk.green('Success!'));
+  })
+  .catch(error => {
+    console.log(error);
+    console.log(chalk.red(JSON.stringify(error)));
+    didPassAllTests = false;
+  })
+
+  .then(() => {
+    console.log('\n--- FETCH ACCOUNT NULL ---');
+    return YodleeClient.genFetchAccount(userAuth, ACCOUNT_ID_BAD, 'bank');
+  })
+  .then(account => {
+    invariant(!account, 'Expecting account to not exist');
+    console.log(chalk.green('Success!'));
+  })
+  .catch(error => {
+    console.log(chalk.red(JSON.stringify(error)));
+    didPassAllTests = false;
+  })
+
+  .then(() => {
+    console.log('\n--- FETCH ACCOUNT NAN ---');
+    return YodleeClient.genFetchAccount(userAuth, ACCOUNT_ID_NAN, 'bank');
+  })
+  .then(account => {
+    invariant(!account, 'Expecting account to not exist');
+    console.log(chalk.green('Success!'));
+  })
+  .catch(error => {
+    console.log(chalk.red(JSON.stringify(error)));
+    didPassAllTests = false;
+  })
+
+  .then(() => {
+    console.log('\n FETCH ACCOUNTS ---');
+    return YodleeClient.genFetchAccounts(userAuth);
+  })
+  .then(accounts => {
+    invariant(accounts.length > 0, 'Expecting list of accounts to exist');
+    console.log(chalk.green('Success!'));
+  })
+  .catch(error => {
+    console.log(chalk.red(JSON.stringify(error)));
+    didPassAllTests = false;
+  })
+
+  // TODO: Add a test for a user with an empty set of accounts. Need to
+  // make sure that it returns an empty array. For this to work, we need
+  // to have a temp user that never links with any accounts.
+
+  .then(() => {
+    console.log('\n--- FETCH TRANSACTIONS BY PROVIDER ACCOUNT ---');
+    return YodleeClient.genFetchTransactions(userAuth, ACCOUNT_ID);
   })
   .then(transactions => {
     invariant(
@@ -293,11 +353,7 @@ promise = promise
   .then(() => {
     console.log('\n --- FETCH TRANSACTION WITH EXPLICIT LIMIT ---');
     const query = { limit: 2 };
-    return YodleeClient.genFetchTransactions(
-      userAuth,
-      PROVIDER_ACCOUNT_ID_FOR_TRANSACTIONS,
-      query,
-    );
+    return YodleeClient.genFetchTransactions(userAuth, ACCOUNT_ID, query);
   })
   .then(transactions => {
     invariant(transactions.length === 2, 'Expecting to fetch 10 transactions');
@@ -318,11 +374,7 @@ promise = promise
       limit: 2,
       startDate: AUGUST_1_2018,
     };
-    return YodleeClient.genFetchTransactions(
-      userAuth,
-      PROVIDER_ACCOUNT_ID_FOR_TRANSACTIONS,
-      query,
-    );
+    return YodleeClient.genFetchTransactions(userAuth, ACCOUNT_ID, query);
   })
   .then(transactions => {
     // TODO: Need to be a proper date check to make sure all the transactions
@@ -338,11 +390,7 @@ promise = promise
   .then(() => {
     console.log('\n--- FETCH TOO MANY TRANSACTIONS AT ONCE ---');
     const query = { limit: TRANSACTION_FETCH_MAX_LIMIT + 1 };
-    return YodleeClient.genFetchTransactions(
-      userAuth,
-      PROVIDER_ACCOUNT_ID_FOR_TRANSACTIONS,
-      query,
-    );
+    return YodleeClient.genFetchTransactions(userAuth, ACCOUNT_ID, query);
   })
   .then(() => {
     console.log(chalk.red('Expecting fetch to fail due to exceeded limit'));
@@ -356,11 +404,7 @@ promise = promise
   .then(() => {
     console.log('\n--- FETCH TRANSACTIONS WITH NEGATIVE OFFSET ---');
     const query = { limit: 20, offset: -1 };
-    return YodleeClient.genFetchTransactions(
-      userAuth,
-      PROVIDER_ACCOUNT_ID_FOR_TRANSACTIONS,
-      query,
-    );
+    return YodleeClient.genFetchTransactions(userAuth, ACCOUNT_ID, query);
   })
   .then(() => {
     console.log(chalk.red('Expecting fetch to fail due to negative offset'));
