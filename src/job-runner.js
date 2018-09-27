@@ -30,28 +30,28 @@ export function initialize(): void {
 }
 
 const jobs: Array<Job> = [
-  {
-    genRun: async () => {
-      const accountLinks = await genFetchAllAccountLinks();
-      for (const accountLink of accountLinks) {
-        if (accountLink.providerRef.refID === TEST_YODLEE_PROVIDER_ID) {
-          continue;
-        }
-        AccountLinkOperations.performLink(
-          accountLink.id,
-          { type: 'BACKGROUND_UPDATE' },
-          true, // shouldForceLinking
-        );
-      }
-    },
-
-    name: 'RefreshAllAccounts',
-
-    nextJobRunAt: () => {
-      // Running this job at 6PM everyday
-      return runAtPTCTime(6 + 12, 0);
-    },
-  },
+  // {
+  //   genRun: async () => {
+  //     const accountLinks = await genFetchAllAccountLinks();
+  //     for (const accountLink of accountLinks) {
+  //       if (accountLink.providerRef.refID === TEST_YODLEE_PROVIDER_ID) {
+  //         continue;
+  //       }
+  //       AccountLinkOperations.performLink(
+  //         accountLink.id,
+  //         { type: 'BACKGROUND_UPDATE' },
+  //         true, // shouldForceLinking
+  //       );
+  //     }
+  //   },
+  //
+  //   name: 'RefreshAllAccounts',
+  //
+  //   nextJobRunAt: () => {
+  //     // Running this job at 6PM everyday
+  //     return runAtPTCTime(6 + 12, 0);
+  //   },
+  // },
 ];
 
 // -----------------------------------------------------------------------------
