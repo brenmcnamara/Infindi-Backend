@@ -17,6 +17,7 @@ import type {
   Provider,
   ProviderAccount,
   Transaction,
+  User,
   YMDString,
 } from 'common/types/yodlee-v1.1';
 
@@ -68,6 +69,10 @@ async function genCobrandAuth(
   };
 }
 
+async function genFetchCobrandPublicKey(auth: AuthPayload$Cobrand) {
+
+}
+
 async function genUserAuth(
   auth: AuthPayload$Cobrand,
   login: string,
@@ -93,6 +98,18 @@ async function genUserAuth(
     type: 'COBRAND_AND_USER',
     userSession: response.user.session.userSession,
   };
+}
+
+// -----------------------------------------------------------------------------
+//
+// USERS
+//
+// -----------------------------------------------------------------------------
+
+async function genFetchUser(auth: AuthPayload$CobrandAndUser): Promise<User> {
+  const uri = `${BASE_URI}/user`;
+  const response = await genGetRequest(auth, uri);
+  return response.user;
 }
 
 // -----------------------------------------------------------------------------
